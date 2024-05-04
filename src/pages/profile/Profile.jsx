@@ -26,7 +26,7 @@ export const shortenText = (text, n) => {
 const Profile = () => {
   const dispatch = useDispatch()
 
-  useRedirectLoggedOutUser("/login")
+  useRedirectLoggedOutUser("/")
 
   const { isLoading, isLoggedIn, isSuccess, message, user } = useSelector(state => state.auth)
 
