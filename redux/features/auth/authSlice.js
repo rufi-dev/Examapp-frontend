@@ -353,7 +353,7 @@ const authSlice = createSlice({
                 state.isLoggedIn = true;
                 state.isSuccess = true;
                 state.user = action.payload;
-                toast.success("Registration successful")
+                toast.success("Qeydiyyat uğurludur!")
             })
             .addCase(register.rejected, (state, action) => {
                 state.isLoading = false;
