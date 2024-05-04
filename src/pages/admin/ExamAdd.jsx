@@ -13,6 +13,7 @@ import {
 } from "../../../redux/features/quiz/quizSlice";
 import { toast } from "react-toastify";
 import { useNavigate, useParams } from "react-router-dom";
+import Loader from "../../components/Loader";
 
 const ExamAdd = () => {
   useRedirectLoggedOutUser("/login");
@@ -33,8 +34,15 @@ const ExamAdd = () => {
     pdfPath: null,
   };
   const [examForm, setExamForm] = useState(initialState);
-  const { name, duration, dedline, videoLink, price, passingMarks, totalMarks } =
-    examForm;
+  const {
+    name,
+    duration,
+    dedline,
+    videoLink,
+    price,
+    passingMarks,
+    totalMarks,
+  } = examForm;
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -85,7 +93,9 @@ const ExamAdd = () => {
       toast.error("Failed to add exam");
     }
   };
-
+  if (isLoading) {
+    return <Loader />;
+  }
   return (
     <div className="bg-gray-50  flex justify-center py-[200px]">
       <div className="w-full max-w-[1240px] bg-white p-8 rounded-md shadow-md">
