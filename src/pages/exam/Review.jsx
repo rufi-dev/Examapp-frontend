@@ -127,7 +127,7 @@ const Review = () => {
     return <Loader />;
   }
   const showPdf = (pdf) => {
-    setPdfData(`http://localhost:5000/${pdf}`);
+    setPdfData(`https://examapp-backend.onrender.com/${pdf}`);
   };
   return (
     <div className="max-w-[1640px] w-full px-4 mx-auto py-10">

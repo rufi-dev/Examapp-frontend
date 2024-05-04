@@ -49,7 +49,7 @@ const QuestionAdd = () => {
   };
 
   const showPdf = (pdf) => {
-    setPdfData(`http://localhost:5000/${pdf}`);
+    setPdfData(`https://examapp-backend.onrender.com/${pdf}`);
   };
 
   const submitAnswerSheet = async (e) => {
