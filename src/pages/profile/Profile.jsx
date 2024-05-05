@@ -115,7 +115,7 @@ const Profile = () => {
   return (
     <>
 
-      {!profileData.isVerified && <Notification />}
+      {/* {!profileData.isVerified && <Notification />} */}
       <section className='px-8 mx-auto max-w-[1440px] my-14'>
         <PageMenu />
         {!isLoading && user && isSuccess && (
