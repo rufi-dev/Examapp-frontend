@@ -82,14 +82,8 @@ const ExamAdd = () => {
           `https://api.cloudinary.com/v1_1/${cloud_name}/image/upload`,
           { method: "post", body: pdfForm }
         );
-
         const pdfData = await response.json();
-        pdfUrl = pdfData.url.toString();
-
-        const cloudinaryUrl = new CloudinaryImage("asadsad")
-        .toString();
-
-        console.log(cloudinaryUrl)
+        pdfUrl = pdfData.secure_url.toString();
       }
 
       // Save profile to MongoDB

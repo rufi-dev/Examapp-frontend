@@ -93,7 +93,7 @@ const QuestionAdd = () => {
 
       <div className="flex lg:flex-row relative flex-col py-10 justify-center gap-[50px] mx-5">
         <div>
-          <PdfOpener pdfFile={pdfData} />
+          {/* <PdfOpener pdfFile={pdfData} /> */}
           <PDFPreview pdfPath={pdfData} />
         </div>
         <div className="w-full max-w-[1240px] lg:max-w-[700px] bg-white p-8 rounded-md shadow-md">
