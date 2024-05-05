@@ -13,6 +13,7 @@ import Spinner from "../../components/Spinner";
 import Loader from "../../components/Loader";
 import { TailSpin } from "react-loader-spinner";
 import QuestionType from "../../components/QuestionType";
+import PDFPreview from "../../components/PDFPreview";
 
 const QuestionAdd = () => {
   useRedirectLoggedOutUser("/login");
@@ -46,10 +47,6 @@ const QuestionAdd = () => {
       updatedAnswers[index] = { ...updatedAnswers[index], answer: value, type };
       return updatedAnswers;
     });
-  };
-
-  const showPdf = (pdf) => {
-    setPdfData(`https://examapp-backend.onrender.com/${pdf}`);
   };
 
   const submitAnswerSheet = async (e) => {
@@ -97,7 +94,7 @@ const QuestionAdd = () => {
 
       <div className="flex lg:flex-row relative flex-col py-10 justify-center gap-[50px] mx-5">
         <div>
-          <PdfOpener pdfFile={pdfData} />
+          <PDFPreview pdfPath={pdfData} />
         </div>
         <div className="w-full max-w-[1240px] lg:max-w-[700px] bg-white p-8 rounded-md shadow-md">
           <form onSubmit={submitAnswerSheet}>

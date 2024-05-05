@@ -4,6 +4,7 @@ import { BiSolidUserCheck, BiUserMinus, BiUserX } from "react-icons/bi";
 import { AiFillDelete } from "react-icons/ai";
 import PageMenu from "../../components/PageMenu";
 import Categories from "../../components/Categories";
+import { CloudinaryImage } from "@cloudinary/url-gen";
 import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -20,6 +21,9 @@ const ExamAdd = () => {
   const { classes, isLoading, isSuccess, isError } = useSelector(
     (state) => state.quiz
   );
+  const cloud_name = import.meta.env.VITE_CLOUD_NAME;
+  const upload_preset = import.meta.env.VITE_UPLAD_PRESET;
+  const [pdf, setPdf] = useState(null);
 
   const navigate = useNavigate();
   const { classId } = useParams();
@@ -56,23 +60,68 @@ const ExamAdd = () => {
     // dispatch(getTag(classId));
   }, [dispatch]);
 
-  const [pdfPath, setPdfPath] = useState(null);
+  // const [pdfPath, setPdfPath] = useState(null);
   const handlePdfChange = (e) => {
-    setPdfPath(e.target.files[0]);
+    setPdf(e.target.files[0]);
   };
 
   const addExamForm = async (e) => {
     e.preventDefault();
+    let pdfUrl;
+
+    try {
+      console.log(pdf);
+      if (pdf !== null && pdf.type === "application/pdf") {
+        const pdfForm = new FormData();
+        pdfForm.append("file", pdf);
+        pdfForm.append("cloud_name", cloud_name);
+        pdfForm.append("upload_preset", upload_preset);
+      
+        // Save image to cloudinary
+        const response = await fetch(
+          `https://api.cloudinary.com/v1_1/${cloud_name}/image/upload`,
+          { method: "post", body: pdfForm }
+        );
+
+        const pdfData = await response.json();
+        pdfUrl = pdfData.url.toString();
+
+        const cloudinaryUrl = new CloudinaryImage("asadsad")
+        .toString();
+
+        console.log(cloudinaryUrl)
+      }
+
+      // Save profile to MongoDB
+      console.log(pdfUrl);
+      const examData = new FormData();
+      examData.append("name", name);
+      examData.append("duration", duration);
+      examData.append("price", price);
+      examData.append("videoLink", videoLink);
+      examData.append("passingMarks", passingMarks);
+      examData.append("totalMarks", totalMarks);
+      examData.append("pdf", pdfUrl);
+      console.log(pdfUrl);
+      const addExamData = await dispatch(addExam({ examData, classId }));
+
+      if (addExamData.type !== "quiz/addExam/rejected") {
+        navigate("/exam/" + classId);
+      }
+    } catch (error) {
+      toast.error(error.message);
+      console.log(error);
+    }
 
     // Create form data
-    const examData = new FormData();
-    examData.append("name", name);
-    examData.append("duration", duration);
-    examData.append("price", price);
-    examData.append("videoLink", videoLink);
-    examData.append("passingMarks", passingMarks);
-    examData.append("totalMarks", totalMarks);
-    examData.append("pdf", pdfPath);
+    // const examData = new FormData();
+    // examData.append("name", name);
+    // examData.append("duration", duration);
+    // examData.append("price", price);
+    // examData.append("videoLink", videoLink);
+    // examData.append("passingMarks", passingMarks);
+    // examData.append("totalMarks", totalMarks);
+    // examData.append("pdf", pdfPath);
 
     // const examData = {
     //   name,
@@ -82,16 +131,6 @@ const ExamAdd = () => {
     //   totalMarks,
     //   pdf:pdfPath
     // }
-
-    try {
-      const addExamData = await dispatch(addExam({ examData, classId }));
-
-      if (addExamData.type !== "quiz/addExam/rejected") {
-        navigate("/exam/" + classId);
-      }
-    } catch (error) {
-      toast.error("Failed to add exam");
-    }
   };
   if (isLoading) {
     return <Loader />;

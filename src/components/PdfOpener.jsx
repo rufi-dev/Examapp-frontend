@@ -20,7 +20,6 @@ const PdfOpener = (props) => {
                   pageNumber={page}
                   renderTextLayer={false}
                   renderAnnotationLayer={false}
-                  scale={1.5}
                   className="select-text"
                 />
               </div>
