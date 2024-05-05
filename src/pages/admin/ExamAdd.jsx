@@ -87,7 +87,6 @@ const ExamAdd = () => {
       }
 
       // Save profile to MongoDB
-      console.log(pdfUrl);
       const examData = new FormData();
       examData.append("name", name);
       examData.append("duration", duration);
@@ -96,7 +95,6 @@ const ExamAdd = () => {
       examData.append("passingMarks", passingMarks);
       examData.append("totalMarks", totalMarks);
       examData.append("pdf", pdfUrl);
-      console.log(pdfUrl);
       const addExamData = await dispatch(addExam({ examData, classId }));
 
       if (addExamData.type !== "quiz/addExam/rejected") {
