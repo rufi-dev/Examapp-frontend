@@ -135,7 +135,7 @@ const Review = () => {
       </div>
       <div className="flex lg:flex-row flex-col justify-center gap-[50px]">
         <div>
-        <PdfOpener pdffile={pdfData} />
+        <PdfOpener pdfFile={pdfData} />
         {/* <PDFPreview pdfPath={pdfData} /> */}
 
         </div>

@@ -160,7 +160,7 @@ const Quiz = () => {
     <div className="flex lg:flex-row relative flex-col py-10 justify-center gap-[50px] mx-5">
       <div>
         {/* <PDFPreview pdfPath={pdfData} /> */}
-        <PdfOpener pdffile={pdfData} />
+        <PdfOpener pdfFile={pdfData} />
       </div>
       <div className="w-full max-w-[1240px] lg:max-w-[700px] bg-white p-8 rounded-md shadow-md">
         <div className="flex justify-between mb-8">
