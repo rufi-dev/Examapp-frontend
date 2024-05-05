@@ -62,9 +62,6 @@ const Quiz = () => {
     fetchData();
   }, [dispatch, examId]);
 
-  const showPdf = (pdf) => {
-    setPdfData(`https://examapp-backend.onrender.com/${pdf}`);
-  };
 
   const calculateResultData = () => {
     const attempts = attempts_Number(answers);
@@ -162,7 +159,8 @@ const Quiz = () => {
     // singleExam && (
     <div className="flex lg:flex-row relative flex-col py-10 justify-center gap-[50px] mx-5">
       <div>
-        <PDFPreview pdfPath={pdfData} />
+        {/* <PDFPreview pdfPath={pdfData} /> */}
+        <PdfOpener pdffile={pdfData} />
       </div>
       <div className="w-full max-w-[1240px] lg:max-w-[700px] bg-white p-8 rounded-md shadow-md">
         <div className="flex justify-between mb-8">
