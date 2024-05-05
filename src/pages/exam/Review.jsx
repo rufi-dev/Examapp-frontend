@@ -18,6 +18,7 @@ import YoutubeVideoEmbed from "../../components/YoutubeVideoEmbed";
 import { AdminTeacherLink } from "../../components/protect/hiddenLink";
 import { HiOutlinePhotograph } from "react-icons/hi";
 import { toast } from "react-toastify";
+import PDFPreview from "../../components/PDFPreview";
 
 const cloud_name = import.meta.env.VITE_CLOUD_NAME;
 const upload_preset = import.meta.env.VITE_UPLAD_PRESET;
@@ -106,7 +107,7 @@ const Review = () => {
       setAnswers(updatedAnswers);
     }
   }, [review]);
-  
+
   useEffect(() => {
     const fetchData = async () => {
       // Ensure review and review.examId are not undefined
@@ -126,16 +127,17 @@ const Review = () => {
   if (isLoading) {
     return <Loader />;
   }
-  const showPdf = (pdf) => {
-    setPdfData(`https://examapp-backend.onrender.com/${pdf}`);
-  };
+
   return (
     <div className="max-w-[1640px] w-full px-4 mx-auto py-10">
       <div className="mb-10">
         {review.length > 0 && <ResultCard result={review} />}
       </div>
       <div className="flex lg:flex-row flex-col justify-center gap-[50px]">
-        <div>{pdfData && <PdfOpener pdfFile={pdfData} />}</div>
+        <div>
+        <PDFPreview pdfPath={pdfData} />
+
+        </div>
 
         <div className="w-full">
           <div>
