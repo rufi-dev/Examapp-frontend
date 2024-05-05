@@ -31,7 +31,6 @@ const QuestionAdd = () => {
         await dispatch(getExamTagandClass(examId));
         const getPdfAction = await dispatch(getPdfByExam({ examId }));
         setPdfData(getPdfAction.payload.path);
-        showPdf(getPdfAction.payload.path);
       } catch (error) {
         console.error("Error fetching PDF:", error);
       }
@@ -94,6 +93,7 @@ const QuestionAdd = () => {
 
       <div className="flex lg:flex-row relative flex-col py-10 justify-center gap-[50px] mx-5">
         <div>
+          <PdfOpener pdfFile={pdfData} />
           <PDFPreview pdfPath={pdfData} />
         </div>
         <div className="w-full max-w-[1240px] lg:max-w-[700px] bg-white p-8 rounded-md shadow-md">
