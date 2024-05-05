@@ -26,6 +26,7 @@ import Spinner from "../../components/Spinner";
 import PdfOpener from "../../components/PdfOpener";
 import QuestionType from "../../components/QuestionType";
 import { toast } from "react-toastify";
+import PDFPreview from "../../components/PDFPreview";
 
 const Quiz = () => {
   const { queue, trace, singleExam } = useSelector((state) => state.quiz);
@@ -162,7 +163,7 @@ const Quiz = () => {
     // singleExam && (
     <div className="flex lg:flex-row relative flex-col py-10 justify-center gap-[50px] mx-5">
       <div>
-        <PdfOpener pdfFile={pdfData} />
+        <PDFPreview pdfPath={pdfData} />
       </div>
       <div className="w-full max-w-[1240px] lg:max-w-[700px] bg-white p-8 rounded-md shadow-md">
         <div className="flex justify-between mb-8">
