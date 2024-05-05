@@ -53,7 +53,6 @@ const Quiz = () => {
         await dispatch(getExamTagandClass(examId));
         const getPdfAction = await dispatch(getPdfByExam({ examId }));
         setPdfData(getPdfAction.payload.path);
-        showPdf(getPdfAction.payload.path);
         dispatch(getQuestionByExam(examId));
       } catch (error) {
         console.error("Error fetching PDF:", error);
