@@ -51,6 +51,7 @@ import ClassAdd from "./pages/admin/ClassAdd";
 import Classes from "./pages/Classes";
 import { disableReactDevTools } from "@fvilers/disable-react-devtools";
 import ResultsByExam from "./pages/exam/ResultsByExam";
+import Cookie from "./components/Cookie";
 
 axios.defaults.withCredentials = true;
 
@@ -95,12 +96,14 @@ function App() {
           <ToastContainer />
           <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
             <Routes>
+              
               <Route
                 index
                 exact
                 element={
                   <Layout>
                     <Home />
+                    <Cookie/>
                   </Layout>
                 }
               />

@@ -11,6 +11,7 @@ import { RESET, login, loginWithGoogle, sendLoginCode } from "../../../redux/fea
 import { validateEmail } from "../../../redux/features/auth/authService"
 import Spinner from "../../components/Spinner"
 import { GoogleLogin } from '@react-oauth/google';
+import Cookie from "../../components/Cookie"
 
 const initialState = {
     email: "",
@@ -120,6 +121,7 @@ const Login = () => {
                     </div>
                 </div>
             </div>
+            <Cookie/>
         </div>
     )
 }
