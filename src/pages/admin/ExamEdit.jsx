@@ -14,10 +14,17 @@ import { BsCheckLg } from 'react-icons/bs';
 
 
 const ExamEdit = () => {
+    const dispatch = useDispatch()
+
     useRedirectLoggedOutUser('/login');
     const { tags, isLoading, isSuccess, isError, singleExam } = useSelector(state => state.quiz)
     const navigate = useNavigate()
     const { examId } = useParams()
+    useEffect(() => {
+        dispatch(getExam(examId))
+        dispatch(getTags())
+    }, [dispatch, examId])
+
     const initialState = {
         name: "",
         duration: 0,
@@ -25,7 +32,7 @@ const ExamEdit = () => {
         price: 0,
         totalMarks: 0,
         passingMarks: 0,
-        tag: { id: singleExam?.tags.map((tag) => tag._id) },
+        tag: { id: singleExam?.classes?.map((_class) => _class._id) },
     }
     const [examForm, setExamForm] = useState(initialState)
     const { name, duration, price, dedline, passingMarks, totalMarks, tag } = examForm
@@ -34,9 +41,7 @@ const ExamEdit = () => {
         const { name, value } = e.target
         setExamForm({ ...examForm, [name]: value })
     }
-
-    const dispatch = useDispatch()
-
+    console.log(singleExam)
     useEffect(() => {
         if (singleExam) {
             setExamForm({
@@ -46,15 +51,10 @@ const ExamEdit = () => {
                 price: singleExam.price || 0,
                 totalMarks: singleExam.totalMarks || 0,
                 passingMarks: singleExam.passingMarks || 0,
-                tag: singleExam?.tags.map((tag) => tag._id)[0] || null,
+                class: singleExam?.classes?.map((_class) => _class._id)[0] || null,
             });
         }
     }, [singleExam]);
-
-    useEffect(() => {
-        dispatch(getExam(examId))
-        dispatch(getTags())
-    }, [dispatch])
     const editExamForm = async (e) => {
         e.preventDefault()
 

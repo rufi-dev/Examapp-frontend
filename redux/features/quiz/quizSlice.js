@@ -503,6 +503,7 @@ const quizSlice = createSlice({
                 state.isLoading = false;
                 state.isSuccess = true;
                 state.isError = false;
+                console.log(action.payload)
                 state.singleExam = action.payload
             })
             .addCase(getExam.rejected, (state, action) => {
