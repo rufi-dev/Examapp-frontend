@@ -57,7 +57,6 @@ const styles = StyleSheet.create({
     padding: "20px",
     width: "235px",
     fontFamily: "Schibsted Grotesk",
-    padding: 5,
   },
   text: {
     padding: "20px",
