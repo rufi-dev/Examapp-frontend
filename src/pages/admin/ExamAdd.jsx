@@ -32,6 +32,8 @@ const ExamAdd = () => {
     videoLink: "",
     duration: 3600,
     price: 0,
+    startDate: null,
+    endDate: null,
     dedline: null,
     totalMarks: 100,
     passingMarks: 50,
@@ -41,7 +43,8 @@ const ExamAdd = () => {
   const {
     name,
     duration,
-    dedline,
+    startDate,
+    endDate,
     videoLink,
     price,
     passingMarks,
@@ -76,7 +79,7 @@ const ExamAdd = () => {
         pdfForm.append("file", pdf);
         pdfForm.append("cloud_name", cloud_name);
         pdfForm.append("upload_preset", upload_preset);
-      
+
         // Save image to cloudinary
         const response = await fetch(
           `https://api.cloudinary.com/v1_1/${cloud_name}/image/upload`,
@@ -94,7 +97,10 @@ const ExamAdd = () => {
       examData.append("videoLink", videoLink);
       examData.append("passingMarks", passingMarks);
       examData.append("totalMarks", totalMarks);
+      examData.append("startDate", startDate);
+      examData.append("endDate", endDate);
       examData.append("pdf", pdfUrl);
+      
       const addExamData = await dispatch(addExam({ examData, classId }));
 
       if (addExamData.type !== "quiz/addExam/rejected") {
@@ -212,7 +218,38 @@ const ExamAdd = () => {
               className="mt-1 block w-full border-gray-300 outline-none border px-2 py-1 shadow-sm"
             />
           </div>
-
+          <div className="mb-4">
+            <label
+              className="block text-sm font-medium text-gray-700"
+              htmlFor="startDate"
+            >
+              Başlanma tarixi:
+            </label>
+            <input
+              value={startDate}
+              onChange={handleInputChange}
+              type="datetime-local"
+              id="startDate"
+              name="startDate"
+              className="mt-1 block w-full border-gray-300 outline-none border px-2 py-1 shadow-sm"
+            />
+          </div>
+          <div className="mb-4">
+            <label
+              className="block text-sm font-medium text-gray-700"
+              htmlFor="endDate"
+            >
+              Bitmə tarixi:
+            </label>
+            <input
+              value={endDate}
+              onChange={handleInputChange}
+              type="datetime-local"
+              id="endDate"
+              name="endDate"
+              className="mt-1 block w-full border-gray-300 outline-none border px-2 py-1 shadow-sm"
+            />
+          </div>
           {/* <div className="mb-4">
                         <label className="block text-sm font-medium text-gray-700" htmlFor="dedline">
                             Dedline:

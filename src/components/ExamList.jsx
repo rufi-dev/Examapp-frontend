@@ -41,6 +41,7 @@ const ExamList = ({ classId }) => {
   if (isLoading) {
     return <Loader />;
   }
+  console.log(exams)
   return (
     <div className="grid lg:grid-cols-4 md:grid-cols-2 gap-5">
       {exams &&
@@ -95,7 +96,7 @@ const ExamList = ({ classId }) => {
             <p className="font-bold text-sm mt-3">Ətraflı</p>
 
             <ul className="text-sm list-disc px-6">
-              <li>{exam.questions.length} sual</li>
+              <li>{exam.questions.correctAnswers.length} sual</li>
             </ul>
             <hr className="mt-3" />
 

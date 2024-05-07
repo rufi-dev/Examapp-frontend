@@ -4,6 +4,7 @@ import {
   Routes,
   Route,
   useLocation,
+  useNavigate,
 } from "react-router-dom";
 import Home from "./pages/Home";
 import Layout from "./components/Layout";
@@ -51,6 +52,9 @@ import ClassAdd from "./pages/admin/ClassAdd";
 import Classes from "./pages/Classes";
 import { disableReactDevTools } from "@fvilers/disable-react-devtools";
 import ResultsByExam from "./pages/exam/ResultsByExam";
+import { startExam } from "../redux/features/quiz/quizSlice";
+import { addResult } from "../redux/features/quiz/resultSlice";
+import { attempts_Number, earnPoints_Number } from "./helper/helper";
 
 axios.defaults.withCredentials = true;
 
@@ -59,9 +63,8 @@ const Wrapper = ({ children }) => {
 
   useLayoutEffect(() => {
     document.documentElement.scrollTo(0, 0);
-  }, [location.pathname]);
-
-  return children;
+  }, [location]);
+  return <>{children}</>;
 };
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -71,7 +74,6 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 
 function App() {
   const dispatch = useDispatch();
-
   const isLoggedIn = useSelector(selectIsLoggedIn);
   const user = useSelector(selectUser);
 
@@ -88,6 +90,82 @@ function App() {
     disableReactDevTools();
   }
 
+  // const {
+  //   singleExam,
+  //   isExamStarted,
+  //   singleClass,
+  //   singleTag,
+  //   queue,
+  //   userAnswers,
+  //   isLoading,
+  // } = useSelector((state) => state.quiz);
+
+  // const [timer, setTimer] = useState(() => {
+  //   const storedTimer = !isNaN(parseInt(localStorage.getItem("quizCountdown")))
+  //     ? parseInt(localStorage.getItem("quizCountdown"))
+  //     : singleExam?.duration;
+
+  //   return storedTimer ? parseInt(storedTimer, 10) : singleExam?.duration;
+  // });
+
+  // useEffect(() => {
+  //   if (!isLoading && singleExam && isExamStarted) {
+  //     localStorage.setItem("quizCountdown", timer.toString());
+  //   }
+  // }, [timer, isLoading, singleExam]);
+
+  // const calculateResultData = () => {
+  //   const attempts = attempts_Number(userAnswers);
+  //   const earnPoints = earnPoints_Number(
+  //     userAnswers,
+  //     queue[0].correctAnswers,
+  //     queue[0],
+  //     singleClass,
+  //     singleTag
+  //   );
+  //   console.log(queue[0].correctAnswers);
+  //   return {
+  //     attempts,
+  //     earnPoints: earnPoints.earnedPoints > 0 ? earnPoints.earnedPoints : 0,
+  //     selectedAnswers: userAnswers.map((answer) => ({
+  //       type: answer?.type,
+  //       answer: answer?.answer,
+  //     })),
+  //     correctAnswers: queue[0].correctAnswers.map((answer) => ({
+  //       type: answer.type,
+  //       answer: answer.answer,
+  //     })),
+  //     correctAnswersByType: earnPoints.correctAnswersByType.map((item) => ({
+  //       type: item.type,
+  //       count: item.count,
+  //     })),
+  //   };
+  // };
+
+  // useEffect(() => {
+  //   if (isExamStarted && timer > 0) {
+  //     const timerInterval = setInterval(() => {
+  //       setTimer((prevTimer) => prevTimer - 1);
+  //     }, 1000);
+  
+  //     return () => clearInterval(timerInterval);
+  //   } else if (timer === 0) {
+  //     try {
+  //       const resultData = calculateResultData();
+  //       console.log(resultData)
+  //       dispatch(addResult({ examId: singleExam._id, resultData }));
+  //       dispatch(startExam(false));
+  //       localStorage.removeItem("quizCountdown");
+  //       // Redirect the user to the result page or take any other appropriate action
+  //       // Example:
+  //       window.location.assign(`/exam/${singleExam._id}/result`);
+  //     } catch (error) {
+  //       console.error("Error submitting answer sheet:", error);
+  //       // Handle error appropriately
+  //     }
+  //   }
+  // }, [isExamStarted, timer]);
+  
   return (
     <>
       <BrowserRouter>
@@ -95,7 +173,6 @@ function App() {
           <ToastContainer />
           <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
             <Routes>
-              
               <Route
                 index
                 exact
@@ -260,7 +337,11 @@ function App() {
                 }
               />
 
-              <Route path="/exam/:examId/start" exact element={<Quiz />} />
+              <Route
+                path="/exam/:examId/start"
+                exact
+                element={<Quiz/>}
+              />
               <Route path="/exam/:examId/result" exact element={<Result />} />
               <Route
                 path="/exam/:examId/resultsByExam"

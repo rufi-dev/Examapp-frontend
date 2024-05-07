@@ -93,13 +93,13 @@ const Register = () => {
 
         // Validation
         if (!name || !password || !email) {
-            return toast.error("All fields are required")
+            return toast.error("Bütün xanaları doldurun!")
         }
         if (!validatePassword(password)) {
-            return toast.error("Check the validation below")
+            return toast.error("şifrə ən azı bir rəqəmdən ibarət olmalıdı.")
         }
         if (!validateEmail(email)) {
-            return toast.error("Invalid email address")
+            return toast.error("Email Hesabı yanlış formatdadır")
         }
 
         // if (password != password2) {

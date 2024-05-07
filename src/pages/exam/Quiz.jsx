@@ -9,7 +9,11 @@ import {
   getQuestionByExam,
   moveNextQuestion,
   movePrevQuestion,
+  startExam,
+  startExamAction,
+  userSelectedAnswer,
 } from "../../../redux/features/quiz/quizSlice";
+
 import {
   RESET_RESULT,
   addResult,
@@ -20,7 +24,7 @@ import {
   earnPoints_Number,
   flagResult,
 } from "../../helper/helper";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { FaChevronLeft, FaChevronRight, FaCheckCircle } from "react-icons/fa";
 import Spinner from "../../components/Spinner";
 import PdfOpener from "../../components/PdfOpener";
@@ -29,11 +33,8 @@ import { toast } from "react-toastify";
 import PDFPreview from "../../components/PDFPreview";
 
 const Quiz = () => {
-  const { queue, trace, singleExam } = useSelector((state) => state.quiz);
+  const { queue, singleExam } = useSelector((state) => state.quiz);
 
-  const [counter, setCounter] = useState(
-    localStorage.getItem("quizCountdown") || singleExam.duration
-  );
   const [answers, setAnswers] = useState(
     Array.from({ length: queue?.correctAnswers?.length || 25 }, () => "")
   );
@@ -43,25 +44,57 @@ const Quiz = () => {
   const [pdfData, setPdfData] = useState(null);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const { singleClass, singleTag } = useSelector((state) => state.quiz);
+  const { singleClass, singleTag, isExamStarted } = useSelector(
+    (state) => state.quiz
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         dispatch(getExam(examId));
-        await dispatch(getExamTagandClass(examId));
-        const getPdfAction = await dispatch(getPdfByExam({ examId }));
-        setPdfData(getPdfAction.payload.path);
-        dispatch(getQuestionByExam(examId));
+        const currentDate = new Date();
+        if (singleExam) {
+          const examStartDate = new Date(singleExam.startDate);
+          const examEndDate = new Date(singleExam.endDate);
+          if (currentDate < examStartDate || currentDate > examEndDate) {
+            // Redirect the user
+            navigate(-1);
+            return;
+          } else await dispatch(startExamAction({ examId, setPdfData }));
+        }
+        // dispatch(getExam(examId));
+        // await dispatch(getExamTagandClass(examId));
+        // const getPdfAction = await dispatch(getPdfByExam({ examId }));
+        // setPdfData(getPdfAction.payload.path);
+        // dispatch(getQuestionByExam(examId));
       } catch (error) {
         console.error("Error fetching PDF:", error);
       }
     };
 
     fetchData();
-  }, [dispatch, examId]);
+  }, [dispatch, examId, singleExam]);
+  const [counter, setCounter] = useState(
+    parseInt(localStorage.getItem("quizCountdown")) || singleExam?.duration
+  );
 
+  useEffect(() => {
+    const handleBeforeUnload = (event) => {
+      if (isExamStarted) {
+        event.preventDefault();
+        event.returnValue = "";
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [dispatch, isExamStarted, location]);
 
   const calculateResultData = () => {
     const attempts = attempts_Number(answers);
@@ -110,22 +143,35 @@ const Quiz = () => {
   //   navigate(`/exam/${examId}/result`);
   // };
 
-  const submitAnswerSheet = async (e) => {
-    e.preventDefault();
+  useEffect(() => {
+    counter > 0 && setTimeout(() => setCounter(counter - 1), 1000);
+    localStorage.setItem("quizCountdown", counter);
 
+    if (counter == 0) {
+      submitAnswerSheet();
+    }
+    if (counter <= 10) setAboutToEnd(true);
+  }, [counter]);
+
+  useEffect(() => {
+    localStorage.setItem("quizCountdown", counter);
+  }, [counter]);
+
+  const submitAnswerSheet = async (e) => {
     try {
       const resultData = calculateResultData();
       console.log(resultData);
       await dispatch(addResult({ examId, resultData }));
-
+      await dispatch(startExam(false));
       localStorage.removeItem("quizCountdown");
       navigate(`/exam/${examId}/result`);
     } catch (error) {
       console.error("Error submitting answer sheet:", error);
       toast.error("Failed to submit answer sheet");
+    } finally {
+      setIsSubmitting(false);
     }
   };
-
   const onChecked = (check) => {
     setChecked(check);
   };
@@ -137,6 +183,7 @@ const Quiz = () => {
       updatedAnswers[index] = { ...updatedAnswers[index], answer: value, type };
       return updatedAnswers;
     });
+    dispatch(userSelectedAnswer({ index, answer: value, type }));
   };
 
   const calculateRemainingTime = () => {
@@ -145,15 +192,20 @@ const Quiz = () => {
     return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
   };
 
-  useEffect(() => {
-    counter > 0 && setTimeout(() => setCounter(counter - 1), 1000);
-    localStorage.setItem("quizCountdown", counter);
+  // useEffect(() => {
+  //   const timerInterval =
+  //     counter > 0 &&
+  //     setInterval(() => {
+  //       setCounter((prevCounter) => prevCounter - 1);
+  //     }, 1000);
 
-    if (counter == 0) {
-      submitAnswerSheet();
-    }
-    if (counter <= 10) setAboutToEnd(true);
-  }, [counter]);
+  //   return () => clearInterval(timerInterval);
+  // }, [counter]);
+
+  // useEffect(() => {
+  //   // Dispatch action to update timer in Redux state
+  //   dispatch(updateTimer(counter));
+  // }, [dispatch, counter, examId]);
 
   return (
     // singleExam && (
