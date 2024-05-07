@@ -70,7 +70,9 @@ const Wrapper = ({ children }) => {
   return (
     <div className="relative">
       {children}
-      {!cookies.g_state && !cookies.token && <CookieConsent />}
+      {
+      !cookies.g_state && !cookies.token && 
+      <CookieConsent />}
     </div>
   );
 };
