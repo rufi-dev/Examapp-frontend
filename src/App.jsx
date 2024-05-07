@@ -55,6 +55,7 @@ import ResultsByExam from "./pages/exam/ResultsByExam";
 import { startExam } from "../redux/features/quiz/quizSlice";
 import { addResult } from "../redux/features/quiz/resultSlice";
 import { attempts_Number, earnPoints_Number } from "./helper/helper";
+import CookieConsent from "react-cookie-consent";
 
 axios.defaults.withCredentials = true;
 
@@ -64,7 +65,9 @@ const Wrapper = ({ children }) => {
   useLayoutEffect(() => {
     document.documentElement.scrollTo(0, 0);
   }, [location]);
-  return <>{children}</>;
+  return <>{children}
+  <CookieConsent/>
+  </>;
 };
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
