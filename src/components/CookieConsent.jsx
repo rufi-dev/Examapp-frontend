@@ -4,7 +4,7 @@ const CookieConsent = () => {
   const [cookies, setCookies] = useCookies(["g_state", "token"]);
   const handleCookie = () => {
     setCookies("token", true, { path: "/" });
-    setCookies("g_state", token, { path: "/" });
+    setCookies("g_state", true, { path: "/" });
   };
   return (
     <div>

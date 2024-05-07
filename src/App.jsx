@@ -70,7 +70,7 @@ const Wrapper = ({ children }) => {
   return (
     <>
       {children}
-      {!cookies.g_state && <CookieConsent />}
+      {!cookies.g_state && !cookies.token && <CookieConsent />}
     </>
   );
 };
