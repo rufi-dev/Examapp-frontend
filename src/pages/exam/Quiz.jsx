@@ -31,6 +31,7 @@ import PdfOpener from "../../components/PdfOpener";
 import QuestionType from "../../components/QuestionType";
 import { toast } from "react-toastify";
 import PDFPreview from "../../components/PDFPreview";
+import Loader from "../../components/Loader";
 
 const Quiz = () => {
   const { queue, singleExam } = useSelector((state) => state.quiz);
@@ -46,7 +47,7 @@ const Quiz = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { singleClass, singleTag, isExamStarted } = useSelector(
+  const { singleClass, singleTag, isExamStarted, isLoading } = useSelector(
     (state) => state.quiz
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -76,7 +77,7 @@ const Quiz = () => {
     };
 
     fetchData();
-  }, [dispatch, examId, singleExam]);
+  }, [dispatch, examId]);
   const [counter, setCounter] = useState(
     parseInt(localStorage.getItem("quizCountdown")) || singleExam?.duration
   );
@@ -94,7 +95,7 @@ const Quiz = () => {
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, [dispatch, isExamStarted, location]);
+  }, [isExamStarted, location]);
 
   const calculateResultData = () => {
     const attempts = attempts_Number(answers);
@@ -208,56 +209,54 @@ const Quiz = () => {
   // }, [dispatch, counter, examId]);
 
   return (
-    // singleExam && (
-    <div className="flex lg:flex-row relative flex-col py-10 justify-center gap-[50px] mx-5">
-      <div>
-        {/* <PDFPreview pdfPath={pdfData} /> */}
-        <PdfOpener pdfFile={pdfData} />
-      </div>
-      <div className="w-full max-w-[1240px] lg:max-w-[700px] bg-white p-8 rounded-md shadow-md">
-        <div className="flex justify-between mb-8">
-          <h1
-            className={`text-3xl font-semibold ${aboutToEnd && "text-[red]"}`}
-          >
-            {calculateRemainingTime()}
-          </h1>
+      <div className="flex lg:flex-row relative flex-col py-10 justify-center gap-[50px] mx-5">
+        <div>
+          {/* <PDFPreview pdfPath={pdfData} /> */}
+          <PdfOpener pdfFile={pdfData} />
         </div>
-        <div className="w-full">
-          {/* <Questions onChecked={onChecked} /> */}
-          {pdfData && (
-            <div>
-              {/* Render dynamic question inputs */}
-              {
-                <QuestionType
-                  answers={answers}
-                  singleTag={singleTag}
-                  singleClass={singleClass}
-                  handleAnswerChange={handleAnswerChange}
-                />
-              }
-            </div>
-          )}
-        </div>
-        <div className="flex justify-between mt-6">
-          <div></div>
-          {/* ) : isLoading ? ( */}
-          {/* <button
+        <div className="w-full max-w-[1240px] lg:max-w-[700px] bg-white p-8 rounded-md shadow-md">
+          <div className="flex justify-between mb-8">
+            <h1
+              className={`text-3xl font-semibold ${aboutToEnd && "text-[red]"}`}
+            >
+              {calculateRemainingTime()}
+            </h1>
+          </div>
+          <div className="w-full">
+            {/* <Questions onChecked={onChecked} /> */}
+            {pdfData && (
+              <div>
+                {/* Render dynamic question inputs */}
+                {
+                  <QuestionType
+                    answers={answers}
+                    singleTag={singleTag}
+                    singleClass={singleClass}
+                    handleAnswerChange={handleAnswerChange}
+                  />
+                }
+              </div>
+            )}
+          </div>
+          <div className="flex justify-between mt-6">
+            <div></div>
+            {/* ) : isLoading ? ( */}
+            {/* <button
             className="bg-orange-500 w-[100px] flex justify-center text-white py-2 px-4 rounded-md text-sm"
             disabled
           >
             <Spinner />
           </button> */}
-          {/* ) : ( */}
-          <button
-            onClick={submitAnswerSheet}
-            className="bg-orange-500 text-white font-bold py-2 px-4 rounded transition-colors duration-300"
-          >
-            Finish <FaCheckCircle className="w-6 h-6 ml-2 inline" />
-          </button>
-          {/* )} */}
+            {/* ) : ( */}
+            <button
+              onClick={submitAnswerSheet}
+              className="bg-orange-500 text-white font-bold py-2 px-4 rounded transition-colors duration-300"
+            >
+              Finish <FaCheckCircle className="w-6 h-6 ml-2 inline" />
+            </button>
+          </div>
         </div>
       </div>
-    </div>
   );
 };
 

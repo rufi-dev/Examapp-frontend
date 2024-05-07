@@ -42,17 +42,17 @@ const UserList = () => {
         dispatch(getUsers())
     }
 
-    const confirmDelete = (id) => {
+    const confirmDelete = (user) => {
         confirmAlert({
-            title: 'Delete this user',
-            message: 'Are you sure to delete this user?',
+            title: `Bu istifadəçini sil: ${user.email}`,
+            message: 'Silmək istədiyinə əminsən?',
             buttons: [
                 {
-                    label: 'Delete',
-                    onClick: () => removeUser(id)
+                    label: 'Sil',
+                    onClick: () => removeUser(user._id)
                 },
                 {
-                    label: 'Cancel',
+                    label: 'Ləğv et',
                 }
             ]
         });
@@ -106,7 +106,7 @@ const UserList = () => {
                             {
                                 !isLoading && users.length === 0 ?
                                     (
-                                        <p>No User Found</p>
+                                        <p>İstifadəçi tapılmadı</p>
                                     ) :
 
                                     <>
@@ -125,13 +125,13 @@ const UserList = () => {
                                                             <td className="px-2 whitespace-normal py-4 text-sm font-semibold text-gray-800 sm:px-3">
                                                                 s/n
                                                             </td>
-                                                            <td className="px-2 whitespace-normal py-4 text-sm font-medium text-gray-500 sm:px-3">Name</td>
+                                                            <td className="px-2 whitespace-normal py-4 text-sm font-medium text-gray-500 sm:px-3">Ad və Soyad</td>
                                                             <td className="px-2 whitespace-normal py-4 text-sm font-medium text-gray-500 sm:px-3">Email</td>
-                                                            <td className="px-2 whitespace-normal py-4 text-sm font-medium text-gray-500 sm:px-3">Phone</td>
-                                                            <td className="px-2 whitespace-normal py-4 text-sm font-medium text-gray-500 sm:px-3">Role</td>
+                                                            <td className="px-2 whitespace-normal py-4 text-sm font-medium text-gray-500 sm:px-3">Telefon</td>
+                                                            <td className="px-2 whitespace-normal py-4 text-sm font-medium text-gray-500 sm:px-3">Rol</td>
                                                             <td className="px-2 whitespace-normal py-4 text-sm font-medium text-gray-500 sm:px-3">Status</td>
                                                             <AdminTeacherLink>
-                                                                <td className="px-2 whitespace-normal py-4 text-sm font-medium text-gray-500 sm:px-3">Change Role</td>
+                                                                <td className="px-2 whitespace-normal py-4 text-sm font-medium text-gray-500 sm:px-3">Rolu dəyiş</td>
                                                                 <td className="px-2 whitespace-normal py-4 text-sm font-medium text-gray-500 sm:px-3">Action</td>
                                                             </AdminTeacherLink>
                                                         </tr>
@@ -162,7 +162,7 @@ const UserList = () => {
                                                                         <ChangeRole _id={user._id} email={user.email} />
                                                                     </td>
                                                                     <td className="sm:p-3 text-[25px] gap-8 flex ">
-                                                                        <button className='text-[red]' onClick={() => confirmDelete(user._id)}><AiFillDelete /></button>
+                                                                        <button className='text-[red]' onClick={() => confirmDelete(user)}><AiFillDelete /></button>
                                                                     </td>
                                                                 </AdminTeacherLink>
                                                             </tr>
