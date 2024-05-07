@@ -70,7 +70,7 @@ const ExamInstructions = () => {
             </li>
             <li>Başlanma vaxtı: {startDateString}</li>
             <li>Bitmə Vaxtı: {endDateString}</li>
-            <li>Sual sayı: {singleExam?.questions.correctAnswers.length}</li>
+            <li>Sual sayı: {singleExam?.questions?.correctAnswers?.length}</li>
             <li>
               Cavablarınızı təqdim etməzdən əvvəl nəzərdən keçirə bilərsiniz
             </li>
