@@ -1,7 +1,7 @@
 import React from "react";
-import { useCookie } from "react-cookie";
+import { useCookies } from "react-cookie";
 const CookieBanner = () => {
-  const [cookies, setCookies] = useCookie(["g_state", "token"]);
+  const [cookies, setCookies] = useCookies(["g_state", "token"]);
   const handleCookie = () => {
     setCookies("token", true, { path: "/" });
     setCookies("g_state", token, { path: "/" });

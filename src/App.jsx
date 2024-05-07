@@ -55,13 +55,13 @@ import ResultsByExam from "./pages/exam/ResultsByExam";
 import { startExam } from "../redux/features/quiz/quizSlice";
 import { addResult } from "../redux/features/quiz/resultSlice";
 import { attempts_Number, earnPoints_Number } from "./helper/helper";
-import { useCookie } from "react-cookie";
+import { useCookies } from "react-cookie";
 
 axios.defaults.withCredentials = true;
 
 const Wrapper = ({ children }) => {
   const location = useLocation();
-  const [cookies] = useCookie(["g_state", "token"]);
+  const [cookies] = useCookies(["g_state", "token"]);
 
   useLayoutEffect(() => {
     document.documentElement.scrollTo(0, 0);
