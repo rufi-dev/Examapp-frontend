@@ -56,6 +56,7 @@ import { startExam } from "../redux/features/quiz/quizSlice";
 import { addResult } from "../redux/features/quiz/resultSlice";
 import { attempts_Number, earnPoints_Number } from "./helper/helper";
 import { useCookies } from "react-cookie";
+import CookieConsent from "./components/CookieConsent";
 
 axios.defaults.withCredentials = true;
 

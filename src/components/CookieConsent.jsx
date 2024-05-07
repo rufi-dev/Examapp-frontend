@@ -1,6 +1,6 @@
 import React from "react";
 import { useCookies } from "react-cookie";
-const CookieBanner = () => {
+const CookieConsent = () => {
   const [cookies, setCookies] = useCookies(["g_state", "token"]);
   const handleCookie = () => {
     setCookies("token", true, { path: "/" });
@@ -14,4 +14,4 @@ const CookieBanner = () => {
   );
 };
 
-export default CookieBanner;
+export default CookieConsent;
