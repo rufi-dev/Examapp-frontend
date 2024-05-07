@@ -68,10 +68,10 @@ const Wrapper = ({ children }) => {
     document.documentElement.scrollTo(0, 0);
   }, [location]);
   return (
-    <>
+    <div className="relative">
       {children}
       {!cookies.g_state && !cookies.token && <CookieConsent />}
-    </>
+    </div>
   );
 };
 
