@@ -7,8 +7,8 @@ const CookieConsent = () => {
     setCookies("g_state", true, { path: "/" });
   };
   return (
-    <div className="fixed bottom-0 left-0 bg-[#1084da] w-full h-[100px] flex justify-around items-center">
-      <p className="text-lg text-white">
+    <div className="z-[10000] fixed bottom-0 pb-5 lg:pb-0 left-0 bg-[#1084da] w-full min-h-[110px] flex lg:flex-row flex-col text-center justify-around items-center">
+      <p className="text-lg text-white p-4">
         Bu veb səhifədə işlədilən "cookie" fayllarından istifadəyə razısınız?
       </p>
       <button
