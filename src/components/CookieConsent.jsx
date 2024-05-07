@@ -7,9 +7,9 @@ const CookieConsent = () => {
     setCookies("g_state", true, { path: "/" });
   };
   return (
-    <div>
-      Cookilere raziliq ver
-      <button onClick={handleCookie}>Raziyam</button>
+    <div className="absolute bg-[#1084da] w-full flex justify-around">
+      <p>Cookilere raziliq ver</p>
+      <button onClick={handleCookie} className="bg-[#153955] text-white p-4 text-lg">Raziyam</button>
     </div>
   );
 };
