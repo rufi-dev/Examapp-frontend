@@ -1,18 +1,16 @@
-import React from 'react';
-import CookieConsent from 'react-cookie-consent';
-
+import React from "react";
+import { useCookie } from "react-cookie";
 const CookieBanner = () => {
+  const [cookies, setCookies] = useCookie(["g_state", "token"]);
+  const handleCookie = () => {
+    setCookies("token", true, { path: "/" });
+    setCookies("g_state", token, { path: "/" });
+  };
   return (
-    <CookieConsent
-      location="bottom"
-      buttonText="Qəbul et"
-      cookieName="token"
-      style={{ background: '#2B373B' }}
-      buttonStyle={{ color: '#4e503b', fontSize: '13px' }}
-      expires={150}
-    >
-      Bu saydakı cookilərə icazə veriləcək
-    </CookieConsent>
+    <div>
+      Cookilere raziliq ver
+      <button onClick={handleCookie}>Raziyam</button>
+    </div>
   );
 };
 

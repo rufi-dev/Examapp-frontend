@@ -55,19 +55,23 @@ import ResultsByExam from "./pages/exam/ResultsByExam";
 import { startExam } from "../redux/features/quiz/quizSlice";
 import { addResult } from "../redux/features/quiz/resultSlice";
 import { attempts_Number, earnPoints_Number } from "./helper/helper";
-import CookieConsent from "react-cookie-consent";
+import { useCookie } from "react-cookie";
 
 axios.defaults.withCredentials = true;
 
 const Wrapper = ({ children }) => {
   const location = useLocation();
+  const [cookies] = useCookie(["g_state", "token"]);
 
   useLayoutEffect(() => {
     document.documentElement.scrollTo(0, 0);
   }, [location]);
-  return <>{children}
-  <CookieConsent/>
-  </>;
+  return (
+    <>
+      {children}
+      {!cookies.g_state && !cookies.token && <CookieConsent />}
+    </>
+  );
 };
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -150,7 +154,7 @@ function App() {
   //     const timerInterval = setInterval(() => {
   //       setTimer((prevTimer) => prevTimer - 1);
   //     }, 1000);
-  
+
   //     return () => clearInterval(timerInterval);
   //   } else if (timer === 0) {
   //     try {
@@ -168,7 +172,7 @@ function App() {
   //     }
   //   }
   // }, [isExamStarted, timer]);
-  
+
   return (
     <>
       <BrowserRouter>
@@ -340,11 +344,7 @@ function App() {
                 }
               />
 
-              <Route
-                path="/exam/:examId/start"
-                exact
-                element={<Quiz/>}
-              />
+              <Route path="/exam/:examId/start" exact element={<Quiz />} />
               <Route path="/exam/:examId/result" exact element={<Result />} />
               <Route
                 path="/exam/:examId/resultsByExam"
