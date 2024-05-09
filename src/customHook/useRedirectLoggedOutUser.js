@@ -13,9 +13,9 @@ const useRedirectLoggedOutUser = (path) => {
             try {
                 isLoggedIn = await authService.getLoginStatus()
             } catch (error) {
-                console.log(error.message)
+                console.log("useRedirect catch:", error.message)
             }
-
+            console.log("useRedirect", isLoggedIn)
             if (!isLoggedIn) {
                 toast.info("Session expired, please login to continue")
                 navigate(path)
