@@ -60,10 +60,10 @@ const Login = () => {
             navigate("/profile")
         }
 
-        if (isError && twoFactor) {
-            dispatch(sendLoginCode(email))
-            navigate(`/loginWithCode/${email}`)
-        }
+        // if (isError && twoFactor) {
+        //     dispatch(sendLoginCode(email))
+        //     navigate(`/loginWithCode/${email}`)
+        // }
 
         dispatch(RESET())
     }, [isLoggedIn, isSuccess, isError, twoFactor, email, dispatch, navigate])
