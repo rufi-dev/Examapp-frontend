@@ -21,7 +21,7 @@ const Login = () => {
     const dispatch = useDispatch()
     const navigate = useNavigate()
 
-    const { isLoading, isLoggedIn, isSuccess, message, isError, twoFactor } = useSelector(state => state.auth)
+    const { isLoading, isLoggedIn, isSuccess, message, isError } = useSelector(state => state.auth)
 
 
     const [userData, setUserData] = useState(initialState)
@@ -51,7 +51,7 @@ const Login = () => {
         const userData = {
             email, password
         }
-
+        console.log(userData)
         await dispatch(login(userData))
     }
 
@@ -66,7 +66,7 @@ const Login = () => {
         // }
 
         dispatch(RESET())
-    }, [isLoggedIn, isSuccess, isError, twoFactor, email, dispatch, navigate])
+    }, [isLoggedIn, isSuccess, isError, email, dispatch, navigate])
 
     const googleLogin = async (credentialResponse) => {
         await dispatch(loginWithGoogle({ userToken: credentialResponse.credential }))

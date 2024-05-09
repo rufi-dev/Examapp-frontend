@@ -17,8 +17,8 @@ const useRedirectLoggedOutUser = (path) => {
             }
             console.log("useRedirect", isLoggedIn)
             if (!isLoggedIn) {
-                // toast.info("Session expired, please login to continue")
-                // navigate(path)
+                toast.info("Session expired, please login to continue")
+                navigate(path)
                 // navigate()
                 return;
             }
