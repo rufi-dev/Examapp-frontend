@@ -37,7 +37,6 @@ const ExamEdit = () => {
   const initialState = {
     name: "",
     duration: 0,
-    pdfPath: null,
     price: 0,
     videoLink: null,
     pdfPath:null,
