@@ -1,4 +1,5 @@
-// Exam result-visibility settings: WHAT to reveal (toggles) + WHEN (segmented).
+// Exam result-visibility settings: WHAT to reveal (toggles) + WHEN the correct
+// answers are revealed (only relevant when correct answers are shown).
 const Toggle = ({ checked, onChange, label }) => (
   <button
     type="button"
@@ -34,37 +35,43 @@ const ResultVisibility = ({ showScore, showCorrectAnswers, revealAfterEnd, onCha
         checked={showCorrectAnswers}
         onChange={(v) => onChange("showCorrectAnswers", v)}
       />
-    </div>
-
-    <div>
-      <p className="mb-2 text-sm font-semibold text-text">Nə vaxt göstərilsin?</p>
-      <div className="grid grid-cols-2 gap-1 rounded-xl border border-line bg-surface p-1">
-        <button
-          type="button"
-          onClick={() => onChange("revealAfterEnd", true)}
-          className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
-            revealAfterEnd ? "bg-primary text-primary-fg shadow-soft" : "text-muted hover:text-text"
-          }`}
-        >
-          İmtahan bitdikdən sonra
-        </button>
-        <button
-          type="button"
-          onClick={() => onChange("revealAfterEnd", false)}
-          className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
-            !revealAfterEnd ? "bg-primary text-primary-fg shadow-soft" : "text-muted hover:text-text"
-          }`}
-        >
-          Dərhal
-        </button>
-      </div>
-      <p className="mt-2 text-xs leading-relaxed text-muted">
-        {revealAfterEnd
-          ? "Yuxarıdakılar yalnız imtahanın bitmə tarixindən sonra açılır — beləcə cavablar imtahan ərzində paylaşıla bilməz."
-          : "Yuxarıdakılar cavablar təqdim edildikdən dərhal sonra göstərilir."}
-        {" "}Hər ikisi söndürülübsə, tələbə yalnız “cavablar qəbul edildi” mesajını görür.
+      <p className="text-xs text-muted">
+        Hər ikisi söndürülübsə, tələbə yalnız “cavablar qəbul edildi” mesajını görür.
       </p>
     </div>
+
+    {showCorrectAnswers && (
+      <div>
+        <p className="mb-2 text-sm font-semibold text-text">
+          Düzgün cavablar nə vaxt göstərilsin?
+        </p>
+        <div className="grid grid-cols-2 gap-1 rounded-xl border border-line bg-surface p-1">
+          <button
+            type="button"
+            onClick={() => onChange("revealAfterEnd", true)}
+            className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+              revealAfterEnd ? "bg-primary text-primary-fg shadow-soft" : "text-muted hover:text-text"
+            }`}
+          >
+            İmtahan bitdikdən sonra
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange("revealAfterEnd", false)}
+            className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+              !revealAfterEnd ? "bg-primary text-primary-fg shadow-soft" : "text-muted hover:text-text"
+            }`}
+          >
+            Dərhal
+          </button>
+        </div>
+        <p className="mt-2 text-xs leading-relaxed text-muted">
+          {revealAfterEnd
+            ? "Düzgün cavablar yalnız imtahanın bitmə tarixindən sonra açılır — beləcə cavablar imtahan ərzində paylaşıla bilməz."
+            : "Düzgün cavablar təqdim edildikdən dərhal sonra göstərilir."}
+        </p>
+      </div>
+    )}
   </div>
 );
 
