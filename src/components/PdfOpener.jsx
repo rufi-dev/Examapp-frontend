@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { Document, Page } from "react-pdf";
 import { FiZoomIn, FiZoomOut, FiMaximize } from "react-icons/fi";
 
@@ -8,11 +8,10 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 4;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
-// Normal scrollable PDF viewer: scroll to read; pinch (mobile) or buttons /
-// Ctrl+wheel (desktop) to zoom. Only the pages near the view are rendered, so
-// the page count never blows up memory. Zoom is a CSS scale over a sized
-// wrapper so native scrolling still works, and pages render at high density so
-// they stay sharp.
+// Normal scrollable PDF viewer: scroll to read; pinch (mobile) / buttons /
+// Ctrl+wheel (desktop) to zoom — zooming keeps the focal point under your
+// fingers/cursor. Only the pages near the view render (virtualized), at high
+// density so they stay sharp.
 const PdfOpener = (props) => {
   const [numPages, setNumPages] = useState(0);
   const [pageRatio, setPageRatio] = useState(1.414); // height / width (A4)
@@ -23,7 +22,9 @@ const PdfOpener = (props) => {
   const [width, setWidth] = useState(0);
   const zoomRef = useRef(1);
   zoomRef.current = zoom;
-  const pinch = useRef({ active: false, dist: 0, zoom0: 1 });
+  const pinch = useRef({ active: false });
+  const pendingScroll = useRef(null);
+  const rafRef = useRef(0);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -66,7 +67,7 @@ const PdfOpener = (props) => {
     const z = zoomRef.current || 1;
     const ch = el.clientHeight || 1;
     const st = el.scrollTop || 0;
-    const buffer = ch; // ~1 screen above/below
+    const buffer = ch * 1.5; // render well beyond the view to avoid flicker
     const top = st / z - buffer;
     const bottom = (st + ch) / z + buffer;
     const next = new Set();
@@ -87,28 +88,83 @@ const PdfOpener = (props) => {
     recompute();
   }, [recompute, width, pageRatio, zoom]);
 
-  // Pinch (mobile) + Ctrl/⌘-wheel (desktop) zoom — non-passive so we can stop
-  // the browser from zooming the whole page.
+  // Keep the focal point fixed after a zoom (applied once the wrapper resized).
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (el && pendingScroll.current) {
+      el.scrollLeft = pendingScroll.current.left;
+      el.scrollTop = pendingScroll.current.top;
+      pendingScroll.current = null;
+    }
+  }, [zoom]);
+
+  // Zoom toward a screen point (sx, sy) relative to the container.
+  const zoomTo = useCallback((target, sx, sy) => {
+    const el = containerRef.current;
+    if (!el) return;
+    const z0 = zoomRef.current;
+    const z1 = clamp(target, MIN_ZOOM, MAX_ZOOM);
+    if (z1 === z0) return;
+    const fx = sx != null ? sx : el.clientWidth / 2;
+    const fy = sy != null ? sy : el.clientHeight / 2;
+    const baseX = (el.scrollLeft + fx) / z0;
+    const baseY = (el.scrollTop + fy) / z0;
+    pendingScroll.current = { left: baseX * z1 - fx, top: baseY * z1 - fy };
+    setZoom(z1);
+  }, []);
+
+  const onScroll = () => {
+    if (rafRef.current) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = 0;
+      recompute();
+    });
+  };
+
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    const mid = (t, rect) => ({
+      x: (t[0].clientX + t[1].clientX) / 2 - rect.left,
+      y: (t[0].clientY + t[1].clientY) / 2 - rect.top,
+    });
     const onWheel = (e) => {
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
-        setZoom((z) => clamp(z * (1 - e.deltaY * 0.0025), MIN_ZOOM, MAX_ZOOM));
+        const rect = el.getBoundingClientRect();
+        zoomTo(zoomRef.current * (1 - e.deltaY * 0.0025), e.clientX - rect.left, e.clientY - rect.top);
       }
     };
     const onTS = (e) => {
       if (e.touches.length === 2) {
-        pinch.current = { active: true, dist: dist(e.touches) || 1, zoom0: zoomRef.current };
+        const rect = el.getBoundingClientRect();
+        const m = mid(e.touches, rect);
+        const z0 = zoomRef.current;
+        pinch.current = {
+          active: true,
+          dist0: dist(e.touches) || 1,
+          zoom0: z0,
+          baseX: (el.scrollLeft + m.x) / z0,
+          baseY: (el.scrollTop + m.y) / z0,
+          mx: m.x,
+          my: m.y,
+        };
       }
     };
     const onTM = (e) => {
       if (pinch.current.active && e.touches.length === 2) {
         e.preventDefault();
-        const ratio = dist(e.touches) / pinch.current.dist;
-        setZoom(clamp(pinch.current.zoom0 * ratio, MIN_ZOOM, MAX_ZOOM));
+        const z1 = clamp(
+          pinch.current.zoom0 * (dist(e.touches) / pinch.current.dist0),
+          MIN_ZOOM,
+          MAX_ZOOM
+        );
+        pendingScroll.current = {
+          left: pinch.current.baseX * z1 - pinch.current.mx,
+          top: pinch.current.baseY * z1 - pinch.current.my,
+        };
+        setZoom(z1);
       }
     };
     const onTE = (e) => {
@@ -124,38 +180,26 @@ const PdfOpener = (props) => {
       el.removeEventListener("touchmove", onTM);
       el.removeEventListener("touchend", onTE);
     };
-  }, []);
+  }, [zoomTo]);
 
   const btn =
     "grid h-9 w-9 place-items-center rounded-lg text-text transition-colors hover:bg-surface2 active:bg-surface2 disabled:opacity-40";
 
   const reset = () => {
+    pendingScroll.current = { left: 0, top: 0 };
     setZoom(1);
-    if (containerRef.current) containerRef.current.scrollTo({ top: 0, left: 0 });
   };
 
   return (
     <div className="relative h-full w-full">
       <div className="absolute right-3 top-3 z-10 flex items-center gap-0.5 rounded-xl border border-line bg-surface/90 p-1 shadow-soft backdrop-blur">
-        <button
-          type="button"
-          onClick={() => setZoom((z) => clamp(+(z - 0.25).toFixed(2), MIN_ZOOM, MAX_ZOOM))}
-          disabled={zoom <= MIN_ZOOM}
-          className={btn}
-          aria-label="Kiçilt"
-        >
+        <button type="button" onClick={() => zoomTo(zoom - 0.25)} disabled={zoom <= MIN_ZOOM} className={btn} aria-label="Kiçilt">
           <FiZoomOut />
         </button>
         <span className="w-11 text-center text-xs font-semibold tabular-nums text-muted">
           {Math.round(zoom * 100)}%
         </span>
-        <button
-          type="button"
-          onClick={() => setZoom((z) => clamp(+(z + 0.25).toFixed(2), MIN_ZOOM, MAX_ZOOM))}
-          disabled={zoom >= MAX_ZOOM}
-          className={btn}
-          aria-label="Böyüt"
-        >
+        <button type="button" onClick={() => zoomTo(zoom + 0.25)} disabled={zoom >= MAX_ZOOM} className={btn} aria-label="Böyüt">
           <FiZoomIn />
         </button>
         <button type="button" onClick={reset} className={btn} aria-label="Sıfırla">
@@ -165,7 +209,7 @@ const PdfOpener = (props) => {
 
       <div
         ref={containerRef}
-        onScroll={recompute}
+        onScroll={onScroll}
         style={{ touchAction: "pan-x pan-y" }}
         className="scrollbar-thin h-full w-full overflow-auto"
       >
@@ -199,15 +243,10 @@ const PdfOpener = (props) => {
                         renderAnnotationLayer={false}
                         width={pageWidth}
                         devicePixelRatio={3}
-                        loading={<div style={{ height: slotHeight }} />}
+                        loading={<div style={{ height: slotHeight }} className="bg-surface2/30" />}
                       />
                     ) : (
-                      <div
-                        className="flex items-center justify-center text-xs text-muted"
-                        style={{ height: slotHeight }}
-                      >
-                        {page}
-                      </div>
+                      <div style={{ height: slotHeight }} className="bg-surface2/30" />
                     )}
                   </div>
                 ))}
