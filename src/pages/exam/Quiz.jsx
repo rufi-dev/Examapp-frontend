@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import {
   getExam,
@@ -29,7 +29,7 @@ const Quiz = () => {
   const { user } = useSelector((state) => state.auth);
 
   const answersKey = `examAnswers_${examId}`;
-  const countdownKey = `quizCountdown_${examId}`;
+  const deadlineKey = `quizDeadline_${examId}`;
 
   // Persisted answers: survive accidental leave/return.
   const [answers, setAnswers] = useState(() => {
@@ -48,10 +48,15 @@ const Quiz = () => {
   const [access, setAccess] = useState("checking"); // "checking" | "allowed" | "denied"
   const [confirmFinish, setConfirmFinish] = useState(false);
 
-  const [counter, setCounter] = useState(() => {
-    const saved = parseInt(localStorage.getItem(`quizCountdown_${examId}`), 10);
+  // Absolute end time (ms epoch). The timer is wall-clock based: it keeps
+  // elapsing even if the tab is closed, the device sleeps, or the battery dies.
+  const [deadline, setDeadline] = useState(() => {
+    const saved = parseInt(localStorage.getItem(`quizDeadline_${examId}`), 10);
     return Number.isFinite(saved) ? saved : null;
   });
+  const [timeLeft, setTimeLeft] = useState(null); // seconds remaining
+  const warned5 = useRef(false);
+  const warned1 = useRef(false);
 
   // Access guard: confirm with the server (fresh) that the exam is open and the
   // user is allowed BEFORE loading or showing anything. Blocks direct-URL access
@@ -127,7 +132,7 @@ const Quiz = () => {
     };
   }, []);
 
-  // Initialise / resize answers + counter once the exam data is loaded.
+  // Resize the answers array to match the question count once loaded.
   useEffect(() => {
     const len = singleExam?.questions?.correctAnswers?.length;
     if (len) {
@@ -138,10 +143,6 @@ const Quiz = () => {
         return next;
       });
     }
-    if (counter === null && singleExam?.duration) {
-      setCounter(singleExam.duration);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [singleExam]);
 
   // Persist answers on every change.
@@ -153,21 +154,46 @@ const Quiz = () => {
     }
   }, [answers, answersKey]);
 
-  // Countdown timer.
+  // Establish the absolute deadline once the exam is open (or keep the stored
+  // one on resume). Stored as an epoch timestamp -> wall-clock based countdown.
   useEffect(() => {
-    if (access !== "allowed" || counter === null) return;
-    localStorage.setItem(countdownKey, String(counter));
-    if (counter === 300) toast.warn("5 dəqiqə qaldı!");
-    if (counter === 60) toast.warn("1 dəqiqə qaldı!");
-    if (counter <= 0) {
-      toast.info("Vaxt bitdi! Cavablar təqdim olunur...");
-      submitAnswerSheet();
-      return;
+    if (access !== "allowed" || deadline != null) return;
+    const dur = singleExam?.duration;
+    if (dur) {
+      const dl = Date.now() + dur * 1000;
+      localStorage.setItem(deadlineKey, String(dl));
+      setDeadline(dl);
     }
-    const id = setTimeout(() => setCounter((c) => c - 1), 1000);
-    return () => clearTimeout(id);
+  }, [access, deadline, singleExam, deadlineKey]);
+
+  // Wall-clock countdown: recompute remaining from the absolute deadline every
+  // second, so leaving / sleeping / closing the tab does NOT pause the timer.
+  // On return after the deadline, remaining is 0 and it auto-submits at once.
+  useEffect(() => {
+    if (access !== "allowed" || deadline == null) return;
+    let id;
+    const tick = () => {
+      const rem = Math.max(0, Math.round((deadline - Date.now()) / 1000));
+      setTimeLeft(rem);
+      if (rem <= 300 && rem > 60 && !warned5.current) {
+        warned5.current = true;
+        toast.warn("5 dəqiqə qaldı!");
+      }
+      if (rem <= 60 && rem > 0 && !warned1.current) {
+        warned1.current = true;
+        toast.warn("1 dəqiqə qaldı!");
+      }
+      if (rem <= 0) {
+        clearInterval(id);
+        toast.info("Vaxt bitdi! Cavablar avtomatik təqdim olunur...");
+        submitAnswerSheet();
+      }
+    };
+    tick();
+    id = setInterval(tick, 1000);
+    return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [counter]);
+  }, [access, deadline]);
 
   // Block back navigation + warn on reload/close while the exam is active.
   useEffect(() => {
@@ -224,7 +250,7 @@ const Quiz = () => {
       const resultData = calculateResultData();
       await dispatch(addResult({ examId, resultData }));
       await dispatch(startExam(false));
-      localStorage.removeItem(countdownKey);
+      localStorage.removeItem(deadlineKey);
       localStorage.removeItem(answersKey);
       navigate(`/exam/${examId}/result`);
     } catch (error) {
@@ -246,13 +272,13 @@ const Quiz = () => {
   };
 
   const remaining = () => {
-    if (counter === null) return "--:--";
-    const m = Math.floor(counter / 60);
-    const s = counter % 60;
+    if (timeLeft === null) return "--:--";
+    const m = Math.floor(timeLeft / 60);
+    const s = timeLeft % 60;
     return `${m}:${s < 10 ? "0" : ""}${s}`;
   };
 
-  const aboutToEnd = counter !== null && counter <= 30;
+  const aboutToEnd = timeLeft !== null && timeLeft <= 30;
   const answeredCount = answers.filter((a) => a && a.answer).length;
   const totalCount = singleExam?.questions?.correctAnswers?.length || answers.length;
   const questionDefs = singleExam?.questions?.correctAnswers?.map((q) => ({
