@@ -29,7 +29,12 @@ const PdfOpener = (props) => {
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const update = () => setWidth(el.clientWidth);
+    // Ignore 0-width (panel hidden via display:none on tab switch) so the PDF
+    // stays rendered and keeps its scroll position when shown again.
+    const update = () => {
+      const w = el.clientWidth;
+      if (w > 0) setWidth(w);
+    };
     update();
     let ro;
     if (typeof ResizeObserver !== "undefined") {
