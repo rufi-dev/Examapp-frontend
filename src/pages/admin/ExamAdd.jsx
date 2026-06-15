@@ -8,6 +8,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import Loader from "../../components/Loader";
 import Button from "../../components/ui/Button";
 import { Field, inputClass } from "../../components/ui/Field";
+import { toUtcIso } from "../../helper/datetime";
 
 const fileInputClass =
   "block w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-text file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:font-semibold file:text-primary-fg hover:file:bg-primary-hover";
@@ -85,8 +86,8 @@ const ExamAdd = () => {
       examData.append("passingMarks", passingMarks);
       examData.append("totalMarks", totalMarks);
       examData.append("maxTry", maxTry);
-      examData.append("startDate", startDate);
-      examData.append("endDate", endDate);
+      examData.append("startDate", toUtcIso(startDate));
+      examData.append("endDate", toUtcIso(endDate));
       examData.append("pdf", pdfUrl);
 
       const addExamData = await dispatch(addExam({ examData, classId }));

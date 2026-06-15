@@ -7,6 +7,7 @@ import { toast } from "react-toastify";
 import { useNavigate, useParams } from "react-router-dom";
 import Button from "../../components/ui/Button";
 import { Field, inputClass } from "../../components/ui/Field";
+import { toLocalInput, toUtcIso } from "../../helper/datetime";
 
 const fileInputClass =
   "block w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-text file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:font-semibold file:text-primary-fg hover:file:bg-primary-hover";
@@ -65,12 +66,8 @@ const ExamEdit = () => {
         duration: singleExam.duration || 0,
         price: singleExam.price || 0,
         videoLink: singleExam.videoLink || "",
-        startDate: singleExam.startDate
-          ? new Date(singleExam.startDate).toISOString().slice(0, 16)
-          : "",
-        endDate: singleExam.endDate
-          ? new Date(singleExam.endDate).toISOString().slice(0, 16)
-          : "",
+        startDate: toLocalInput(singleExam.startDate),
+        endDate: toLocalInput(singleExam.endDate),
         pdfPath: singleExam.pdf?.path || null,
         totalMarks: singleExam.totalMarks || 0,
         passingMarks: singleExam.passingMarks || 0,
@@ -100,8 +97,8 @@ const ExamEdit = () => {
         duration,
         price,
         videoLink,
-        startDate,
-        endDate,
+        startDate: toUtcIso(startDate),
+        endDate: toUtcIso(endDate),
         passingMarks,
         totalMarks,
         maxTry,

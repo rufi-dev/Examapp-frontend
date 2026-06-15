@@ -112,11 +112,12 @@ const QuestionAdd = () => {
         answer: q.answer,
         ...(q.type === "Cm" ? { options: q.options } : {}),
       }));
-      await dispatch(addQuestion({ examId, questionData: { correctAnswers } }));
-      toast.success("Suallar əlavə edildi");
+      // Success/error toasts are handled by the addQuestion slice; unwrap() so
+      // we only navigate away when the save actually succeeds.
+      await dispatch(addQuestion({ examId, questionData: { correctAnswers } })).unwrap();
       navigate(-1);
-    } catch (error) {
-      toast.error("Sualları əlavə etmək alınmadı");
+    } catch {
+      // error toast is shown by the slice's rejected case
     } finally {
       setLoading(false);
     }

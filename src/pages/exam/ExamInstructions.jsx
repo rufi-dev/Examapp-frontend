@@ -9,6 +9,7 @@ import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser"
 import { ExamDeadline } from "../../components/protect/hiddenLink";
 import AccountLayout from "../../components/AccountLayout";
 import Button from "../../components/ui/Button";
+import { formatDateTime } from "../../helper/datetime";
 import { FiClock, FiCalendar, FiList, FiInfo, FiPlay, FiRepeat } from "react-icons/fi";
 
 const ExamInstructions = () => {
@@ -28,14 +29,8 @@ const ExamInstructions = () => {
   }, [dispatch, examId]);
 
   useEffect(() => {
-    if (singleExam?.startDate) {
-      const s = new Date(singleExam.startDate);
-      setStartDate(`${s.toLocaleDateString("en-GB")} ${s.toLocaleTimeString("en-GB")}`);
-    }
-    if (singleExam?.endDate) {
-      const e = new Date(singleExam.endDate);
-      setEndDateString(`${e.toLocaleDateString("en-GB")} ${e.toLocaleTimeString("en-GB")}`);
-    }
+    setStartDate(formatDateTime(singleExam?.startDate));
+    setEndDateString(formatDateTime(singleExam?.endDate));
   }, [singleExam]);
 
   if (isLoading || !singleExam) {
