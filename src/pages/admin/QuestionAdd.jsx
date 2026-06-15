@@ -161,7 +161,7 @@ const QuestionAdd = () => {
             <div className="border-b border-line px-5 py-3 text-sm font-semibold text-muted">
               İmtahan sualları (PDF)
             </div>
-            <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
+            <div className="min-h-0 flex-1">
               <PdfOpener pdfFile={pdfData} />
             </div>
           </div>

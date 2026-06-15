@@ -68,17 +68,17 @@ const QuestionType = ({
         if (def.type === "Cm") {
           return (
             <div key={i}>
-              <p className="mb-2 text-sm font-medium text-text">
+              <p className="mb-2.5 text-[15px] font-semibold text-text">
                 {LABELS.Cm} {i + 1}
               </p>
-              <div className="flex flex-wrap gap-2.5">
+              <div className="flex flex-wrap gap-3">
                 {(def.options || DEFAULT_OPTIONS).map((option) => (
                   <button
                     key={option}
                     type="button"
                     disabled={isReview}
                     onClick={() => setAnswer(i, option, "Cm")}
-                    className={`grid h-11 w-11 place-items-center rounded-full border font-semibold transition-colors ${optionClass(
+                    className={`grid h-12 w-12 place-items-center rounded-full border text-[15px] font-semibold transition-colors ${optionClass(
                       i,
                       option
                     )}`}

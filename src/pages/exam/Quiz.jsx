@@ -40,6 +40,7 @@ const Quiz = () => {
 
   const [pdfData, setPdfData] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mobileView, setMobileView] = useState("pdf"); // mobile: "pdf" | "answers"
 
   const [counter, setCounter] = useState(() => {
     const saved = parseInt(localStorage.getItem(`quizCountdown_${examId}`), 10);
@@ -183,22 +184,12 @@ const Quiz = () => {
   }));
 
   return (
-    <div className="flex h-screen flex-col gap-4 bg-bg p-4 sm:p-6 lg:flex-row">
-      {/* PDF panel — independent scroll */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-soft">
-        <div className="border-b border-line px-5 py-3 text-sm font-semibold text-muted">
-          İmtahan sualları (PDF)
-        </div>
-        <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
-          <PdfOpener pdfFile={pdfData} />
-        </div>
-      </div>
-
-      {/* Answer panel — independent scroll */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-soft">
-        <div className="flex items-center justify-between gap-4 border-b border-line px-5 py-4">
+    <div className="flex h-screen flex-col bg-bg">
+      {/* Top bar — timer + progress always visible; tab switch on mobile */}
+      <header className="flex flex-col gap-3 border-b border-line bg-surface px-4 py-3 sm:px-6">
+        <div className="flex items-center justify-between gap-4">
           <div
-            className={`flex items-center gap-2 font-display text-2xl font-bold ${
+            className={`flex items-center gap-2 font-display text-xl font-bold sm:text-2xl ${
               aboutToEnd ? "text-danger" : "text-text"
             }`}
           >
@@ -210,37 +201,80 @@ const Quiz = () => {
           </div>
         </div>
 
-        <div className="scrollbar-thin flex-1 overflow-y-auto p-5 sm:p-6">
-          {pdfData ? (
-            <QuestionType
-              answers={answers}
-              singleTag={singleTag}
-              singleClass={singleClass}
-              questions={questionDefs}
-              handleAnswerChange={handleAnswerChange}
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center">
-              <Spinner size={36} className="text-primary" />
-            </div>
-          )}
+        <div className="grid grid-cols-2 gap-1 rounded-xl border border-line bg-surface2/50 p-1 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setMobileView("pdf")}
+            className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+              mobileView === "pdf" ? "bg-primary text-primary-fg shadow-soft" : "text-muted"
+            }`}
+          >
+            Suallar (PDF)
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileView("answers")}
+            className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+              mobileView === "answers" ? "bg-primary text-primary-fg shadow-soft" : "text-muted"
+            }`}
+          >
+            Cavablar
+          </button>
+        </div>
+      </header>
+
+      {/* Body — side-by-side on desktop; one full-screen panel per tab on mobile */}
+      <div className="flex min-h-0 flex-1 gap-4 p-3 sm:p-4 lg:p-6">
+        <div
+          className={`min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft lg:flex ${
+            mobileView === "pdf" ? "flex" : "hidden"
+          }`}
+        >
+          <div className="hidden border-b border-line px-5 py-3 text-sm font-semibold text-muted lg:block">
+            İmtahan sualları (PDF)
+          </div>
+          <div className="min-h-0 flex-1">
+            <PdfOpener pdfFile={pdfData} />
+          </div>
         </div>
 
-        <div className="border-t border-line p-4">
-          <Button
-            onClick={submitAnswerSheet}
-            disabled={isSubmitting}
-            size="lg"
-            className="w-full"
-          >
-            {isSubmitting ? (
-              <Spinner />
+        <div
+          className={`min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft lg:flex ${
+            mobileView === "answers" ? "flex" : "hidden"
+          }`}
+        >
+          <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+            {pdfData ? (
+              <QuestionType
+                answers={answers}
+                singleTag={singleTag}
+                singleClass={singleClass}
+                questions={questionDefs}
+                handleAnswerChange={handleAnswerChange}
+              />
             ) : (
-              <>
-                İmtahanı bitir <FiCheckCircle />
-              </>
+              <div className="flex h-full items-center justify-center">
+                <Spinner size={36} className="text-primary" />
+              </div>
             )}
-          </Button>
+          </div>
+
+          <div className="border-t border-line p-3 sm:p-4">
+            <Button
+              onClick={submitAnswerSheet}
+              disabled={isSubmitting}
+              size="lg"
+              className="w-full"
+            >
+              {isSubmitting ? (
+                <Spinner />
+              ) : (
+                <>
+                  İmtahanı bitir <FiCheckCircle />
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
