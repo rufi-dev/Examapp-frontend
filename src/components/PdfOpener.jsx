@@ -84,6 +84,10 @@ const PdfOpener = (props) => {
                         renderTextLayer={false}
                         renderAnnotationLayer={false}
                         width={pageWidth}
+                        // Render at higher pixel density so the page stays sharp
+                        // when the pan/zoom surface scales it up (otherwise the
+                        // canvas bitmap blurs, especially on 1x desktop screens).
+                        devicePixelRatio={3}
                         className="select-text"
                       />
                     </div>
