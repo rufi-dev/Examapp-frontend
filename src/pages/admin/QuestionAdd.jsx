@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import PdfOpener from "../../components/PdfOpener";
 import {
   addQuestion,
+  getExam,
   getExamTagandClass,
   getPdfByExam,
 } from "../../../redux/features/quiz/quizSlice";
@@ -50,8 +51,23 @@ const QuestionAdd = () => {
         await dispatch(getExamTagandClass(examId));
         const getPdfAction = await dispatch(getPdfByExam({ examId }));
         setPdfData(getPdfAction.payload.path);
+
+        // Pre-load the existing answer key if this exam already has questions,
+        // so editing is non-destructive (instead of starting from blanks).
+        const examAction = await dispatch(getExam(examId));
+        const existing = examAction?.payload?.questions?.correctAnswers;
+        if (existing && existing.length) {
+          setQuestions(
+            existing.map((q) => ({
+              type: q.type || "Cm",
+              answer: q.answer || "",
+              options:
+                q.options && q.options.length ? q.options : ["a", "b", "c", "d", "e"],
+            }))
+          );
+        }
       } catch (error) {
-        console.error("Error fetching PDF:", error);
+        console.error("Error fetching exam data:", error);
       }
     };
     fetchData();
