@@ -2,124 +2,67 @@ export function attempts_Number(result) {
   return result.filter((r) => r !== -1).length;
 }
 
-export function earnPoints_Number(
-  result,
-  correctAnswers,
-  queue,
-  singleClass,
-  singleTag
-) {
-  // Initialize counters for each type of question
-  let correctMultipleChoice = 0;
-  let incorrectMultipleChoice = 0;
-  let correctOpenQuestion = 0;
-  let incorrectOpenQuestion = 0;
-  let correctDetailedQuestion = 0;
-  let incorrectDetailedQuestion = 0;
-  let correctMatchedQuestion = 0;
-  let incorrectMatchedQuestion = 0;
+// Point distribution for an exam, by question position:
+//   - the first 18 questions share 55 points equally
+//   - the remaining questions share 45 points equally
+//   => total is always 100 for exams with 19+ questions.
+// For 18 or fewer questions, the full 100 is split equally across them.
+export const FIRST_GROUP_SIZE = 18;
+export const FIRST_GROUP_POINTS = 55;
+export const SECOND_GROUP_POINTS = 45;
 
-  result.forEach((selectedAnswer, index) => {
-    if (!queue) return; // Skip if no corresponding question
-    // Determine the type of question
-    const correctAnswer = correctAnswers[index];
-    if (!correctAnswer) return; // No corresponding correct answer for this index
-    const { type } = correctAnswer;
+export function questionPoints(count) {
+  const n = Number(count) || 0;
+  if (n <= 0) return [];
 
-    // Increment counters based on the correctness of the answer
-    if (selectedAnswer != null) {
-      if (selectedAnswer.answer === correctAnswer.answer) {
-        switch (type) {
-          case "Cm":
-            correctMultipleChoice++;
-            break;
-          case "Co":
-            correctOpenQuestion++;
-            break;
-          case "Cd":
-            correctDetailedQuestion++;
-            break;
-          case "Cma":
-            correctMatchedQuestion++;
-            break;
-          // Add cases for other question types if needed
-          default:
-            break;
-        }
-      }
+  const aCount = Math.min(FIRST_GROUP_SIZE, n);
+  const bCount = n - aCount;
+  const points = new Array(n);
 
-      if (selectedAnswer.answer !== correctAnswer.answer) {
-        switch (type) {
-          case "Cm":
-            incorrectMultipleChoice++;
-            break;
-          case "Co":
-            incorrectOpenQuestion++;
-            break;
-          case "Cd":
-            incorrectDetailedQuestion++;
-            break;
-          case "Cma":
-            incorrectMatchedQuestion++;
-            break;
-          // Add cases for other question types if needed
-          default:
-            break;
-        }
-      }
+  if (bCount === 0) {
+    const each = 100 / aCount;
+    for (let i = 0; i < n; i++) points[i] = each;
+  } else {
+    const eachA = FIRST_GROUP_POINTS / aCount; // e.g. 55/18
+    const eachB = SECOND_GROUP_POINTS / bCount; // e.g. 45/7
+    for (let i = 0; i < n; i++) points[i] = i < aCount ? eachA : eachB;
+  }
+  return points;
+}
+
+// Score an answer sheet against the exam's correct answers.
+// Each correctly answered question is worth its position-based point value;
+// the total adds up to 100. Extra args (queue/singleClass/singleTag) are
+// accepted for backward compatibility but no longer used.
+export function earnPoints_Number(result, correctAnswers) {
+  const answersList = Array.isArray(correctAnswers) ? correctAnswers : [];
+  const points = questionPoints(answersList.length);
+
+  let earnedPoints = 0;
+  const counts = { Cm: 0, Co: 0, Cd: 0, Cma: 0 };
+
+  answersList.forEach((correctAnswer, index) => {
+    if (!correctAnswer) return;
+    const selected = result[index];
+    const isCorrect =
+      selected != null &&
+      selected.answer != null &&
+      selected.answer !== "" &&
+      selected.answer === correctAnswer.answer;
+
+    if (isCorrect) {
+      earnedPoints += points[index] || 0;
+      if (counts[correctAnswer.type] !== undefined) counts[correctAnswer.type]++;
     }
   });
 
-  // Apply the formula to calculate earned points
-  let earnedPoints = 0;
-  if (singleTag.name === "Buraxılış" && singleClass.level === 11) {
-    earnedPoints =
-      (correctMultipleChoice +
-        correctOpenQuestion +
-        2 * correctDetailedQuestion) *
-      (25 / 8);
-  }
-  if (singleTag.name === "Buraxılış" && singleClass.level === 9) {
-    earnedPoints =
-      ((correctMultipleChoice +
-        correctOpenQuestion +
-        2 * correctDetailedQuestion) *
-        100) /
-      29;
-  }
-
-  if (
-    singleTag.name === "Blok" &&
-    (singleClass.level === 1 || singleClass.level === 2)
-  ) {
-    earnedPoints =
-      ((
-        (correctMultipleChoice - 
-        (1/4) * incorrectMultipleChoice + correctOpenQuestion+correctMatchedQuestion)
-        *(100/33)+
-        (correctDetailedQuestion*200/33)
-      )
-        *1.5);
-  }
-
   const correctAnswersByType = [
-    {
-      type: "Cm",
-      count: correctMultipleChoice,
-    },
-    {
-      type: "Co",
-      count: correctOpenQuestion,
-    },
-    {
-      type: "Cd",
-      count: correctDetailedQuestion,
-    },
-    {
-      type: "Cma",
-      count: correctMatchedQuestion,
-    },
+    { type: "Cm", count: counts.Cm },
+    { type: "Co", count: counts.Co },
+    { type: "Cd", count: counts.Cd },
+    { type: "Cma", count: counts.Cma },
   ];
+
   return {
     earnedPoints: parseFloat(earnedPoints.toFixed(2)),
     correctAnswersByType,

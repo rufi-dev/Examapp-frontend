@@ -14,8 +14,15 @@ import Container from "../../components/ui/Container";
 import Button from "../../components/ui/Button";
 import { inputClass } from "../../components/ui/Field";
 import { FiPlus, FiX } from "react-icons/fi";
+import { questionPoints } from "../../helper/helper";
 
-const newQuestion = () => ({ type: "Cm", answer: "", options: ["a", "b", "c", "d", "e"] });
+// Questions 1-13 default to closed (Cm); 14+ default to open (Co).
+const CLOSED_COUNT = 13;
+const newQuestion = (type = "Cm") => ({
+  type,
+  answer: "",
+  options: ["a", "b", "c", "d", "e"],
+});
 
 const nextLetter = (options) => {
   const used = new Set(options);
@@ -33,7 +40,7 @@ const QuestionAdd = () => {
   const [pdfData, setPdfData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [questions, setQuestions] = useState(() =>
-    Array.from({ length: 25 }, () => newQuestion())
+    Array.from({ length: 25 }, (_, i) => newQuestion(i < CLOSED_COUNT ? "Cm" : "Co"))
   );
   const { examId } = useParams();
 
@@ -74,7 +81,7 @@ const QuestionAdd = () => {
       )
     );
   const removeQuestion = (i) => setQuestions((prev) => prev.filter((_, idx) => idx !== i));
-  const addQuestionRow = () => setQuestions((prev) => [...prev, newQuestion()]);
+  const addQuestionRow = () => setQuestions((prev) => [...prev, newQuestion("Co")]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -99,6 +106,8 @@ const QuestionAdd = () => {
     }
   };
 
+  const points = questionPoints(questions.length);
+
   return (
     <section className="py-8">
       <Container>
@@ -109,6 +118,18 @@ const QuestionAdd = () => {
           <p className="mt-1 text-muted">
             Hər sual üçün tipi (qapalı / açıq) seç və düzgün cavabı təyin et.
           </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-muted">Qiymətləndirmə (avtomatik):</span>
+            <span className="rounded-full border border-line bg-surface px-2.5 py-0.5 font-semibold text-text">
+              İlk 18 sual → 55 bal
+            </span>
+            <span className="rounded-full border border-line bg-surface px-2.5 py-0.5 font-semibold text-text">
+              Qalanı → 45 bal
+            </span>
+            <span className="rounded-full bg-primary/12 px-2.5 py-0.5 font-semibold text-primary">
+              Cəmi: 100 bal
+            </span>
+          </div>
         </div>
 
         <div className="relative grid gap-6 lg:grid-cols-2">
@@ -135,9 +156,14 @@ const QuestionAdd = () => {
                 {questions.map((q, i) => (
                   <div key={i} className="rounded-2xl border border-line bg-surface2/40 p-4">
                     <div className="mb-3 flex items-center justify-between gap-3">
-                      <span className="font-display text-sm font-bold text-text">
-                        Sual {i + 1}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-display text-sm font-bold text-text">
+                          Sual {i + 1}
+                        </span>
+                        <span className="rounded-full border border-line bg-surface px-2 py-0.5 text-xs font-semibold text-muted">
+                          {(points[i] || 0).toFixed(2)} bal
+                        </span>
+                      </div>
                       <div className="flex items-center gap-2">
                         <div className="flex rounded-lg border border-line bg-surface p-0.5 text-xs font-semibold">
                           <button
