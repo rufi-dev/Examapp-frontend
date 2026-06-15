@@ -9,6 +9,7 @@ import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser"
 import { ExamDeadline } from "../../components/protect/hiddenLink";
 import AccountLayout from "../../components/AccountLayout";
 import Button from "../../components/ui/Button";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { formatDateTime } from "../../helper/datetime";
 import { FiClock, FiCalendar, FiList, FiInfo, FiPlay, FiRepeat } from "react-icons/fi";
 
@@ -16,6 +17,7 @@ const ExamInstructions = () => {
   useRedirectLoggedOutUser("/login");
   const [startDateString, setStartDate] = useState(null);
   const [endDateString, setEndDateString] = useState(null);
+  const [confirmStart, setConfirmStart] = useState(false);
   const { singleExam, isLoading } = useSelector((state) => state.quiz);
   const { resultByExam } = useSelector((state) => state.result);
   const { user } = useSelector((state) => state.auth);
@@ -50,6 +52,11 @@ const ExamInstructions = () => {
     if (!canStart) {
       return toast.error("Maksimum cəhd sayına çatmısınız");
     }
+    setConfirmStart(true);
+  };
+
+  const beginExam = () => {
+    setConfirmStart(false);
     navigate(`/exam/${singleExam?._id}/start`);
   };
 
@@ -143,6 +150,42 @@ const ExamInstructions = () => {
             </div>
           </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmStart}
+        onClose={() => setConfirmStart(false)}
+        onConfirm={beginExam}
+        title="İmtahana başlamaq üzrəsiniz"
+        confirmLabel="Başla"
+        cancelLabel="Geri"
+        icon={<FiPlay className="text-[22px]" />}
+      >
+        <p>
+          Düyməni basdığınız anda vaxt <span className="font-semibold text-text">dərhal</span>{" "}
+          başlayır və dayandırıla bilməz.
+        </p>
+        <ul className="mt-3 space-y-1.5 rounded-xl border border-line bg-surface2/40 p-3">
+          <li className="flex items-center justify-between">
+            <span>Müddət</span>
+            <span className="font-semibold text-text">{Math.floor(duration / 60)} dəq</span>
+          </li>
+          <li className="flex items-center justify-between">
+            <span>Sual sayı</span>
+            <span className="font-semibold text-text">
+              {singleExam.questions?.correctAnswers?.length ?? "—"}
+            </span>
+          </li>
+          <li className="flex items-center justify-between">
+            <span>Cəhd</span>
+            <span className="font-semibold text-text">
+              {maxTry > 0 ? `${attempts + 1} / ${maxTry}` : "Limitsiz"}
+            </span>
+          </li>
+        </ul>
+        <p className="mt-3 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-text">
+          İmtahan zamanı səhifəni yeniləməyin və ya geri qayıtmayın.
+        </p>
+      </ConfirmDialog>
     </AccountLayout>
   );
 };

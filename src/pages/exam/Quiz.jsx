@@ -16,6 +16,7 @@ import PdfOpener from "../../components/PdfOpener";
 import QuestionType from "../../components/QuestionType";
 import Spinner from "../../components/Spinner";
 import Button from "../../components/ui/Button";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
 const Quiz = () => {
   const { examId } = useParams();
@@ -45,6 +46,7 @@ const Quiz = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mobileView, setMobileView] = useState("pdf"); // mobile: "pdf" | "answers"
   const [access, setAccess] = useState("checking"); // "checking" | "allowed" | "denied"
+  const [confirmFinish, setConfirmFinish] = useState(false);
 
   const [counter, setCounter] = useState(() => {
     const saved = parseInt(localStorage.getItem(`quizCountdown_${examId}`), 10);
@@ -155,7 +157,10 @@ const Quiz = () => {
   useEffect(() => {
     if (access !== "allowed" || counter === null) return;
     localStorage.setItem(countdownKey, String(counter));
+    if (counter === 300) toast.warn("5 dəqiqə qaldı!");
+    if (counter === 60) toast.warn("1 dəqiqə qaldı!");
     if (counter <= 0) {
+      toast.info("Vaxt bitdi! Cavablar təqdim olunur...");
       submitAnswerSheet();
       return;
     }
@@ -254,6 +259,10 @@ const Quiz = () => {
     type: q.type,
     options: q.options,
   }));
+  const unansweredNums = answers
+    .slice(0, totalCount)
+    .map((a, i) => (a && a.answer ? null : i + 1))
+    .filter((n) => n != null);
 
   // Don't render exam content until access is confirmed (avoids flashing the
   // PDF/answers during the check or to a denied user who is being redirected).
@@ -270,15 +279,20 @@ const Quiz = () => {
       {/* Top bar — timer + progress always visible; tab switch on mobile */}
       <header className="flex shrink-0 flex-col gap-3 border-b border-line bg-surface px-4 py-3 sm:px-6">
         <div className="flex items-center justify-between gap-4">
-          <div
-            className={`flex items-center gap-2 font-display text-xl font-bold sm:text-2xl ${
-              aboutToEnd ? "text-danger" : "text-text"
-            }`}
-          >
-            <FiClock className={aboutToEnd ? "text-danger" : "text-primary"} />
-            {remaining()}
+          <div className="min-w-0">
+            {singleExam?.name && (
+              <p className="mb-0.5 truncate text-xs font-medium text-muted">{singleExam.name}</p>
+            )}
+            <div
+              className={`flex items-center gap-2 font-display text-xl font-bold sm:text-2xl ${
+                aboutToEnd ? "text-danger" : "text-text"
+              }`}
+            >
+              <FiClock className={aboutToEnd ? "text-danger" : "text-primary"} />
+              {remaining()}
+            </div>
           </div>
-          <div className="text-sm font-medium text-muted">
+          <div className="shrink-0 text-sm font-medium text-muted">
             Cavablandı: <span className="text-text">{answeredCount}</span> / {totalCount}
           </div>
         </div>
@@ -343,7 +357,7 @@ const Quiz = () => {
 
           <div className="shrink-0 border-t border-line p-3 sm:p-4">
             <Button
-              onClick={submitAnswerSheet}
+              onClick={() => setConfirmFinish(true)}
               disabled={isSubmitting}
               size="lg"
               className="w-full"
@@ -359,6 +373,37 @@ const Quiz = () => {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmFinish}
+        onClose={() => setConfirmFinish(false)}
+        onConfirm={submitAnswerSheet}
+        title="İmtahanı bitirmək istəyirsiniz?"
+        confirmLabel="Bəli, təqdim et"
+        cancelLabel="Geri qayıt"
+        tone={unansweredNums.length ? "danger" : "primary"}
+        loading={isSubmitting}
+        icon={<FiCheckCircle className="text-[22px]" />}
+      >
+        <p>
+          Cavablandırılıb: <span className="font-semibold text-text">{answeredCount}</span> /{" "}
+          {totalCount}
+        </p>
+        {unansweredNums.length > 0 ? (
+          <div className="mt-3 rounded-xl border border-danger/30 bg-danger/10 px-3 py-2.5">
+            <p className="font-semibold text-danger">
+              {unansweredNums.length} sual cavabsız qalıb
+            </p>
+            <p className="mt-1 text-xs text-muted">Cavabsız suallar: {unansweredNums.join(", ")}</p>
+            <p className="mt-1.5 text-xs text-text">Yenə də təqdim edilsin?</p>
+          </div>
+        ) : (
+          <p className="mt-3 font-medium text-success">Bütün suallar cavablandırılıb. 🎉</p>
+        )}
+        <p className="mt-3 text-xs text-muted">
+          Təqdim etdikdən sonra cavabları dəyişə bilməyəcəksiniz.
+        </p>
+      </ConfirmDialog>
     </div>
   );
 };
