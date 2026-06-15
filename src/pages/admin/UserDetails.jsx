@@ -1,184 +1,194 @@
-import React, { useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { Link, useParams } from 'react-router-dom';
-import { getUserById } from '../../../redux/features/auth/authSlice';
-import { VscPreview } from 'react-icons/vsc';
-import { addExamToUserById, getExams } from '../../../redux/features/quiz/quizSlice';
-import Spinner from '../../components/Spinner';
-import Loader from '../../components/Loader';
+import { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { Link, useParams } from "react-router-dom";
+import { getUserById } from "../../../redux/features/auth/authSlice";
+import { FiEye, FiClock, FiFileText } from "react-icons/fi";
+import { addExamToUserById, getExams } from "../../../redux/features/quiz/quizSlice";
+import Loader from "../../components/Loader";
+import AccountLayout from "../../components/AccountLayout";
+import Button from "../../components/ui/Button";
+import Badge from "../../components/ui/Badge";
+
+const roleLabels = {
+  admin: "Admin",
+  teacher: "Müəllim",
+  student: "Tələbə",
+  suspended: "Bloklanıb",
+};
+
+const ExamMini = ({ exam, footer }) => (
+  <div className="flex flex-col rounded-2xl border border-line bg-surface p-5 shadow-soft">
+    <h3 className="font-display text-base font-bold text-text">{exam.name}</h3>
+    <div className="mt-2 flex flex-col gap-1.5 text-sm text-muted">
+      <span className="flex items-center gap-2">
+        <FiClock className="text-primary" /> {Math.floor(exam.duration / 60)} dəq{" "}
+        {exam.duration % 60} san
+      </span>
+      <span className="flex items-center gap-2">
+        <FiFileText className="text-primary" /> {exam.questions?.length ?? 0} sual
+      </span>
+    </div>
+    {exam.tags?.length > 0 && (
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {exam.tags.map((t) => (
+          <Badge key={t._id} tone="primary">
+            {t.name}
+          </Badge>
+        ))}
+      </div>
+    )}
+    {footer && <div className="mt-4">{footer}</div>}
+  </div>
+);
 
 const UserDetails = () => {
-    const { id } = useParams();
-    const dispatch = useDispatch();
+  const { id } = useParams();
+  const dispatch = useDispatch();
+  const { isLoading, userById } = useSelector((state) => state.auth);
+  const { exams } = useSelector((state) => state.quiz);
+  const quiz = useSelector((state) => state.quiz);
 
-    const { isLoading, userById } = useSelector(state => state.auth);
-    const { exams } = useSelector(state => state.quiz);
-    const quiz = useSelector(state => state.quiz);
+  useEffect(() => {
+    dispatch(getUserById(id));
+    dispatch(getExams());
+  }, [dispatch, id]);
 
-    useEffect(() => {
-        dispatch(getUserById(id));
-        dispatch(getExams());
-    }, [dispatch]);
+  const addExam = async (e, exam) => {
+    e.preventDefault();
+    await dispatch(addExamToUserById({ userId: id, examData: { examId: exam._id } }));
+    dispatch(getExams());
+    dispatch(getUserById(id));
+  };
 
-    const addExam = async (e, exam) => {
-        e.preventDefault()
-        const examData = {
-            examId: exam._id
-        }
-        await dispatch(addExamToUserById({ userId: id, examData }))
-        dispatch(getExams());
-        dispatch(getUserById(id));
-    }
+  if (!userById && isLoading) return <Loader />;
 
-    return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-            <div className="bg-white rounded-lg shadow-md p-6 w-full max-w-[1200px]">
-                {!userById && isLoading ? (
-                    <p>Loading user details...</p>
-                ) : (
-                    <div>
-                        <h2 className="text-2xl font-semibold mb-4">{userById?.name}</h2>
-                        <img
-                            src={userById?.photo}
-                            alt={`${userById?.name}'s Profile`}
-                            className="w-32 h-32 rounded-full mb-4"
-                        />
-                        <p className="mb-2"><strong>Email:</strong> {userById?.email}</p>
-                        <p className="mb-2"><strong>Phone:</strong> {userById?.phone}</p>
-                        <p className="mb-2"><strong>Bio:</strong> {userById?.bio}</p>
-                        <p className="mb-2"><strong>Role:</strong> {userById?.role}</p>
-                        <p className="mb-2"><strong>Verified:</strong> {userById?.isVerified ? 'Yes' : 'No'}</p>
+  const owned = (examId) => userById?.exams?.some((m) => m._id === examId);
 
-                        <div className="mt-6">
-                            <h3 className="text-lg font-semibold mb-2">Exams Bought</h3>
-                            {userById?.exams && userById?.exams.length > 0 ? (
-                                <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
-                                    {userById?.exams && userById?.exams.map(exam => (
-                                        <div key={exam._id} className='bg-white border px-4 py-5 rounded-lg shadow-lg'>
-                                            <div className="flex justify-between">
-                                                <h1 className='font-bold'>{exam.name}</h1>
-                                            </div>
-                                            <div className='text-sm font-bold text-[#666] mt-2'>
-                                                <i className="fa-solid fa-hourglass"></i>
-                                                <span className='ml-2'> {`${Math.floor(exam.duration / 60)} minutes ${exam.duration % 60} seconds`}</span>
-                                            </div>
-                                            <p className='font-bold text-sm mt-3'>Ətraflı</p>
-
-                                            <ul className='text-sm list-disc px-6'>
-                                                <li>{exam.questions.length} sual - Dünyanı gəzirəm</li>
-                                            </ul>
-                                            <hr className='mt-3' />
-
-                                            <div className='mt-3'>
-                                                <ul className='flex gap-2 text-sm flex-wrap text-white'>
-                                                    {
-                                                        exam.tags?.map((tag) => {
-                                                            return (
-                                                                <li key={tag._id} className='bg-[#1084da] rounded-full px-2'>{tag.name}</li>
-                                                            )
-                                                        })
-                                                    }
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className='text-center font-bold text-[40px] mt-8'>No Exams Have Been Bought Yet!</div>
-                            )}
-                        </div>
-
-                        {quiz.isLoading ? <Loader />
-                            :
-                            <>
-                                <div className="mt-6">
-                                    <h3 className="text-lg font-semibold mb-2">Results</h3>
-                                    <div className='overflow-x-scroll scrollbar-thumb-[#888888] scrollbar-thin scrollbar-rounded-[20px]'>
-                                        <table className="min-w-full divide-y divide-gray-200">
-                                            <thead className="bg-gray-50">
-                                                <tr>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attempts</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exam</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Points</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="bg-white divide-y divide-gray-200">
-                                                {userById?.results?.map((res) => (
-                                                    <tr key={res?._id}>
-                                                        <td className="px-6 py-4 whitespace-nowrap">{res?.attempts}</td>
-                                                        <td className="px-6 py-4 whitespace-nowrap">{res?.examId?.name}</td>
-                                                        <td className="px-6 py-4 whitespace-nowrap">{res?.earnPoints}</td>
-                                                        <td className="px-6 py-4 whitespace-nowrap flex gap-5">
-                                                            {res?.isPassed ? (
-                                                                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                                                    Passed
-                                                                </span>
-                                                            ) : (
-                                                                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                                                    Failed
-                                                                </span>
-                                                            )}
-                                                            <Link to={`/result/${res._id}/review`} className="text-[#1084da] text-[20px]"><VscPreview /></Link>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                                <div className="mt-6">
-                                    <h3 className="text-lg font-semibold mb-2">All Exams</h3>
-                                    {exams && exams.length > 0 ? (
-                                        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
-                                            {exams && exams.map((exam, index) => (
-                                                <div key={exam._id} className='bg-white border px-4 py-5 rounded-lg shadow-lg'>
-                                                    <div className="flex justify-between">
-                                                        <h1 className='font-bold'>{exam.name}</h1>
-                                                    </div>
-                                                    <div className='text-sm font-bold text-[#666] mt-2'>
-                                                        <i className="fa-solid fa-hourglass"></i>
-                                                        <span className='ml-2'> {`${Math.floor(exam.duration / 60)} minutes ${exam.duration % 60} seconds`}</span>
-                                                    </div>
-                                                    <p className='font-bold text-sm mt-3'>Ətraflı</p>
-
-                                                    <ul className='text-sm list-disc px-6'>
-                                                        <li>{exam.questions.length} sual</li>
-                                                    </ul>
-                                                    <hr className='mt-3' />
-
-                                                    <div className='mt-3'>
-                                                        <ul className='flex gap-2 text-sm flex-wrap text-white'>
-                                                            {
-                                                                exam.tags?.map((tag) => {
-                                                                    return (
-                                                                        <li key={tag._id} className='bg-[#1084da] rounded-full px-2'>{tag.name}</li>
-                                                                    )
-                                                                })
-                                                            }
-                                                        </ul>
-                                                    </div>
-                                                    {
-                                                        userById?.exams?.length > 0 && userById?.exams?.some(myExam => myExam._id === exam._id) ? (
-                                                            <Link to={`/exam/details/${exam._id}`} className='flex text-white w-full justify-center bg-[#1084da] rounded-lg py-2 mt-4'>İmtahana Bax</Link>
-                                                        ) : (
-                                                            <button onClick={(e) => addExam(e, exam)} className="flex text-white w-full justify-center bg-[#1084da] rounded-lg py-2 mt-4">Imtahanı əldə et - {exam.price} AZN</button>
-                                                        )
-                                                    }
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className='text-center font-bold text-[40px] mt-8'>No Exams Added Yet!</div>
-                                    )}
-                                </div>
-                            </>
-                        }
-                    </div>
-                )}
-            </div>
+  return (
+    <AccountLayout title="İstifadəçi məlumatları">
+      <div className="flex flex-col items-center gap-6 rounded-3xl border border-line bg-surface p-6 shadow-soft sm:flex-row sm:p-8">
+        <img
+          src={userById?.photo}
+          alt={userById?.name}
+          className="h-24 w-24 shrink-0 rounded-full border border-line object-cover"
+        />
+        <div className="text-center sm:text-left">
+          <div className="flex flex-wrap items-center justify-center gap-2.5 sm:justify-start">
+            <h2 className="font-display text-2xl font-bold text-text">{userById?.name}</h2>
+            <Badge tone={userById?.role === "admin" ? "primary" : "neutral"}>
+              {roleLabels[userById?.role] || userById?.role}
+            </Badge>
+            {userById?.isVerified ? (
+              <Badge tone="success">Təsdiqlənib</Badge>
+            ) : (
+              <Badge tone="warning">Təsdiqlənməyib</Badge>
+            )}
+          </div>
+          <p className="mt-1.5 text-muted">{userById?.email}</p>
+          <p className="text-sm text-muted">{userById?.phone}</p>
+          {userById?.bio && <p className="mt-2 text-sm text-muted">{userById.bio}</p>}
         </div>
-    );
+      </div>
+
+      <h3 className="mb-3 mt-8 font-display text-lg font-bold text-text">
+        Əldə edilən imtahanlar
+      </h3>
+      {userById?.exams?.length > 0 ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {userById.exams.map((exam) => (
+            <ExamMini key={exam._id} exam={exam} />
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-dashed border-line bg-surface p-10 text-center text-muted">
+          Hələ imtahan yoxdur.
+        </div>
+      )}
+
+      {quiz.isLoading ? (
+        <Loader />
+      ) : (
+        <>
+          <h3 className="mb-3 mt-8 font-display text-lg font-bold text-text">Nəticələr</h3>
+          {userById?.results?.length > 0 ? (
+            <div className="scrollbar-thin overflow-x-auto rounded-2xl border border-line bg-surface shadow-soft">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
+                    <th className="px-6 py-4 font-semibold">Cəhd</th>
+                    <th className="px-6 py-4 font-semibold">İmtahan</th>
+                    <th className="px-6 py-4 font-semibold">Bal</th>
+                    <th className="px-6 py-4 text-right font-semibold">Təhlil</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {userById.results.map((res) => (
+                    <tr
+                      key={res?._id}
+                      className="border-b border-line/60 transition-colors last:border-0 hover:bg-surface2/50"
+                    >
+                      <td className="px-6 py-4 text-muted">{res?.attempts}</td>
+                      <td className="px-6 py-4 text-text">{res?.examId?.name}</td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex rounded-full bg-primary/12 px-2.5 py-1 text-xs font-semibold text-primary">
+                          {res?.earnPoints} bal
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <Link
+                          to={`/result/${res._id}/review`}
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line text-muted transition-colors hover:border-primary/40 hover:text-primary"
+                          aria-label="Təhlil"
+                        >
+                          <FiEye />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-line bg-surface p-10 text-center text-muted">
+              Hələ nəticə yoxdur.
+            </div>
+          )}
+
+          <h3 className="mb-3 mt-8 font-display text-lg font-bold text-text">Bütün imtahanlar</h3>
+          {exams?.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {exams.map((exam) => (
+                <ExamMini
+                  key={exam._id}
+                  exam={exam}
+                  footer={
+                    owned(exam._id) ? (
+                      <Button to={`/exam/details/${exam._id}`} size="sm" className="w-full">
+                        İmtahana bax
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={(e) => addExam(e, exam)}
+                        size="sm"
+                        variant="soft"
+                        className="w-full"
+                      >
+                        İstifadəçiyə əlavə et
+                      </Button>
+                    )
+                  }
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-line bg-surface p-10 text-center text-muted">
+              İmtahan yoxdur.
+            </div>
+          )}
+        </>
+      )}
+    </AccountLayout>
+  );
 };
 
 export default UserDetails;

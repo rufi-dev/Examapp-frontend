@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useEffect } from "react";
+import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import Loader from "../../components/Loader";
 import ResultTable from "../../components/ResultTable";
@@ -8,8 +8,34 @@ import {
   RESET_RESULT,
   getResultsByUserByExam,
 } from "../../../redux/features/quiz/resultSlice";
-import { attempts_Number, earnPoints_Number } from "../../helper/helper";
 import ResultCard from "../../components/ResultCard";
+import AccountLayout from "../../components/AccountLayout";
+import Button from "../../components/ui/Button";
+import { FiRotateCcw, FiList } from "react-icons/fi";
+
+const ScoreRing = ({ value = 0 }) => {
+  const r = 34;
+  const c = 2 * Math.PI * r;
+  const offset = c * (1 - value / 100);
+  return (
+    <div className="relative grid h-24 w-24 shrink-0 place-items-center">
+      <svg viewBox="0 0 80 80" className="h-24 w-24 -rotate-90">
+        <circle cx="40" cy="40" r={r} className="fill-none stroke-surface2" strokeWidth="8" />
+        <circle
+          cx="40"
+          cy="40"
+          r={r}
+          className="fill-none stroke-primary"
+          strokeWidth="8"
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={offset}
+        />
+      </svg>
+      <span className="absolute font-display text-lg font-extrabold text-text">{value}%</span>
+    </div>
+  );
+};
 
 const Result = () => {
   const dispatch = useDispatch();
@@ -26,31 +52,62 @@ const Result = () => {
     return <Loader />;
   }
 
+  const correctAnswers = lastResult.correctAnswers || [];
+  const selectedAnswers = lastResult.selectedAnswers || [];
+  const total = correctAnswers.length;
+  const correct = correctAnswers.filter(
+    (a, i) => a?.answer && selectedAnswers[i]?.answer === a.answer
+  ).length;
+  const pct = total ? Math.round((correct / total) * 100) : 0;
+
   return (
-    <div className="px-8 max-w-[1440px] mx-auto">
-      <h1 className="font-bold my-5 text-[30px]">İmtahan nəticələri</h1>
-      {<ResultCard result={lastResult} />}
-      <div className="flex items-center">
-        <div className="w-full my-10 text-center">
-          <Link
+    <AccountLayout title="İmtahan nəticələri" subtitle="Son cəhdinin nəticəsi və təhlili.">
+      <div className="mb-10 grid gap-5 sm:grid-cols-3">
+          <div className="flex items-center gap-5 rounded-3xl border border-line bg-surface p-6 shadow-soft">
+            <ScoreRing value={pct} />
+            <div>
+              <p className="text-sm text-muted">Düzgün cavablar</p>
+              <p className="font-display text-2xl font-bold text-text">
+                {correct} / {total}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-col justify-center rounded-3xl border border-line bg-surface p-6 shadow-soft">
+            <p className="text-sm text-muted">Yığılan bal</p>
+            <p className="font-display text-3xl font-extrabold text-primary">
+              {lastResult.earnPoints}
+            </p>
+          </div>
+          <div className="flex flex-col justify-center rounded-3xl border border-line bg-surface p-6 shadow-soft">
+            <p className="text-sm text-muted">Cəhd sayı</p>
+            <p className="font-display text-3xl font-extrabold text-text">{resultByExam.length}</p>
+          </div>
+        </div>
+
+        <h2 className="mb-3 font-display text-lg font-bold text-text">Cavabların təhlili</h2>
+        <ResultCard result={lastResult} />
+
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Button
             to={`/exam/details/${examId}`}
-            className="bg-orange-500 text-white px-4 py-2"
+            variant="secondary"
             onClick={() => {
               dispatch(RESET_QUIZ());
               dispatch(RESET_RESULT());
             }}
           >
-            Restart
-          </Link>
+            <FiRotateCcw /> Yenidən cəhd et
+          </Button>
+          <Button to="/myResults" variant="soft">
+            <FiList /> Nəticələrim
+          </Button>
         </div>
-        <div className="w-full my-10 text-center">
-          <Link to={`/myResults`} className="bg-[#1084da] text-white px-4 py-2">
-            My Results
-          </Link>
+
+        <div className="mt-12">
+          <h2 className="mb-3 font-display text-lg font-bold text-text">Bütün cəhdlər</h2>
+          <ResultTable results={resultByExam} />
         </div>
-      </div>
-      <ResultTable results={resultByExam} />
-    </div>
+    </AccountLayout>
   );
 };
 

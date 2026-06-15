@@ -25,27 +25,21 @@ export const ShowOnLogout = ({ children }) => {
 export const ExamDeadline = ({ children }) => {
   const today = new Date();
   const { singleExam } = useSelector((state) => state.quiz);
-  if (singleExam && today >= new Date(singleExam.startDate) && today <= new Date(singleExam.endDate)) {
+
+  const start = singleExam?.startDate ? new Date(singleExam.startDate) : null;
+  const end = singleExam?.endDate ? new Date(singleExam.endDate) : null;
+  const open = singleExam && (!start || today >= start) && (!end || today <= end);
+
+  if (open) {
     return <>{children}</>;
-  } else if (singleExam && today > new Date(singleExam.endDate)) {
-    return <>
-      <div>
-        <Link className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-          İmtahan Artıq Bitib
-        </Link>
-      </div>
-    </>;
-  } else {
-    return (
-      <>
-        <div>
-          <Link className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-            İmtahan Hələ Başlamayıb
-          </Link>
-        </div>
-      </>
-    );
   }
+
+  const message = end && today > end ? "İmtahan artıq bitib" : "İmtahan hələ başlamayıb";
+  return (
+    <div className="rounded-xl border border-line bg-surface2 px-4 py-3 text-center font-medium text-muted">
+      {message}
+    </div>
+  );
 };
 export const AdminTeacherLink = ({ children }) => {
   const isLoggedIn = useSelector(selectIsLoggedIn);

@@ -1,13 +1,7 @@
-import {
-  HashRouter,
-  BrowserRouter,
-  Routes,
-  Route,
-  useLocation,
-  useNavigate,
-} from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import Home from "./pages/Home";
 import Layout from "./components/Layout";
+import ScrollToTop from "./components/ScrollToTop";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import Forgot from "./pages/auth/Forgot";
@@ -17,11 +11,10 @@ import Verify from "./pages/auth/Verify";
 import Profile from "./pages/profile/Profile";
 import ChangePassword from "./pages/auth/ChangePassword";
 import UserList from "./pages/profile/UserList";
-import Loader from "./components/Loader";
 import axios from "axios";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   getLoginStatus,
@@ -38,7 +31,6 @@ import ExamEdit from "./pages/admin/ExamEdit";
 import QuestionAdd from "./pages/admin/QuestionAdd";
 import TagEdit from "./pages/admin/TagEdit";
 import ExamInstructions from "./pages/exam/ExamInstructions";
-import Questions from "./components/Questions";
 import Quiz from "./pages/exam/Quiz";
 import Result from "./pages/exam/Result";
 import MyResults from "./pages/exam/MyResults";
@@ -46,35 +38,42 @@ import MyExams from "./pages/exam/MyExams";
 import Review from "./pages/exam/Review";
 import UserDetails from "./pages/admin/UserDetails";
 import OurSuccess from "./pages/OurSuccess";
+import Overview from "./pages/Overview";
+import Spinner from "./components/Spinner";
 import Modal from "react-modal";
 import { pdfjs } from "react-pdf";
 import ClassAdd from "./pages/admin/ClassAdd";
 import Classes from "./pages/Classes";
 import { disableReactDevTools } from "@fvilers/disable-react-devtools";
 import ResultsByExam from "./pages/exam/ResultsByExam";
-import { startExam } from "../redux/features/quiz/quizSlice";
-import { addResult } from "../redux/features/quiz/resultSlice";
-import { attempts_Number, earnPoints_Number } from "./helper/helper";
 import { useCookies } from "react-cookie";
 import CookieConsent from "./components/CookieConsent";
 
 axios.defaults.withCredentials = true;
 
 const Wrapper = ({ children }) => {
-  const location = useLocation();
   const [cookies] = useCookies(["g_state", "token"]);
 
-  useLayoutEffect(() => {
-    document.documentElement.scrollTo(0, 0);
-  }, [location]);
+  // Scroll reset on route change is handled once by <ScrollToTop /> (instant);
+  // no second smooth scroll here, which would otherwise glide on every nav.
   return (
     <div className="relative">
       {children}
-      {
-      !cookies.g_state && !cookies.token && 
-      <CookieConsent />}
+      {!cookies.g_state && !cookies.token && <CookieConsent />}
     </div>
   );
+};
+
+// Dashboard routes: only for logged-in users; otherwise back to login.
+const RequireAuth = () => {
+  const isLoggedIn = useSelector(selectIsLoggedIn);
+  return isLoggedIn ? <Outlet /> : <Navigate to="/login" replace />;
+};
+
+// Public/auth routes: logged-in users are sent straight to the dashboard.
+const RedirectIfAuth = () => {
+  const isLoggedIn = useSelector(selectIsLoggedIn);
+  return isLoggedIn ? <Navigate to="/dashboard" replace /> : <Outlet />;
 };
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -86,339 +85,104 @@ function App() {
   const dispatch = useDispatch();
   const isLoggedIn = useSelector(selectIsLoggedIn);
   const user = useSelector(selectUser);
+  const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    dispatch(getLoginStatus());
+    Promise.resolve(dispatch(getLoginStatus())).finally(() => setChecked(true));
+  }, [dispatch]);
 
+  useEffect(() => {
     if (isLoggedIn && user === null) {
       dispatch(getUser());
     }
   }, [dispatch, isLoggedIn, user]);
+
   Modal.setAppElement("#root");
 
   if (import.meta.env.VITE_DEVELOPMENT_STATUS === "production") {
     disableReactDevTools();
   }
 
-  // const {
-  //   singleExam,
-  //   isExamStarted,
-  //   singleClass,
-  //   singleTag,
-  //   queue,
-  //   userAnswers,
-  //   isLoading,
-  // } = useSelector((state) => state.quiz);
-
-  // const [timer, setTimer] = useState(() => {
-  //   const storedTimer = !isNaN(parseInt(localStorage.getItem("quizCountdown")))
-  //     ? parseInt(localStorage.getItem("quizCountdown"))
-  //     : singleExam?.duration;
-
-  //   return storedTimer ? parseInt(storedTimer, 10) : singleExam?.duration;
-  // });
-
-  // useEffect(() => {
-  //   if (!isLoading && singleExam && isExamStarted) {
-  //     localStorage.setItem("quizCountdown", timer.toString());
-  //   }
-  // }, [timer, isLoading, singleExam]);
-
-  // const calculateResultData = () => {
-  //   const attempts = attempts_Number(userAnswers);
-  //   const earnPoints = earnPoints_Number(
-  //     userAnswers,
-  //     queue[0].correctAnswers,
-  //     queue[0],
-  //     singleClass,
-  //     singleTag
-  //   );
-  //   console.log(queue[0].correctAnswers);
-  //   return {
-  //     attempts,
-  //     earnPoints: earnPoints.earnedPoints > 0 ? earnPoints.earnedPoints : 0,
-  //     selectedAnswers: userAnswers.map((answer) => ({
-  //       type: answer?.type,
-  //       answer: answer?.answer,
-  //     })),
-  //     correctAnswers: queue[0].correctAnswers.map((answer) => ({
-  //       type: answer.type,
-  //       answer: answer.answer,
-  //     })),
-  //     correctAnswersByType: earnPoints.correctAnswersByType.map((item) => ({
-  //       type: item.type,
-  //       count: item.count,
-  //     })),
-  //   };
-  // };
-
-  // useEffect(() => {
-  //   if (isExamStarted && timer > 0) {
-  //     const timerInterval = setInterval(() => {
-  //       setTimer((prevTimer) => prevTimer - 1);
-  //     }, 1000);
-
-  //     return () => clearInterval(timerInterval);
-  //   } else if (timer === 0) {
-  //     try {
-  //       const resultData = calculateResultData();
-  //       console.log(resultData)
-  //       dispatch(addResult({ examId: singleExam._id, resultData }));
-  //       dispatch(startExam(false));
-  //       localStorage.removeItem("quizCountdown");
-  //       // Redirect the user to the result page or take any other appropriate action
-  //       // Example:
-  //       window.location.assign(`/exam/${singleExam._id}/result`);
-  //     } catch (error) {
-  //       console.error("Error submitting answer sheet:", error);
-  //       // Handle error appropriately
-  //     }
-  //   }
-  // }, [isExamStarted, timer]);
+  if (!checked) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-bg">
+        <Spinner size={48} className="text-primary" />
+      </div>
+    );
+  }
 
   return (
-    <>
-      <BrowserRouter>
-        <Wrapper>
-          <ToastContainer />
-          <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
-            <Routes>
+    <BrowserRouter>
+      <ScrollToTop />
+      <Wrapper>
+        <ToastContainer />
+        <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+          <Routes>
+            {/* Public marketing + auth (logged-in users redirected to /dashboard) */}
+            <Route element={<RedirectIfAuth />}>
               <Route
                 index
-                exact
                 element={
                   <Layout>
                     <Home />
                   </Layout>
                 }
               />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+            </Route>
 
-              <Route path="/login" exact element={<Login />} />
+            {/* Auth utility routes */}
+            <Route path="/forgot" element={<Forgot />} />
+            <Route path="/resetPassword/:resetToken" element={<Reset />} />
+            <Route path="/loginWithCode/:email" element={<LoginWithCode />} />
+            <Route path="/verify/:verificationToken" element={<Verify />} />
 
-              <Route path="/register" exact element={<Register />} />
+            {/* Public marketing page (open to everyone) */}
+            <Route
+              path="/ourSuccess"
+              element={
+                <Layout>
+                  <OurSuccess />
+                </Layout>
+              }
+            />
 
-              <Route path="/forgot" exact element={<Forgot />} />
+            {/* Dashboard area (logged-in only) */}
+            <Route element={<RequireAuth />}>
+              <Route path="/dashboard" element={<Overview />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/changePassword" element={<ChangePassword />} />
+              <Route path="/users" element={<UserList />} />
+              <Route path="/myResults" element={<MyResults />} />
+              <Route path="/myExams" element={<MyExams />} />
+              <Route path="/user/:id/details" element={<UserDetails />} />
+              <Route path="/tagAdd" element={<TagAdd />} />
+              <Route path="/classAdd/:tagId" element={<ClassAdd />} />
+              <Route path="/examAdd/:classId" element={<ExamAdd />} />
+              <Route path="/exam/edit/:examId" element={<ExamEdit />} />
+              <Route path="/tag/edit/:tagId" element={<TagEdit />} />
 
-              <Route
-                path="/resetPassword/:resetToken"
-                exact
-                element={<Reset />}
-              />
+              <Route path="/tags" element={<Tags />} />
+              <Route path="/class/:tagId" element={<Classes />} />
+              <Route path="/exam/:classId" element={<Exams />} />
+              <Route path="/exams/:id" element={<Exams />} />
+              <Route path="/exam/details/:examId" element={<ExamInstructions />} />
+              <Route path="/exam/:examId/result" element={<Result />} />
+              <Route path="/exam/:examId/resultsByExam" element={<ResultsByExam />} />
 
-              <Route
-                path="/loginWithCode/:email"
-                exact
-                element={<LoginWithCode />}
-              />
+              {/* Full-width focus pages (PDF builder / review / exam runner) */}
+              <Route path="/exam/:examId/addQuestion" element={<QuestionAdd />} />
+              <Route path="/result/:resultId/review" element={<Review />} />
+              <Route path="/exam/:examId/start" element={<Quiz />} />
+            </Route>
 
-              <Route
-                path="/verify/:verificationToken"
-                exact
-                element={<Verify />}
-              />
-
-              <Route
-                path="/profile"
-                exact
-                element={
-                  <Layout>
-                    <Profile />
-                  </Layout>
-                }
-              />
-
-              <Route
-                path="/changePassword"
-                exact
-                element={
-                  <Layout>
-                    <ChangePassword />
-                  </Layout>
-                }
-              />
-
-              <Route
-                path="/users"
-                exact
-                element={
-                  <Layout>
-                    <UserList />
-                  </Layout>
-                }
-              />
-
-              <Route
-                path="/tags"
-                exact
-                element={
-                  <Layout>
-                    <Tags />
-                  </Layout>
-                }
-              />
-
-              <Route
-                path="/exams/:id"
-                exact
-                element={
-                  <Layout>
-                    <Exams />
-                  </Layout>
-                }
-              />
-
-              <Route
-                path="/exam/:classId"
-                exact
-                element={
-                  <Layout>
-                    <Exams />
-                  </Layout>
-                }
-              />
-
-              <Route
-                path="/class/:tagId"
-                exact
-                element={
-                  <Layout>
-                    <Classes />
-                  </Layout>
-                }
-              />
-
-              <Route
-                path="/classAdd/:tagId"
-                exact
-                element={
-                  <Layout>
-                    <ClassAdd />
-                  </Layout>
-                }
-              />
-
-              <Route
-                path="/examAdd/:classId"
-                exact
-                element={
-                  <Layout>
-                    <ExamAdd />
-                  </Layout>
-                }
-              />
-
-              <Route
-                path="/tagAdd"
-                exact
-                element={
-                  <Layout>
-                    <TagAdd />
-                  </Layout>
-                }
-              />
-
-              <Route
-                path="/exam/edit/:examId"
-                exact
-                element={
-                  <Layout>
-                    <ExamEdit />
-                  </Layout>
-                }
-              />
-
-              <Route
-                path="/exam/:examId/addQuestion"
-                exact
-                element={
-                  <Layout>
-                    <QuestionAdd />
-                  </Layout>
-                }
-              />
-
-              <Route
-                path="/exam/details/:examId"
-                exact
-                element={
-                  <Layout>
-                    <ExamInstructions />
-                  </Layout>
-                }
-              />
-
-              <Route path="/exam/:examId/start" exact element={<Quiz />} />
-              <Route path="/exam/:examId/result" exact element={<Result />} />
-              <Route
-                path="/exam/:examId/resultsByExam"
-                exact
-                element={
-                  <Layout>
-                    <ResultsByExam />
-                  </Layout>
-                }
-              />
-
-              <Route
-                path="/tag/edit/:tagId"
-                exact
-                element={
-                  <Layout>
-                    <TagEdit />
-                  </Layout>
-                }
-              />
-
-              <Route
-                path="/myResults"
-                exact
-                element={
-                  <Layout>
-                    <MyResults />
-                  </Layout>
-                }
-              />
-              <Route
-                path="/myExams"
-                exact
-                element={
-                  <Layout>
-                    <MyExams />
-                  </Layout>
-                }
-              />
-              <Route
-                path="/result/:resultId/review"
-                exact
-                element={
-                  <Layout>
-                    <Review />
-                  </Layout>
-                }
-              />
-              <Route
-                path="/user/:id/details"
-                exact
-                element={
-                  <Layout>
-                    <UserDetails />
-                  </Layout>
-                }
-              />
-              <Route
-                path="/ourSuccess"
-                exact
-                element={
-                  <Layout>
-                    <OurSuccess />
-                  </Layout>
-                }
-              />
-            </Routes>
-          </GoogleOAuthProvider>
-        </Wrapper>
-      </BrowserRouter>
-    </>
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </GoogleOAuthProvider>
+      </Wrapper>
+    </BrowserRouter>
   );
 }
 

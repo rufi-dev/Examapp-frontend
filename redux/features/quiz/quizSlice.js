@@ -722,7 +722,7 @@ const quizSlice = createSlice({
         state.isSuccess = true;
         state.isError = false;
         state.myExams.push(action.payload);
-        toast.success("Exam bought successfully");
+        toast.success("İmtahan əlavə edildi");
       })
       .addCase(addExamToUser.rejected, (state, action) => {
         state.isLoading = false;

@@ -1,70 +1,81 @@
-// src/ExamResult.js
-import React, { useEffect } from 'react';
-import useRedirectLoggedOutUser from '../../customHook/useRedirectLoggedOutUser';
-import { useDispatch, useSelector } from 'react-redux';
-import { getResultsByUser } from '../../../redux/features/quiz/resultSlice';
-import Loader from '../../components/Loader';
-import PageMenu from '../../components/PageMenu';
-import { VscPreview } from 'react-icons/vsc';
-import { Link } from 'react-router-dom';
+import { useEffect } from "react";
+import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser";
+import { useDispatch, useSelector } from "react-redux";
+import { getResultsByUser } from "../../../redux/features/quiz/resultSlice";
+import Loader from "../../components/Loader";
+import AccountLayout from "../../components/AccountLayout";
+import { FiEye } from "react-icons/fi";
+import { Link } from "react-router-dom";
+import Button from "../../components/ui/Button";
 
 const MyResults = () => {
-    useRedirectLoggedOutUser("/login")
-    const dispatch = useDispatch()
+  useRedirectLoggedOutUser("/login");
+  const dispatch = useDispatch();
 
-    const { user } = useSelector(state => state.auth)
-    const { result, isLoading } = useSelector(state => state.result)
+  const { user } = useSelector((state) => state.auth);
+  const { result, isLoading } = useSelector((state) => state.result);
 
-    useEffect(() => {
-        dispatch(getResultsByUser())
-    }, [dispatch])
+  useEffect(() => {
+    dispatch(getResultsByUser());
+  }, [dispatch]);
 
-    if (isLoading) return <Loader />
+  if (isLoading) return <Loader />;
 
-    return (
-        <div className='max-w-[1640px] px-4 mx-auto py-10'>
-            <PageMenu />
-            {user && result && (result.length > 0 ? (
-                <div className='overflow-x-scroll scrollbar-thumb-[#888888] scrollbar-thin scrollbar-rounded-[20px]'>
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attempts</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exam</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Points</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {result.map((res) => (
-                                <tr key={res?._id}>
-                                    <td className="px-6 py-4 whitespace-nowrap">{user?.name}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap">{res?.attempts}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap">{res?.examId?.name}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap">{res?.earnPoints}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap flex gap-5">
-                                        {/* {res?.isPassed ? (
-                                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                                Passed
-                                            </span>
-                                        ) : (
-                                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                                Failed
-                                            </span>
-                                        )} */}
-                                        <Link to={`/result/${res._id}/review`} className="text-[#1084da] text-[20px]"><VscPreview /></Link>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            ) :
-                <div className='text-center font-bold text-[40px]'>No Results Yet</div>
-            )}
-        </div>
-    );
+  return (
+    <AccountLayout title="Nəticələrim" subtitle="Həll etdiyin bütün sınaqların nəticələri.">
+      {user && result && result.length > 0 ? (
+          <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-soft scrollbar-thin">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
+                  <th className="px-6 py-4 font-semibold">Ad</th>
+                  <th className="px-6 py-4 font-semibold">Cəhd</th>
+                  <th className="px-6 py-4 font-semibold">İmtahan</th>
+                  <th className="px-6 py-4 font-semibold">Bal</th>
+                  <th className="px-6 py-4 text-right font-semibold">Təhlil</th>
+                </tr>
+              </thead>
+              <tbody>
+                {result.map((res) => (
+                  <tr
+                    key={res?._id}
+                    className="border-b border-line/60 transition-colors last:border-0 hover:bg-surface2/50"
+                  >
+                    <td className="whitespace-nowrap px-6 py-4 font-medium text-text">{user?.name}</td>
+                    <td className="whitespace-nowrap px-6 py-4 text-muted">{res?.attempts}</td>
+                    <td className="whitespace-nowrap px-6 py-4 text-text">{res?.examId?.name}</td>
+                    <td className="whitespace-nowrap px-6 py-4">
+                      <span className="inline-flex items-center rounded-full bg-primary/12 px-2.5 py-1 text-xs font-semibold text-primary">
+                        {res?.earnPoints} bal
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-right">
+                      <Link
+                        to={`/result/${res._id}/review`}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line text-muted transition-colors hover:border-primary/40 hover:text-primary"
+                        aria-label="Təhlilə bax"
+                      >
+                        <FiEye />
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="rounded-3xl border border-dashed border-line bg-surface p-16 text-center">
+            <p className="font-display text-xl font-bold text-text">Hələ nəticə yoxdur</p>
+            <p className="mx-auto mt-2 max-w-sm text-muted">
+              İlk sınaq imtahanını həll et və nəticən burada görünsün.
+            </p>
+            <Button to="/tags" className="mt-6">
+              İmtahanlara bax
+            </Button>
+          </div>
+      )}
+    </AccountLayout>
+  );
 };
 
 export default MyResults;

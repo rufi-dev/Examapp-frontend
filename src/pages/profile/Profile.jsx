@@ -1,34 +1,41 @@
-import { useEffect, useLayoutEffect, useState } from 'react'
-import profile from '../../assets/profile.jpg'
-import PageMenu from '../../components/PageMenu'
-import useRedirectLoggedOutUser from '../../customHook/useRedirectLoggedOutUser'
-import { useDispatch, useSelector } from 'react-redux'
-import { getUser, selectUser, updateUser } from '../../../redux/features/auth/authSlice'
-import Loader from '../../components/Loader'
-import { toast } from 'react-toastify'
-import { Link, NavLink } from 'react-router-dom'
-import Notification from '../../components/notification/Notification'
-import { TailSpin } from 'react-loader-spinner'
-import { RiArrowDropDownLine } from 'react-icons/ri'
-import Spinner from '../../components/Spinner'
+import { useEffect, useLayoutEffect, useState } from "react";
+import AccountLayout from "../../components/AccountLayout";
+import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser";
+import { useDispatch, useSelector } from "react-redux";
+import { getUser, selectUser, updateUser } from "../../../redux/features/auth/authSlice";
+import { toast } from "react-toastify";
+import { NavLink } from "react-router-dom";
+import { TailSpin } from "react-loader-spinner";
+import { RiArrowDropDownLine } from "react-icons/ri";
+import { FiCamera } from "react-icons/fi";
+import Button from "../../components/ui/Button";
+import Badge from "../../components/ui/Badge";
+import Spinner from "../../components/Spinner";
+import { Field, inputClass, textareaClass } from "../../components/ui/Field";
 
-const cloud_name = import.meta.env.VITE_CLOUD_NAME
-const upload_preset = import.meta.env.VITE_UPLAD_PRESET
+const cloud_name = import.meta.env.VITE_CLOUD_NAME;
+const upload_preset = import.meta.env.VITE_UPLAD_PRESET;
 
 export const shortenText = (text, n) => {
   if (text.length > n) {
-    const shortenedText = text.substring(0, n).concat("...")
-    return shortenedText
+    return text.substring(0, n).concat("...");
   }
-  return text
-}
+  return text;
+};
+
+const roleLabels = {
+  admin: "Admin",
+  teacher: "Müəllim",
+  student: "Tələbə",
+  suspended: "Bloklanıb",
+};
 
 const Profile = () => {
-  const dispatch = useDispatch()
+  const dispatch = useDispatch();
 
-  useRedirectLoggedOutUser("/login")
+  useRedirectLoggedOutUser("/login");
 
-  const { isLoading, isLoggedIn, isSuccess, message, user } = useSelector(state => state.auth)
+  const { isLoading, user } = useSelector((state) => state.auth);
 
   const initialState = {
     name: user?.name || "",
@@ -38,60 +45,67 @@ const Profile = () => {
     role: user?.role || "",
     photo: user?.photo || "",
     isVerified: user?.isVerified || false,
-  }
-  const [profileData, setProfileData] = useState(initialState)
-  const [profileImage, setProfileImage] = useState(null)
-  const [imagePreview, setImagePreview] = useState(null)
+  };
+  const [profileData, setProfileData] = useState(initialState);
+  const [profileImage, setProfileImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
 
-  const { name, email, phone, bio, role, isVerified } = profileData
+  const { name, email, phone, bio, role, isVerified } = profileData;
 
   const handleImageChange = (e) => {
-    setProfileImage(e.target.files[0])
-    setImagePreview(URL.createObjectURL(e.target.files[0]))
-  }
+    setProfileImage(e.target.files[0]);
+    setImagePreview(URL.createObjectURL(e.target.files[0]));
+  };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target
-    setProfileData({ ...profileData, [name]: value })
-  }
+    const { name, value } = e.target;
+    setProfileData({ ...profileData, [name]: value });
+  };
 
   const handleUpdate = async (e) => {
-    e.preventDefault()
-    let imageUrl;
+    e.preventDefault();
+    // Default to the existing photo; only replaced if a new upload succeeds.
+    let imageUrl = profileData.photo;
     try {
-      if (profileImage !== null && (
-        profileImage.type === "image/jpeg" ||
-        profileImage.type === "image/jpg" ||
-        profileImage.type === "image/png"
-      )) {
-        const image = new FormData()
-        image.append("file", profileImage)
-        image.append("cloud_name", cloud_name)
-        image.append("upload_preset", upload_preset)
+      if (
+        profileImage !== null &&
+        (profileImage.type === "image/jpeg" ||
+          profileImage.type === "image/jpg" ||
+          profileImage.type === "image/png")
+      ) {
+        if (!cloud_name || !upload_preset) {
+          return toast.error("Şəkil yükləmə konfiqurasiya olunmayıb (Cloudinary)");
+        }
 
-        // Save image to cloudinary
+        const image = new FormData();
+        image.append("file", profileImage);
+        image.append("cloud_name", cloud_name);
+        image.append("upload_preset", upload_preset);
+
         const response = await fetch(
           `https://api.cloudinary.com/v1_1/${cloud_name}/image/upload`,
           { method: "post", body: image }
-        )
+        );
 
-        const imgData = await response.json()
-        imageUrl = imgData.url.toString()
+        const imgData = await response.json();
+        if (!response.ok || !(imgData.secure_url || imgData.url)) {
+          return toast.error(imgData?.error?.message || "Şəkil yüklənmədi, yenidən cəhd edin");
+        }
+        imageUrl = (imgData.secure_url || imgData.url).toString();
       }
 
-      // Save profile to MongoDB
       const userData = {
         name: profileData.name,
         phone: profileData.phone,
         bio: profileData.bio,
-        photo: profileImage ? imageUrl : profileData.photo
-      }
-      await dispatch(updateUser(userData))
+        photo: imageUrl,
+      };
+      await dispatch(updateUser(userData));
+      toast.success("Profil yeniləndi");
     } catch (error) {
-      toast.error(error.message)
+      toast.error(error.message);
     }
-  }
-
+  };
 
   useLayoutEffect(() => {
     if (user) {
@@ -106,91 +120,107 @@ const Profile = () => {
         isVerified: user.isVerified,
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   useEffect(() => {
-    dispatch(getUser())
-  }, [dispatch])
+    dispatch(getUser());
+  }, [dispatch]);
 
   return (
-    <>
-
-      {/* {!profileData.isVerified && <Notification />} */}
-      <section className='px-8 mx-auto max-w-[1440px] my-14'>
-        <PageMenu />
-        {!isLoading && user && isSuccess && (
+    <AccountLayout>
+      {!user ? (
+        <div className="flex justify-center py-24">
+          <TailSpin height="80" width="80" color="oklch(0.55 0.185 270)" visible />
+        </div>
+      ) : (
           <>
-            <div className='flex items-center gap-5'>
-              <div className='w-[130px]'>
-                <label htmlFor="image" className='cursor-pointer'>
-                  <img src={imagePreview === null ? user.photo : imagePreview} alt="" className='w-full h-[130px] bg-cover rounded-full shadow-2xl bg-center' />
-                </label>
-                <input type="file" className='mt-3 hidden' accept='image/*' id='image' name='image' onChange={handleImageChange} />
-              </div>
-              <div>
-                <h3 className='font-bold text-[25px]'>{profileData?.name}</h3>
-                <p className='font-semibold'>Role: {profileData?.role}</p>
+            {/* Header */}
+            <div className="flex flex-col items-center gap-6 rounded-3xl border border-line bg-surface p-6 shadow-soft sm:flex-row sm:p-8">
+              <label htmlFor="image" className="group relative shrink-0 cursor-pointer">
+                <img
+                  src={imagePreview === null ? user.photo : imagePreview}
+                  alt={user.name}
+                  className="h-28 w-28 rounded-full border border-line object-cover shadow-soft"
+                />
+                <span className="absolute inset-0 grid place-items-center rounded-full bg-black/45 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                  <FiCamera className="text-2xl" />
+                </span>
+              </label>
+              <input
+                type="file"
+                className="hidden"
+                accept="image/*"
+                id="image"
+                name="image"
+                onChange={handleImageChange}
+              />
+              <div className="text-center sm:text-left">
+                <div className="flex flex-wrap items-center justify-center gap-2.5 sm:justify-start">
+                  <h1 className="font-display text-2xl font-bold text-text">{profileData?.name}</h1>
+                  <Badge tone={role === "admin" ? "primary" : role === "teacher" ? "accent" : "neutral"}>
+                    {roleLabels[role] || role}
+                  </Badge>
+                  {isVerified ? (
+                    <Badge tone="success">Təsdiqlənib</Badge>
+                  ) : (
+                    <Badge tone="warning">Təsdiqlənməyib</Badge>
+                  )}
+                </div>
+                <p className="mt-1.5 text-muted">{profileData?.email}</p>
+                <p className="mt-1 text-sm text-muted">Profil şəklini dəyişmək üçün şəklin üzərinə kliklə.</p>
               </div>
             </div>
-            <form action="" className='grid md:grid-cols-2 mt-5 md:gap-10 gap-4' onSubmit={handleUpdate}>
-              <div className='flex flex-col col-span-2 md:col-span-1'>
-                <label htmlFor="name">Ad və Soyad</label>
-                <input type="text" id='name' value={name} onChange={handleInputChange} name='name' className='w-full border px-3 py-1 outline-none' />
+
+            {/* Form */}
+            <form
+              onSubmit={handleUpdate}
+              className="mt-6 rounded-3xl border border-line bg-surface p-6 shadow-soft sm:p-8"
+            >
+              <div className="grid gap-6 md:grid-cols-2">
+                <Field label="Ad və Soyad" htmlFor="name">
+                  <input id="name" name="name" value={name} onChange={handleInputChange} className={inputClass} />
+                </Field>
+                <Field label="Email" htmlFor="email" hint="Email dəyişdirilə bilməz">
+                  <input id="email" name="email" type="email" disabled value={email} className={inputClass} />
+                </Field>
+                <Field label="Telefon" htmlFor="phone">
+                  <input id="phone" name="phone" value={phone} onChange={handleInputChange} className={inputClass} />
+                </Field>
+                <Field label="Haqqımda" htmlFor="bio">
+                  <textarea id="bio" name="bio" value={bio} onChange={handleInputChange} className={textareaClass} />
+                </Field>
               </div>
-              <div className='flex flex-col col-span-2 md:col-span-1'>
-                <label htmlFor="email">Email</label>
-                <input type="email" id='email' disabled value={email} onChange={handleInputChange} name='email' className='border px-3 py-1 outline-none w-full' />
-              </div>
-              <div className='flex flex-col col-span-2 md:col-span-1'>
-                <label htmlFor="phone">Telefon</label>
-                <input type="text" id='phone' value={phone} onChange={handleInputChange} name='phone' className='border px-3 py-1 outline-none w-full' />
-              </div>
-              <div className='flex flex-col col-span-2 md:col-span-1'>
-                <label htmlFor="bio">Haqqımda</label>
-                <textarea id='bio' value={bio} name='bio' onChange={handleInputChange} className='border px-3 py-1 outline-none w-full' />
-              </div>
-              <div className='flex justify-between items-center w-full col-span-2'>
-                {
-                  isLoading ?
-                    <button type='submit' className='border-[#1084da] border-2 font-semibold text-[#1084da] w-[150px] h-[40px]'><Spinner /></button>
-                    :
-                    <button type='submit' className='border-[#1084da] border-2 font-semibold text-[#1084da] w-[150px] h-[40px]'>Yadda Saxla</button>
-                }
-                <Link to="/tags" className='bg-[#1084da] border-2 font-semibold text-[white] px-4 py-2'>İmtahanlar</Link>
+
+              <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? <Spinner /> : "Yadda saxla"}
+                </Button>
+                <Button to="/tags" variant="soft">
+                  İmtahanlar
+                </Button>
               </div>
             </form>
           </>
         )}
-        {isLoading &&
-          <div className="flex w-full justify-center">
-            <TailSpin
-              height="130"
-              width="130"
-              color="#1084da"
-              ariaLabel="triangle-loading"
-              wrapperStyle={{}}
-              wrapperClassName=""
-              visible={true}
-            />
-          </div>
-        }
-
-      </section>
-    </>
-  )
-}
+    </AccountLayout>
+  );
+};
 
 export const UserName = () => {
-  const user = useSelector(selectUser)
-  const username = user?.name || "..."
-  const activeLink = ({ isActive }) => (isActive) ? "text-[#1084da] flex items-center" : "flex items-center"
+  const user = useSelector(selectUser);
+  const username = user?.name || "...";
+  const activeLink = ({ isActive }) =>
+    `flex items-center transition-colors ${isActive ? "text-primary" : "text-text hover:text-primary"}`;
 
-  return <NavLink to={"/profile"} className={activeLink}>
-    Salam, {shortenText(username, 15)}
-    <span className="text-[30px]">
-      <RiArrowDropDownLine />
-    </span>
-  </NavLink>
-}
+  return (
+    <NavLink to={"/profile"} className={activeLink}>
+      Salam, {shortenText(username, 15)}
+      <span className="text-[26px]">
+        <RiArrowDropDownLine />
+      </span>
+    </NavLink>
+  );
+};
 
-export default Profile
+export default Profile;

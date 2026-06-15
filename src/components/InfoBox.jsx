@@ -1,19 +1,26 @@
-import { Link } from "react-router-dom"
+const tones = {
+  primary: "bg-primary/12 text-primary",
+  success: "bg-success/15 text-success",
+  muted: "bg-surface2 text-muted",
+  danger: "bg-danger/12 text-danger",
+};
 
-const InfoBox = ({ bgColor, title, count, icon }) => {
-    return (
-        
-                <Link to="" className={`flex text-center md:text-left md:gap-5 flex-col items-center px-4 ${bgColor} py-4 border border-gray-200 rounded-lg shadow md:flex-row max-w-[400px]  dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700`}>
-                    <div className='text-[30px]'>
-                        {icon}
-                    </div>
-                    <div class="flex flex-col justify-between py-2 leading-normal">
-                        <h5 class="text-xl  dark:text-white">{title}</h5>
-                        <p class="font-bold text-[20px]  dark:text-gray-400">{count}</p>
-                    </div>
-                </Link>
+const InfoBox = ({ tone = "primary", title, count, icon }) => {
+  return (
+    <div className="flex items-center gap-4 rounded-2xl border border-line bg-surface p-5 shadow-soft">
+      <span
+        className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl text-[22px] ${
+          tones[tone] || tones.primary
+        }`}
+      >
+        {icon}
+      </span>
+      <div>
+        <p className="text-sm text-muted">{title}</p>
+        <p className="font-display text-2xl font-bold text-text">{count}</p>
+      </div>
+    </div>
+  );
+};
 
-    )
-}
-
-export default InfoBox
+export default InfoBox;

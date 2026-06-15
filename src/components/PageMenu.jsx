@@ -1,44 +1,48 @@
-import { Link, NavLink } from "react-router-dom"
-import { AdminTeacherLink } from "./protect/hiddenLink"
-import { useSelector } from "react-redux"
-const PageMenu = () => {
-    const { result } = useSelector(state => state.result)
-    return (
-        <div className="px-4 bg-[#1084da] py-3 mb-10">
-            <ul className="text-sm gap-5 text-white flex justify-around flex-wrap">
-                <NavLink to={"/"} className={({ isActive }) =>
-                    isActive ? "border-b-2 pb-1 border-white text-[20px] whitespace-nowrap" : "text-[20px] whitespace-nowrap"}>
-                    <li>Ana Səhifə</li>
-                </NavLink>
-                <NavLink to={"/profile"} className={({ isActive }) =>
-                    isActive ? "border-b-2 pb-1 border-white text-[20px] whitespace-nowrap" : "text-[20px] whitespace-nowrap"}>
-                    <li>Haqqımda</li>
-                </NavLink>
-                <NavLink to={"/myResults"} className={({ isActive }) =>
-                    isActive ? "border-b-2 pb-1 border-white text-[20px] whitespace-nowrap" : "text-[20px] whitespace-nowrap"}>
-                    <li>Nəticələrim</li>
-                </NavLink>
-                <NavLink to={"/myExams"} className={({ isActive }) =>
-                    isActive ? "border-b-2 pb-1 border-white text-[20px] whitespace-nowrap" : "text-[20px] whitespace-nowrap"}>
-                    <li>İmtahanlarım</li>
-                </NavLink>
-                <NavLink to={"/changePassword"} className={({ isActive }) =>
-                    isActive ? "border-b-2 pb-1 border-white text-[20px] whitespace-nowrap" : "text-[20px] whitespace-nowrap"}>
-                    <li>Şifrəni dəyiş</li>
-                </NavLink>
-                <AdminTeacherLink>
-                    <NavLink to={"/users"} className={({ isActive }) =>
-                        isActive ? "border-b-2 pb-1 border-white text-[20px] whitespace-nowrap" : "text-[20px] whitespace-nowrap"}>
-                        <li>İstifadəçilər</li>
-                    </NavLink>
-                    <NavLink to={"/tagAdd"} className={({ isActive }) =>
-                        isActive ? "border-b-2 pb-1 border-white text-[20px] whitespace-nowrap" : "text-[20px] whitespace-nowrap"}>
-                        <li>İmtahan Kategoriasi</li>
-                    </NavLink>
-                </AdminTeacherLink>
-            </ul>
-        </div>
-    )
-}
+import { NavLink } from "react-router-dom";
+import { AdminTeacherLink } from "./protect/hiddenLink";
 
-export default PageMenu
+const items = [
+  { to: "/", label: "Ana səhifə", end: true },
+  { to: "/profile", label: "Haqqımda" },
+  { to: "/myResults", label: "Nəticələrim" },
+  { to: "/myExams", label: "İmtahanlarım" },
+  { to: "/changePassword", label: "Şifrəni dəyiş" },
+];
+
+const adminItems = [
+  { to: "/users", label: "İstifadəçilər" },
+  { to: "/tagAdd", label: "İmtahan kateqoriyası" },
+];
+
+const pill = ({ isActive }) =>
+  `rounded-xl px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
+    isActive ? "bg-primary text-primary-fg shadow-soft" : "text-muted hover:bg-surface2 hover:text-text"
+  }`;
+
+const PageMenu = () => {
+  return (
+    <nav className="mb-8 overflow-x-auto scrollbar-none">
+      <ul className="flex min-w-max gap-1 rounded-2xl border border-line bg-surface p-1.5 shadow-soft">
+        {items.map((it) => (
+          <li key={it.to}>
+            <NavLink to={it.to} end={it.end} className={pill}>
+              {it.label}
+            </NavLink>
+          </li>
+        ))}
+        <AdminTeacherLink>
+          <span className="mx-1 my-1.5 w-px shrink-0 bg-line" aria-hidden />
+          {adminItems.map((it) => (
+            <li key={it.to}>
+              <NavLink to={it.to} className={pill}>
+                {it.label}
+              </NavLink>
+            </li>
+          ))}
+        </AdminTeacherLink>
+      </ul>
+    </nav>
+  );
+};
+
+export default PageMenu;

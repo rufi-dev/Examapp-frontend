@@ -1,19 +1,18 @@
-import React from "react";
-
 const YoutubeVideoEmbed = ({ videoLink }) => {
   const videoId = videoLink?.slice(32, 43);
-  console.log(videoId);
+  if (!videoId) return null;
   return (
-    <iframe
-      width="100%"
-      height="400"
-      src={`https://www.youtube.com/embed/${videoId}`}
-      title="YouTube video player"
-      frameborder="0"
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-      referrerpolicy="strict-origin-when-cross-origin"
-      allowfullscreen
-    ></iframe>
+    <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-soft">
+      <iframe
+        className="aspect-video w-full"
+        src={`https://www.youtube.com/embed/${videoId}`}
+        title="YouTube video player"
+        frameBorder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        referrerPolicy="strict-origin-when-cross-origin"
+        allowFullScreen
+      ></iframe>
+    </div>
   );
 };
 

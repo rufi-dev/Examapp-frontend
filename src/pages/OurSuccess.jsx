@@ -1,164 +1,158 @@
-import React, { useEffect, useState } from 'react'
-import project2 from "../assets/project-2.jpg"
-import 'react-responsive-modal/styles.css';
-import { Modal } from 'react-responsive-modal';
-import { useDispatch, useSelector } from 'react-redux';
-import { deleteAchivement, getAchivements } from '../../redux/features/achivement/achivementSlice';
-import Masonry, { ResponsiveMasonry } from "react-responsive-masonry"
-import { AdminTeacherLink } from '../components/protect/hiddenLink';
-import AchivementModal from '../components/AchivementModal';
-import { TailSpin } from 'react-loader-spinner';
-import { motion } from "framer-motion"
-import BluredImage from '../components/BluredImage';
-import { AiFillDelete, AiOutlineMinus, AiOutlinePlus } from 'react-icons/ai';
-import { TbZoomReset } from 'react-icons/tb';
+import { useEffect, useState } from "react";
+import "react-responsive-modal/styles.css";
+import { Modal } from "react-responsive-modal";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  deleteAchivement,
+  getAchivements,
+} from "../../redux/features/achivement/achivementSlice";
+import Masonry, { ResponsiveMasonry } from "react-responsive-masonry";
+import { AdminTeacherLink } from "../components/protect/hiddenLink";
+import AchivementModal from "../components/AchivementModal";
+import BluredImage from "../components/BluredImage";
+import { AiFillDelete, AiOutlineMinus, AiOutlinePlus } from "react-icons/ai";
+import { TbZoomReset } from "react-icons/tb";
+import { FiPlus } from "react-icons/fi";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
+import Container from "../components/ui/Container";
+import Button from "../components/ui/Button";
+import Loader from "../components/Loader";
+
+const getImageHeight = (size) => {
+  if (size === "large") return "700px";
+  if (size === "medium") return "500px";
+  if (size === "small") return "400px";
+  return "600px";
+};
 
 const OurSuccess = () => {
-  const dispatch = useDispatch()
-  const { isLoading } = useSelector(state => state.achivement)
+  const dispatch = useDispatch();
+  const { isLoading, achivements } = useSelector((state) => state.achivement);
   const [open, setOpen] = useState(null);
-  const [openPhoto, setOpenPhoto] = useState(null);
-  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(null); // State to track the selected photo index
+  const [openPhoto, setOpenPhoto] = useState(false);
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(null);
+  const [modalIsOpen, setIsOpen] = useState(false);
 
   const onOpenModal = (index) => setOpen(index);
   const onCloseModal = () => setOpen(null);
-
   const onOpenPhotoModal = (index) => {
     setOpenPhoto(true);
     setSelectedPhotoIndex(index);
   };
-
   const onClosePhotoModal = () => {
     setOpenPhoto(false);
     setSelectedPhotoIndex(null);
   };
 
-  const { achivements } = useSelector(state => state.achivement)
-
-
   useEffect(() => {
-    dispatch(getAchivements())
-  }, [dispatch])
-
-  const getImageHeight = (size) => {
-    if (size === 'large') return '700px';
-    if (size === 'medium') return '500px';
-    if (size === 'small') return '400px';
-    return '600px';
-  };
-
-  const [modalIsOpen, setIsOpen] = useState(false);
-
-  function openModal() {
-    setIsOpen(true);
-  }
-
-  function closeModal() {
-    setIsOpen(false);
-  }
+    dispatch(getAchivements());
+  }, [dispatch]);
 
   const achivementDelete = async (id) => {
-    await dispatch(deleteAchivement(id))
-    await dispatch(getAchivements())
-  }
-
+    await dispatch(deleteAchivement(id));
+    await dispatch(getAchivements());
+  };
 
   if (isLoading) {
-    return <div className="flex w-full justify-center py-10">
-      <TailSpin
-        height="130"
-        width="130"
-        color="#1084da"
-        ariaLabel="triangle-loading"
-        wrapperStyle={{}}
-        wrapperClassName=""
-        visible={true}
-      />
-    </div>
+    return <Loader />;
   }
 
   return (
-    <div className='max-w-[1640px] px-4 mx-auto py-6'>
-      <div className='text-center font-semibold text-[40px] py-5'>
-        <h1>Naliyyətlərimiz</h1>
-      </div>
-      <AdminTeacherLink>
-        <div className='flex justify-end my-2'>
-          <button onClick={openModal} className='bg-[#1084da] text-white px-4 py-2 rounded-sm'>Add Achivement</button>
+    <section className="py-12">
+      <Container>
+        <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <span className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
+              Uğurlarımız
+            </span>
+            <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-text sm:text-4xl">
+              Nailiyyətlərimiz
+            </h1>
+            <p className="mt-2 text-muted">Tələbələrimizin qazandığı uğurlar.</p>
+          </div>
+          <AdminTeacherLink>
+            <Button onClick={() => setIsOpen(true)} variant="secondary" size="sm">
+              <FiPlus /> Nailiyyət əlavə et
+            </Button>
+            <AchivementModal modalIsOpen={modalIsOpen} closeModal={() => setIsOpen(false)} />
+          </AdminTeacherLink>
         </div>
 
-        <AchivementModal modalIsOpen={modalIsOpen} closeModal={closeModal} />
-      </AdminTeacherLink>
-      {achivements &&
-        <ResponsiveMasonry
-          columnsCountBreakPoints={{ 350: 1, 750: 2, 900: 3 }}
-        >
-          <Masonry gutter="10px">
-            {achivements.map((achivement, index) => (
-              <motion.div initial={{ opacity: 0, y: 50 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.2 }}
-                style={{ height: getImageHeight(achivement.size) }} key={index}>
-                <div onClick={() => onOpenModal(index)} className={`cursor-pointer relative group h-full`}>
-                  <BluredImage src={achivement.photo} />
-                  <div className='absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black bg-opacity-50 w-full h-full opacity-0 group-hover:opacity-100 flex justify-center items-center transition-opacity duration-300 ease-in-out'>
-                    <h1 className='text-white'>{achivement.title}</h1>
+        {achivements && (
+          <ResponsiveMasonry columnsCountBreakPoints={{ 350: 1, 750: 2, 900: 3 }}>
+            <Masonry gutter="14px">
+              {achivements.map((achivement, index) => (
+                <div
+                  className="animate-fade-in"
+                  style={{ height: getImageHeight(achivement.size) }}
+                  key={index}
+                >
+                  <div
+                    onClick={() => onOpenModal(index)}
+                    className="group relative h-full cursor-pointer overflow-hidden rounded-2xl border border-line"
+                  >
+                    <BluredImage src={achivement.photo} />
+                    <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/70 via-black/10 to-transparent p-5 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                      <h2 className="font-display text-lg font-bold text-white">
+                        {achivement.title}
+                      </h2>
+                    </div>
                   </div>
-                </div>
-                <div className='w-[200px]'>
+
                   <Modal open={open === index} onClose={onCloseModal} center>
-                    <div className="flex flex-col items-center ">
-                      <div className="gap-10">
-                        <h1 className='font-bold text-[20px] break-words max-w-[610px] pb-2'>{achivement.title}</h1>
-
-                      </div>
-                      <div className="modal-body">
-                        <div className="flex flex-col gap-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <div className="col-span-1">
-                              <div className="modal_image cursor-pointer" onClick={() => onOpenPhotoModal(index)}>
-                                <img src={achivement.photo} alt="" className='max-w-[300px]' />
-                              </div>
-
-                            </div>
-                            <div className="col-span-1">
-                              <div className="max-w-[300px]">
-                                <div className='flex justify-between'>
-                                  <h4 className='font-semibold text-[20px]'>Haqqında:</h4>
-                                  <AdminTeacherLink>
-                                    <button onClick={() => achivementDelete(achivement._id)} className='text-[20px] text-[red] flex justify-end'><AiFillDelete /></button>
-                                  </AdminTeacherLink>
-                                </div>
-                                <p className=" break-words">{achivement.about}</p>
-                              </div>
-                            </div>
-
+                    <div className="flex flex-col items-center p-2">
+                      <h2 className="max-w-[610px] break-words pb-3 font-display text-xl font-bold">
+                        {achivement.title}
+                      </h2>
+                      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                        <div
+                          className="cursor-pointer"
+                          onClick={() => onOpenPhotoModal(index)}
+                        >
+                          <img src={achivement.photo} alt="" className="max-w-[300px] rounded-lg" />
+                        </div>
+                        <div className="max-w-[300px]">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-lg font-semibold">Haqqında</h4>
+                            <AdminTeacherLink>
+                              <button
+                                onClick={() => achivementDelete(achivement._id)}
+                                className="text-[20px] text-danger"
+                              >
+                                <AiFillDelete />
+                              </button>
+                            </AdminTeacherLink>
                           </div>
+                          <p className="break-words text-muted">{achivement.about}</p>
                         </div>
                       </div>
                     </div>
                   </Modal>
-                  <Modal open={openPhoto && selectedPhotoIndex === index} onClose={onClosePhotoModal} center>
-                    <div className="flex justify-center mt-2">
+
+                  <Modal
+                    open={openPhoto && selectedPhotoIndex === index}
+                    onClose={onClosePhotoModal}
+                    center
+                  >
+                    <div className="mt-2 flex justify-center">
                       <TransformWrapper>
                         {({ zoomIn, zoomOut, resetTransform }) => (
                           <div>
                             <TransformComponent>
                               <img
                                 src={achivement.photo}
-                                className="w-full rounded-md h-full object-cover"
+                                className="h-full w-full rounded-md object-cover"
                                 alt=""
                               />
                             </TransformComponent>
-                            <div className="flex justify-center mt-2 gap-8">
-                              <button onClick={() => zoomIn(0.2)} className="text-[20px]">
+                            <div className="mt-3 flex justify-center gap-8 text-[20px]">
+                              <button onClick={() => zoomIn(0.2)}>
                                 <AiOutlinePlus />
                               </button>
-                              <button onClick={() => zoomOut(0.2)} className="text-[20px]">
+                              <button onClick={() => zoomOut(0.2)}>
                                 <AiOutlineMinus />
                               </button>
-                              <button onClick={() => resetTransform()} className="text-[20px]">
+                              <button onClick={() => resetTransform()}>
                                 <TbZoomReset />
                               </button>
                             </div>
@@ -168,13 +162,13 @@ const OurSuccess = () => {
                     </div>
                   </Modal>
                 </div>
-              </motion.div>
-            ))}
-          </Masonry>
-        </ResponsiveMasonry>
-      }
-    </div>
-  )
-}
+              ))}
+            </Masonry>
+          </ResponsiveMasonry>
+        )}
+      </Container>
+    </section>
+  );
+};
 
-export default OurSuccess
+export default OurSuccess;

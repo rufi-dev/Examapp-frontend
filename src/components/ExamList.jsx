@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   addExamToUser,
@@ -6,140 +6,148 @@ import {
   getExamsByClass,
   getExamsByUser,
 } from "../../redux/features/quiz/quizSlice";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import PageMenu from "./PageMenu";
+import { Link, useNavigate } from "react-router-dom";
 import Loader from "./Loader";
 import { MdOutlineModeEditOutline } from "react-icons/md";
 import { AdminTeacherLink } from "./protect/hiddenLink";
 import { AiFillDelete, AiOutlinePlus } from "react-icons/ai";
-import Spinner from "./Spinner";
-import { motion } from "framer-motion";
+import { FiClock, FiBarChart2, FiArrowRight, FiFileText } from "react-icons/fi";
 import { payExam } from "../../redux/features/stripe/stripeSlice";
+import Button from "./ui/Button";
+import Badge from "./ui/Badge";
 
 const ExamList = ({ classId }) => {
   const dispatch = useDispatch();
-  const { exams, myExams, isLoading, isSuccess } = useSelector(
-    (state) => state.quiz
-  );
+  const { exams, myExams } = useSelector((state) => state.quiz);
   const { user } = useSelector((state) => state.auth);
+  const navigate = useNavigate();
+  const [loadedOnce, setLoadedOnce] = useState(false);
+
   useEffect(() => {
-    dispatch(getExamsByClass(classId));
+    let active = true;
+    // Background fetch; don't gate on isLoading so cached exams show instantly.
+    Promise.resolve(dispatch(getExamsByClass(classId))).finally(() => {
+      if (active) setLoadedOnce(true);
+    });
     dispatch(getExamsByUser());
-  }, [dispatch]);
+    return () => {
+      active = false;
+    };
+  }, [dispatch, classId]);
 
   const handleDelete = async (examId) => {
     await dispatch(deleteExam(examId));
     await dispatch(getExamsByClass(classId));
   };
+
   const addExam = async (e, exam) => {
     e.preventDefault();
+    // Free exam: skip Stripe, add directly and go to the success page.
+    if (!exam.price || Number(exam.price) === 0) {
+      const res = await dispatch(addExamToUser({ examId: exam._id }));
+      if (res.type !== "quiz/addExamToUser/rejected") {
+        await dispatch(getExamsByUser());
+        navigate("/myExams?success=true");
+      }
+      return;
+    }
+    // Paid exam: Stripe checkout (payExam redirects to Stripe).
     await dispatch(payExam({ exam, userId: user._id }));
-    await dispatch(addExamToUser(exam._id));
-    // await dispatch(getExamsByTag(id))
   };
 
-  if (isLoading) {
-    return <Loader />;
+  const hasExams = exams && exams.length > 0;
+
+  // Loader only on the very first load when there's nothing to show yet.
+  if (!hasExams && !loadedOnce) return <Loader />;
+
+  if (!hasExams) {
+    return (
+      <div className="rounded-2xl border border-dashed border-line bg-surface p-12 text-center text-muted">
+        Hələlik imtahan yoxdur.
+      </div>
+    );
   }
+
   return (
-    <div className="grid lg:grid-cols-4 md:grid-cols-2 gap-5">
-      {exams &&
-        exams.map((exam, index) => (
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: index * 0.2 }}
+    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {exams.map((exam, index) => {
+        const owned =
+          myExams?.length > 0 && myExams.some((m) => m._id === exam._id);
+        return (
+          <div
             key={exam._id}
-            className="bg-white border px-4 py-5 rounded-lg shadow-lg"
+            className="flex animate-fade-in flex-col rounded-3xl border border-line bg-surface p-7 shadow-soft transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:shadow-lift"
+            style={{ animationDelay: `${Math.min(index * 60, 360)}ms` }}
           >
-            <div className="flex justify-between">
-              <h1 className="font-bold">{exam.name}</h1>
-              <div className="flex gap-4 items-center">
-                <AdminTeacherLink>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
+                  <FiFileText className="text-[21px]" />
+                </span>
+                <h3 className="font-display text-xl font-bold leading-tight text-text">
+                  {exam.name}
+                </h3>
+              </div>
+              <AdminTeacherLink>
+                <div className="-mr-1 flex shrink-0 items-center">
                   <Link
                     to={`/exam/${exam._id}/resultsByExam`}
-                    className="text-[blue] text-[20px]"
+                    className="grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors hover:bg-surface2 hover:text-primary"
+                    aria-label="Nəticələr"
                   >
-                    N
+                    <FiBarChart2 />
                   </Link>
                   <Link
                     to={`/exam/${exam._id}/addQuestion`}
-                    className="text-[orange] text-[20px]"
+                    className="grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors hover:bg-surface2 hover:text-primary"
+                    aria-label="Sual əlavə et"
                   >
                     <AiOutlinePlus />
                   </Link>
                   <Link
                     to={`/exam/edit/${exam._id}`}
-                    className="text-[orange] text-[20px]"
+                    className="grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors hover:bg-surface2 hover:text-primary"
+                    aria-label="Düzəliş"
                   >
                     <MdOutlineModeEditOutline />
                   </Link>
                   <button
                     onClick={() => handleDelete(exam._id)}
-                    className="text-[red] text-[20px]"
+                    className="grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors hover:bg-danger/12 hover:text-danger"
+                    aria-label="Sil"
                   >
                     <AiFillDelete />
                   </button>
-                </AdminTeacherLink>
-              </div>
+                </div>
+              </AdminTeacherLink>
             </div>
-            <div className="text-sm font-bold text-[#666] mt-2">
-              <i className="fa-solid fa-hourglass"></i>
-              <span className="ml-2">
-                {" "}
-                {`${Math.floor(exam.duration / 60)} dəqiqə ${
-                  exam.duration % 60
-                } saniyə`}
-              </span>
-            </div>
-            <p className="font-bold text-sm mt-3">Ətraflı</p>
 
-            <ul className="text-sm list-disc px-6">
-              <li>{exam.questions?.correctAnswers?.length} sual</li>
-            </ul>
-            <hr className="mt-3" />
-
-            <div className="mt-3">
-              <ul className="flex gap-2 text-sm flex-wrap text-white">
-                {
-                  <li
-                    key={exam.class._id}
-                    className="bg-[#1084da] rounded-full px-2"
-                  >
-                    {exam.class.level}
-                  </li>
-                }
-              </ul>
+            <div className="mt-6 flex flex-wrap items-center gap-2">
+              <Badge tone="neutral">
+                <FiClock /> {Math.floor(exam.duration / 60)} dəq {exam.duration % 60} san
+              </Badge>
+              {exam.class?.level != null && (
+                <Badge tone="primary">{exam.class.level} sinif</Badge>
+              )}
+              <Badge tone={exam.price > 0 ? "accent" : "success"}>
+                {exam.price > 0 ? `${exam.price} AZN` : "Pulsuz"}
+              </Badge>
             </div>
-            {isLoading ? (
-              <button
-                className="bg-[#6dabe4] w-full mt-6 flex justify-center text-white py-3 px-9 rounded-md text-sm"
-                disabled
-              >
-                <Spinner />
-              </button>
-            ) : (
-              <>
-                {myExams.length > 0 &&
-                myExams.some((myExam) => myExam._id === exam._id) ? (
-                  <Link
-                    to={`/exam/details/${exam._id}`}
-                    className="flex text-white w-full justify-center bg-[#1084da] rounded-lg py-2 mt-4"
-                  >
-                    İmtahana Bax
-                  </Link>
-                ) : (
-                  <button
-                    onClick={(e) => addExam(e, exam)}
-                    className="flex text-white w-full justify-center bg-[#1084da] rounded-lg py-2 mt-4"
-                  >
-                    İmtahanı əldə et - {exam.price} AZN
-                  </button>
-                )}
-              </>
-            )}
-          </motion.div>
-        ))}
+
+            <div className="mt-auto pt-7">
+              {owned ? (
+                <Button to={`/exam/details/${exam._id}`} size="lg" className="w-full">
+                  İmtahana bax <FiArrowRight />
+                </Button>
+              ) : (
+                <Button onClick={(e) => addExam(e, exam)} size="lg" className="w-full">
+                  {exam.price > 0 ? `Əldə et · ${exam.price} AZN` : "Pulsuz əldə et"}
+                </Button>
+              )}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 };

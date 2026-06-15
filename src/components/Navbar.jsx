@@ -1,181 +1,181 @@
-import { useEffect, useState } from "react";
-import logo2 from "../assets/mathlogo2.png";
-import logo from "../assets/logomath.png";
+import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import axios from "axios";
-import { toast } from "react-toastify";
-import { TailSpin, Triangle } from "react-loader-spinner";
-import { RxHamburgerMenu } from "react-icons/rx"
-import { GrClose } from "react-icons/gr"
-import { RiArrowDropDownLine } from "react-icons/ri"
-import { useDispatch, useSelector } from "react-redux";
+import { RxHamburgerMenu } from "react-icons/rx";
+import { GrClose } from "react-icons/gr";
+import { FiLogOut } from "react-icons/fi";
+import { useDispatch } from "react-redux";
 import { RESET, logout } from "../../redux/features/auth/authSlice";
 import { ShowOnLogin, ShowOnLogout } from "./protect/hiddenLink";
 import { UserName } from "../pages/profile/Profile";
-import Spinner from "./Spinner";
+import ThemeToggle from "./ui/ThemeToggle";
+import Button from "./ui/Button";
+
+const links = [
+  { hash: "#features", label: "Üstünlüklər" },
+  { hash: "#how", label: "Necə işləyir" },
+  { to: "/ourSuccess", label: "Uğurlarımız" },
+];
+
+const Brand = ({ onClick }) => (
+  <Link to="/" onClick={onClick} className="flex shrink-0 items-center gap-2.5">
+    <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary font-display text-lg font-extrabold text-primary-fg shadow-glow">
+      İ
+    </span>
+    <span className="font-display text-xl font-bold tracking-tight text-text">İmtahan</span>
+  </Link>
+);
 
 const Navbar = () => {
-  const dispatch = useDispatch()
-  const navigate = useNavigate()
-  const { isLoading } = useSelector(state => state.auth);
-
-  const [toggleMenu, setToggleMenu] = useState(false);
-
-  const handleClick = () => {
-    setToggleMenu(!toggleMenu);
-  };
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
 
   const handleLogout = async () => {
-    dispatch(RESET())
+    dispatch(RESET());
+    await dispatch(logout());
+    navigate("/");
+  };
 
-    await dispatch(logout())
-    navigate("/login")
-  }
+  const desktopLink = ({ isActive }) =>
+    `text-[15px] font-medium transition-colors ${
+      isActive ? "text-text" : "text-muted hover:text-text"
+    }`;
+
+  const mobileLink = ({ isActive }) =>
+    `block rounded-xl px-4 py-3 text-base font-medium transition-colors ${
+      isActive ? "bg-primary/12 text-primary" : "text-text hover:bg-surface2"
+    }`;
 
   return (
-    <nav className="px-4 max-w-[1440px] mx-auto sticky top-0">
-      <div className="flex items-center justify-between">
-        <div className="w-[60px]">
-          <Link to="/" className="">
-            <img src={logo} alt="" className="filter w-full" />
-          </Link>
-        </div>
-        <div className="lg:flex hidden">
-          <ul className="flex gap-6 font-semibold text-lg">
-            <Link to="/">
-              <li>Ana səhifə</li>
-            </Link>
-            <Link to="/ourSuccess">
-              <li>Uğurlarımız</li>
-            </Link>
-            <Link to="/tags">
-              <li>İmtahanlar</li>
-            </Link>
-            <Link to="/">
-              <li>Kitablar</li>
-            </Link>
-            <Link to="/">
-              <li>Əlaqə</li>
-            </Link>
-          </ul>
-        </div>
-        <div className="flex gap-5">
-          {isLoading ? <TailSpin
-            height="40"
-            width="40"
-            color="#1084da"
-            ariaLabel="tail-spin-loading"
-            radius="1"
-            wrapperStyle={{}}
-            wrapperClass=""
-            visible={true}
-          /> :
-            <div className="gap-3 flex">
-              <div className="flex items-center gap-5">
-                <ShowOnLogin>
-                  <div className="font-semibold">
-                    <UserName />
-                  </div>
-                </ShowOnLogin>
-              </div>
-              <div className="lg:flex gap-3 hidden">
-                <ShowOnLogout>
-                  <Link
-                    to="/login"
-                    className="rounded-md text-[#1084da] flex items-center text-[18px] px-4 py-2 border-[#1084da] border-2 font-bold whitespace-nowrap"
-                  >
-                    Daxil ol
-                  </Link>
-                  <Link
-                    to="/register"
-                    className="rounded-md text-white flex items-center text-[18px] px-4 py-2 bg-[#1084da] font-bold whitespace-nowrap"
-                  >
-                    Qeydiyyat
-                  </Link>
-                </ShowOnLogout>
-                <ShowOnLogin>
-                  <button
-                    onClick={handleLogout}
-                    className="rounded-md text-white flex items-center text-[18px] px-4 py-2 bg-[#1084da] font-bold whitespace-nowrap"
-                  >
-                    Çıxış et
-                  </button>
-                </ShowOnLogin>
-              </div>
-            </div>
-          }
+    <header className="sticky top-0 z-[900] border-b border-line/70 bg-bg/80 backdrop-blur-xl">
+      <nav className="container-app flex h-16 items-center justify-between gap-4">
+        <Brand />
 
-          <div className="lg:hidden flex text-[30px] ">
-            <button
-              onClick={handleClick}
-              className="fa-solid fa-bars"
-            >
-              <RxHamburgerMenu />
-            </button>
-          </div>
-        </div>
-        <div
-          className={`z-[1000] fixed lg:hidden top-0 ${toggleMenu ? "left-0" : "left-[-100%]"
-            } duration-300 drop-shadow bg-white h-screen w-[100%] sm:w-[80%] md:w-[70%] border`}
-        >
-          <div className="p-4 w-full flex items-center justify-between">
-            <Link to="/" className="w-[140px]">
-              <img src={logo} alt="" className="w-full" />
-            </Link>
-            <button
-              onClick={handleClick}
-              className="fa-solid fa-xmark text-[25px] text-[#6a7695]"
-            >
-              <GrClose />
-            </button>
-          </div>
-          <ul className="flex select-none flex-col gap-4 p-4 mt-6">
-            <li className="text-[16px] sm:text-[18px] border-b-2 border-black-500 py-1">
-              <Link onClick={handleClick} to={"/"}>Ana səhifə</Link>
+        <ul className="hidden items-center gap-9 lg:flex">
+          {links.map((l) => (
+            <li key={l.label}>
+              {l.to ? (
+                <NavLink to={l.to} className={desktopLink}>
+                  {l.label}
+                </NavLink>
+              ) : (
+                <a
+                  href={l.hash}
+                  className="text-[15px] font-medium text-muted transition-colors hover:text-text"
+                >
+                  {l.label}
+                </a>
+              )}
             </li>
-            <li className="py-1 text-[16px] sm:text-[18px] border-b-2 border-black-500">
-              <Link onClick={handleClick} to={"/ourSuccess"}>Uğurlarımız</Link>
-            </li>
-            <li className="py-1 text-[16px] sm:text-[18px] border-b-2 border-black-500">
-              <Link onClick={handleClick} to={"/tags"}>İmtahanlar</Link>
-            </li>
-            <li className="py-1 text-[16px] sm:text-[18px] border-b-2 border-black-500">
-              <Link onClick={handleClick} to={"/"}>Kitablar</Link>
-            </li>
-            <li className="py-1 text-[16px] sm:text-[18px] border-b-2 border-black-500">
-              <Link onClick={handleClick} to={"/"}>Əlaqə</Link>
-            </li>
-            <div className="gap-3 flex">
+          ))}
+        </ul>
 
-              <>
-                <ShowOnLogout>
-                  <Link
-                    to="/login"
-                    className="rounded-md text-[#1084da] flex items-center text-[18px] px-4 py-2 border-[#1084da] border-2 font-bold whitespace-nowrap"
-                  >
-                    Daxil ol
-                  </Link>
-                  <Link
-                    to="/register"
-                    className="rounded-md text-white flex items-center text-[18px] px-4 py-2 bg-[#1084da] font-bold whitespace-nowrap"
-                  >
-                    Qeydiyyat
-                  </Link>
-                </ShowOnLogout>
-                <ShowOnLogin>
-                  <button
-                    onClick={handleLogout}
-                    className="rounded-md text-white flex items-center text-[18px] px-4 py-2 bg-[#1084da] font-bold whitespace-nowrap"
-                  >
-                    Çıxış et
-                  </button>
-                </ShowOnLogin>
-              </>
-            </div>
-          </ul>
+        <div className="flex items-center gap-2.5">
+          <ThemeToggle />
+          <div className="hidden items-center gap-2.5 lg:flex">
+            <ShowOnLogout>
+              <Button to="/login" variant="ghost" size="sm">
+                Daxil ol
+              </Button>
+              <Button to="/register" variant="primary" size="sm">
+                Qeydiyyat
+              </Button>
+            </ShowOnLogout>
+            <ShowOnLogin>
+              <span className="text-sm font-semibold text-text">
+                <UserName />
+              </span>
+              <button
+                onClick={handleLogout}
+                aria-label="Çıxış et"
+                title="Çıxış et"
+                className="grid h-10 w-10 place-items-center rounded-full border border-line bg-surface text-muted transition-colors hover:bg-surface2 hover:text-danger"
+              >
+                <FiLogOut className="text-[17px]" />
+              </button>
+            </ShowOnLogin>
+          </div>
+
+          <button
+            onClick={() => setOpen(true)}
+            className="grid h-10 w-10 place-items-center rounded-full border border-line bg-surface text-text lg:hidden"
+            aria-label="Menyu"
+          >
+            <RxHamburgerMenu className="text-[20px]" />
+          </button>
         </div>
-      </div>
-    </nav>
+      </nav>
+
+      {/* Mobile drawer */}
+      <div
+        className={`fixed inset-0 z-[950] bg-black/40 backdrop-blur-sm transition-opacity duration-300 lg:hidden ${
+          open ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        onClick={() => setOpen(false)}
+      />
+      <aside
+        className={`fixed right-0 top-0 z-[960] flex h-full w-[84%] max-w-sm flex-col border-l border-line bg-bg p-6 shadow-lift transition-transform duration-300 ease-out-quint lg:hidden ${
+          open ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        <div className="flex items-center justify-between">
+          <Brand onClick={() => setOpen(false)} />
+          <button
+            onClick={() => setOpen(false)}
+            className="grid h-10 w-10 place-items-center rounded-full border border-line text-text"
+            aria-label="Bağla"
+          >
+            <GrClose />
+          </button>
+        </div>
+
+        <ul className="mt-8 flex flex-col gap-1">
+          {links.map((l) => (
+            <li key={l.label}>
+              {l.to ? (
+                <NavLink to={l.to} onClick={() => setOpen(false)} className={mobileLink}>
+                  {l.label}
+                </NavLink>
+              ) : (
+                <a
+                  href={l.hash}
+                  onClick={() => setOpen(false)}
+                  className="block rounded-xl px-4 py-3 text-base font-medium text-text transition-colors hover:bg-surface2"
+                >
+                  {l.label}
+                </a>
+              )}
+            </li>
+          ))}
+        </ul>
+
+        <div className="mt-auto flex flex-col gap-3 pt-6">
+          <ShowOnLogout>
+            <Button to="/login" variant="secondary" onClick={() => setOpen(false)} className="w-full">
+              Daxil ol
+            </Button>
+            <Button to="/register" variant="primary" onClick={() => setOpen(false)} className="w-full">
+              Qeydiyyat
+            </Button>
+          </ShowOnLogout>
+          <ShowOnLogin>
+            <div className="rounded-xl border border-line bg-surface px-4 py-3 text-sm font-semibold text-text">
+              <UserName />
+            </div>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setOpen(false);
+                handleLogout();
+              }}
+              className="w-full"
+            >
+              Çıxış et
+            </Button>
+          </ShowOnLogin>
+        </div>
+      </aside>
+    </header>
   );
 };
 

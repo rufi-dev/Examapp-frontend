@@ -1,176 +1,120 @@
-import { AiTwotoneMail } from "react-icons/ai"
-import reset from "../../assets/resetPass.png"
-import { useEffect, useState } from "react"
-import { Link, useNavigate, useParams } from "react-router-dom"
-import { MdOutlineClose, MdPassword } from "react-icons/md"
-import { BsEye, BsEyeSlash } from "react-icons/bs"
-import { useDispatch, useSelector } from "react-redux"
-import Spinner from "../../components/Spinner"
-import { RESET, resetPassword } from "../../../redux/features/auth/authSlice"
-import { validatePassword } from "../../../redux/features/auth/authService"
-import { LiaCheckDoubleSolid } from "react-icons/lia"
-import { toast } from "react-toastify"
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { BsEye, BsEyeSlash } from "react-icons/bs";
+import { FiLock, FiCheck, FiX } from "react-icons/fi";
+import { useDispatch, useSelector } from "react-redux";
+import Spinner from "../../components/Spinner";
+import { RESET, resetPassword } from "../../../redux/features/auth/authSlice";
+import { validatePassword } from "../../../redux/features/auth/authService";
+import { toast } from "react-toastify";
+import AuthLayout from "../../components/AuthLayout";
+import Button from "../../components/ui/Button";
 
-const initialState = {
-    password: "",
-    password2: ""
-}
+const initialState = { password: "", password2: "" };
+
+const Req = ({ ok, children }) => (
+  <li className={`flex items-center gap-2 ${ok ? "text-success" : "text-muted"}`}>
+    <span
+      className={`grid h-4 w-4 place-items-center rounded-full ${ok ? "bg-success/15" : "bg-surface2"}`}
+    >
+      {ok ? <FiCheck className="text-[11px]" /> : <FiX className="text-[11px]" />}
+    </span>
+    {children}
+  </li>
+);
 
 const Reset = () => {
-    const dispatch = useDispatch()
-    const navigate = useNavigate()
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { resetToken } = useParams();
 
-    const [formData, setFormData] = useState(initialState)
-    const { password, password2 } = formData
+  const [formData, setFormData] = useState(initialState);
+  const { password, password2 } = formData;
+  const [showPassword, setShowPassword] = useState(false);
 
-    const {resetToken}=useParams()
+  const [uCase, setUcase] = useState(false);
+  const [num, setNum] = useState(false);
+  const [sChar, setSChar] = useState(false);
+  const [passLength, setPassLength] = useState(false);
 
-    const wrongIcon = <MdOutlineClose className="text-[red] text-[17px]" />
-    const correctIcon = <LiaCheckDoubleSolid className="text-[green] text-[17px]" />
+  const { isLoading, message, isSuccess } = useSelector((state) => state.auth);
 
-    const switchIcon = (condition) => {
-        if (condition) {
-            return correctIcon
-        }
-        return wrongIcon
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
+
+  useEffect(() => {
+    setUcase(/^(?=.*[a-z])(?=.*[A-Z]).*$/.test(password));
+    setNum(/([0-9])/.test(password));
+    setSChar(/([!@#$%^&*.?,<>/])/.test(password));
+    setPassLength(password.length > 5);
+  }, [password]);
+
+  const handleReset = async (e) => {
+    e.preventDefault();
+    if (!password || !password2) return toast.error("Bütün xanaları doldurun");
+    if (!validatePassword(password)) return toast.error("Aşağıdakı tələblərə əməl edin");
+    if (password != password2) return toast.error("Şifrələr uyğun gəlmir");
+    await dispatch(resetPassword({ userData: { password }, resetToken }));
+  };
+
+  useEffect(() => {
+    if (isSuccess && message.includes("reset successful")) {
+      navigate("/login");
     }
+    dispatch(RESET());
+  }, [isSuccess, dispatch, navigate, message]);
 
-    const [uCase, setUcase] = useState(false)
-    const [num, setNum] = useState(false)
-    const [sChar, setSChar] = useState(false)
-    const [passLength, setPassLength] = useState(false)
+  const pwInput = (nameKey, placeholder) => (
+    <div className="relative">
+      <FiLock className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+      <input
+        value={formData[nameKey]}
+        name={nameKey}
+        onChange={handleInputChange}
+        type={showPassword ? "text" : "password"}
+        placeholder={placeholder}
+        className="h-12 w-full rounded-xl border border-line bg-surface pl-11 pr-11 text-[15px] text-text outline-none transition placeholder:text-muted/60 focus:border-primary focus:ring-4 focus:ring-ring/25"
+      />
+      <button
+        type="button"
+        onClick={() => setShowPassword(!showPassword)}
+        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted hover:text-text"
+        aria-label="Şifrəni göstər"
+      >
+        {showPassword ? <BsEyeSlash /> : <BsEye />}
+      </button>
+    </div>
+  );
 
-    const { isLoading, message, isSuccess } = useSelector(state => state.auth)
+  return (
+    <AuthLayout
+      title="Şifrəni sıfırla"
+      subtitle="Yeni şifrəni təyin et."
+      footer={
+        <span>
+          <Link to="/login" className="font-semibold text-primary hover:underline">
+            Girişə qayıt
+          </Link>
+        </span>
+      }
+    >
+      <form onSubmit={handleReset} className="flex flex-col gap-4">
+        {pwInput("password", "Yeni şifrə")}
+        <ul className="grid gap-2.5 rounded-xl border border-line bg-surface2/40 p-4 text-sm sm:grid-cols-2">
+          <Req ok={uCase}>Böyük və kiçik hərf</Req>
+          <Req ok={num}>Rəqəm (0-9)</Req>
+          <Req ok={sChar}>Xüsusi simvol (!@#$%)</Req>
+          <Req ok={passLength}>Ən azı 6 simvol</Req>
+        </ul>
+        {pwInput("password2", "Şifrəni təsdiqlə")}
+        <Button type="submit" size="lg" disabled={isLoading} className="w-full">
+          {isLoading ? <Spinner /> : "Şifrəni sıfırla"}
+        </Button>
+      </form>
+    </AuthLayout>
+  );
+};
 
-    const handleInputChange = (e) => {
-        const { name, value } = e.target
-        setFormData({ ...formData, [name]: value })
-    }
-    const [showPassword, setShowPassword] = useState(false)
-
-    const togglePassword = () => {
-        setShowPassword(!showPassword)
-    }
-
-    useEffect(() => {
-        if (password.match(/^(?=.*[a-z])(?=.*[A-Z]).*$/)) {
-            setUcase(true)
-        } else {
-            setUcase(false)
-        }
-
-        if (password.match(/([0-9])/)) {
-            setNum(true)
-        } else {
-            setNum(false)
-        }
-
-        if (password.match(/([!@#$%^&*.?,<>/])/)) {
-            setSChar(true)
-        } else {
-            setSChar(false)
-        }
-
-        if (password.length > 5) {
-            setPassLength(true)
-        } else {
-            setPassLength(false)
-        }
-    }, [password])
-
-    const handleReset = async (e) => {
-        e.preventDefault();
-
-        // Validation
-        if (!password || !password2) {
-            return toast.error("Please fill all required fields")
-        }
-
-        if (!validatePassword(password)) {
-            return toast.error("Check the validation below")
-        }
-
-        if (password != password2) {
-            return toast.error("Passwords do not match")
-        }
-
-        const userData = {
-            password
-        }
-
-        await dispatch(resetPassword({userData, resetToken}))
-    }
-    useEffect(() => {
-        if (isSuccess && message.includes("reset successful")) {
-            navigate("/login")
-        }
-
-        dispatch(RESET())
-    }, [isSuccess, dispatch, navigate, message])
-
-    return (
-        <div className="sm:bg-[#f8f8f8] h-screen flex items-center">
-            <div className="flex md:flex-row flex-col-reverse items-center gap-14 mx-auto md:px-[100px] sm:px-[50px] px-4 py-[70px] sm:shadow-md sm:rounded-md max-w-[1240px] bg-white p-5">
-                <div className="mx-auto">
-                    <h1 className="font-bold sm:text-[30px] text-[25px]">Reset Password</h1>
-                    <form className="mt-[45px]" onSubmit={handleReset}>
-                        <div className="mt-6 pb-1 flex gap-3 items-center border-b border-black sm:w-[300px] w-[290px]">
-                            <MdPassword />
-                            <input value={password} name="password" onChange={handleInputChange} className="tracking-wide focus:placeholder:text-black w-[300px] outline-none" type={`${showPassword ? "text" : "password"}`} placeholder="New Password" />
-                            <div onClick={togglePassword} className="text-[20px] cursor-pointer">
-                                {!showPassword
-                                    ? <BsEye />
-                                    : <BsEyeSlash />
-                                }
-                            </div>
-                        </div>
-
-                        <div className="mt-6 pb-1 flex gap-3 items-center border-b border-black sm:w-[300px] w-[290px]">
-                            <MdPassword />
-                            <input value={password2} name="password2" onChange={handleInputChange} className="tracking-wide focus:placeholder:text-black w-[300px] outline-none" type={`${showPassword ? "text" : "password"}`} placeholder="Confirm Password" />
-                            <div onClick={togglePassword} className="text-[20px] cursor-pointer">
-                                {!showPassword
-                                    ? <BsEye />
-                                    : <BsEyeSlash />
-                                }
-                            </div>
-                        </div>
-                        <ul className="mt-4 border border-[#96c6f3] p-2 rounded-md text-sm">
-                            <li className="flex gap-2 items-center">
-                                {switchIcon(uCase)}
-                                Lowercase & Uppercase
-                            </li>
-                            <li className="flex gap-2 items-center">
-                                {switchIcon(num)}
-                                Number (0-9)
-                            </li>
-                            <li className="flex gap-2 items-center">
-                                {switchIcon(sChar)}
-                                Special Character (!@#$%^&*)
-                            </li>
-                            <li className="flex gap-2 items-center">
-                                {switchIcon(passLength)}
-                                At least 6 Characters
-                            </li>
-                        </ul>
-                        {
-                            isLoading ?
-                                <button className="bg-[#6dabe4] mt-6 flex justify-center text-white py-3 px-9 rounded-md text-sm" disabled><Spinner /></button>
-                                :
-                                <button className="bg-[#6dabe4] mt-6 text-white py-3 px-9 rounded-md text-sm hover:bg-[#1084da]" type="submit">Reset Password</button>
-                        }
-                    </form>
-                    <div className="mt-3 flex justify-between">
-                        <Link to="/" className=" underline ml-2">Home</Link>
-                        <Link to="/login" className=" underline ml-2">Login</Link>
-                    </div>
-                </div>
-                <div className="lg:w-[350px] md:w-[300px] w-[200px] sm:block hidden">
-                    <img src={reset} alt="" className="w-full" />
-                </div>
-            </div>
-        </div>
-    )
-}
-
-export default Reset
+export default Reset;

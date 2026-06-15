@@ -2,23 +2,130 @@
 @tailwind components;
 @tailwind utilities;
 
-::-webkit-scrollbar {
-    width: 10px;
-}
-  
-/* Track */
-::-webkit-scrollbar-track {
-    background: #f1f1f1;
-}
-  
-/* Handle */
-::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 5px;
-}
-  
-/* Handle on hover */
-::-webkit-scrollbar-thumb:hover {
-    background: #555;
+@layer base {
+  :root {
+    /* OKLCH tokens as bare "L C H" triplets — Calm Indigo, light theme */
+    --bg: 0.972 0.005 270;
+    --surface: 0.995 0.0025 270;
+    --surface-2: 0.945 0.007 270;
+    --border: 0.905 0.008 268;
+    --text: 0.27 0.022 268;
+    --text-muted: 0.53 0.02 268;
+    --primary: 0.55 0.185 270;
+    --primary-hover: 0.5 0.19 270;
+    --primary-fg: 0.99 0.004 270;
+    --accent-2: 0.66 0.155 292;
+    --success: 0.7 0.14 158;
+    --warning: 0.8 0.13 80;
+    --danger: 0.58 0.2 25;
+    --ring: 0.55 0.185 270;
+    --shadow: 0.2 0.03 268;
+    color-scheme: light;
+  }
+
+  .dark {
+    --bg: 0.185 0.01 268;
+    --surface: 0.235 0.013 268;
+    --surface-2: 0.285 0.015 268;
+    --border: 0.33 0.016 268;
+    --text: 0.95 0.006 270;
+    --text-muted: 0.7 0.013 268;
+    --primary: 0.62 0.17 272;
+    --primary-hover: 0.68 0.16 272;
+    --primary-fg: 0.16 0.02 270;
+    --accent-2: 0.7 0.14 292;
+    --success: 0.74 0.14 160;
+    --warning: 0.82 0.13 82;
+    --danger: 0.66 0.19 27;
+    --ring: 0.62 0.17 272;
+    --shadow: 0.03 0.02 268;
+    color-scheme: dark;
+  }
+
+  *,
+  ::before,
+  ::after {
+    border-color: oklch(var(--border) / 1);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    /* Always reserve the scrollbar gutter so content never shifts sideways
+       when page height changes between/within route transitions. */
+    scrollbar-gutter: stable;
+    overflow-y: scroll;
+  }
+
+  body {
+    @apply bg-bg text-text font-sans antialiased;
+    font-feature-settings: 'cv05' 1, 'ss01' 1;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display tracking-tight;
+  }
+
+  ::selection {
+    background: oklch(var(--primary) / 0.2);
+  }
 }
 
+@layer components {
+  .container-app {
+    @apply mx-auto w-full max-w-[1200px] px-5 sm:px-8;
+  }
+
+  /* Subtle cool dot texture for hero + section backgrounds */
+  .bg-grid {
+    background-image: radial-gradient(oklch(var(--text) / 0.05) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+}
+
+/* Themed scrollbar */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track {
+  background: oklch(var(--bg) / 1);
+}
+::-webkit-scrollbar-thumb {
+  background: oklch(var(--border) / 1);
+  border-radius: 999px;
+  border: 3px solid oklch(var(--bg) / 1);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(var(--text-muted) / 1);
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+.animate-float {
+  animation: float 5.5s ease-in-out infinite;
+}
+.animate-float-slow {
+  animation: float 8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

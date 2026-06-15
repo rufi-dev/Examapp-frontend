@@ -1,219 +1,122 @@
-import React from "react";
-import { useSelector } from "react-redux";
+const LABELS = { Cm: "Qapalı sual", Co: "Açıq sual", Cma: "Uyğunluq", Cd: "Ətraflı yazı" };
+const DEFAULT_OPTIONS = ["a", "b", "c", "d", "e"];
 
 const QuestionType = ({
   singleClass,
   singleTag,
-  answers,
+  answers = [],
   review,
+  questions,
   handleAnswerChange,
 }) => {
   const selectedAnswers = review?.selectedAnswers || [];
+  const isReview = selectedAnswers.length > 0;
 
-  const determineQuestionCountsAndTypes = () => {
-    let multipleChoiceCount = 0;
-    let openQuestionCount = 0;
-    let detailedQuestionCount = 0;
-    let matchingQuestionCount = 0; // Only for "1 ci qrup" or "2 ci qrup" and class level is "11"
-
-    if (singleTag?.name === "Buraxılış" && singleClass?.level === 9) {
-      multipleChoiceCount = 15;
-      openQuestionCount = 6;
-      detailedQuestionCount = 4;
-    } else if (singleTag?.name === "Buraxılış" && singleClass?.level === 11) {
-      multipleChoiceCount = 13;
-      openQuestionCount = 5;
-      detailedQuestionCount = 7;
-    } else if (
-      singleTag?.name === "Blok" && (singleClass?.level === 1 ||
-      singleClass?.level === 2)
-    ) {
-      multipleChoiceCount = 22;
-      openQuestionCount = 4;
-      matchingQuestionCount = 1;
-      detailedQuestionCount = 3;
-    } else {
-      multipleChoiceCount = 25;
-      openQuestionCount = 0;
-      matchingQuestionCount = 0;
-      detailedQuestionCount = 0;
-    }
-    return {
-      multipleChoiceCount,
-      openQuestionCount,
-      detailedQuestionCount,
-      matchingQuestionCount,
+  const countBased = () => {
+    const defs = [];
+    const push = (n, type, options) => {
+      for (let i = 0; i < n; i++) defs.push({ type, options });
     };
+    if (singleTag?.name === "Buraxılış" && singleClass?.level === 9) {
+      push(15, "Cm", DEFAULT_OPTIONS);
+      push(6, "Co");
+      push(4, "Cd");
+    } else if (singleTag?.name === "Buraxılış" && singleClass?.level === 11) {
+      push(13, "Cm", DEFAULT_OPTIONS);
+      push(5, "Co");
+      push(7, "Cd");
+    } else if (
+      singleTag?.name === "Blok" &&
+      (singleClass?.level === 1 || singleClass?.level === 2)
+    ) {
+      push(22, "Cm", DEFAULT_OPTIONS);
+      push(4, "Co");
+      push(1, "Cma");
+      push(3, "Cd");
+    } else {
+      push(25, "Cm", DEFAULT_OPTIONS);
+    }
+    return defs;
   };
-  const renderQuestionInputs = () => {
-    const {
-      multipleChoiceCount,
-      openQuestionCount,
-      detailedQuestionCount,
-      matchingQuestionCount,
-    } = determineQuestionCountsAndTypes(singleClass, singleTag);
-    const questionInputs = [];
-    for (let i = 0; i < multipleChoiceCount; i++) {
-      questionInputs.push(
-        <div key={`mc-${i}`} className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">{`Qapalı sual ${
-            i + 1
-          }:`}</label>
-          <div className="flex flex-wrap items-center justify-between w-full">
-            {["a", "b", "c", "d", "e"].map((option) => (
-              <div
-                key={option}
-                className="flex items-center mr-4 justify-center"
-              >
-                <input
-                  type="radio"
-                  id={`answer-${i}-${option}`}
-                  name={`answer-${i}`}
-                  value={option}
-                  onChange={(e) => handleAnswerChange(e, i, "Cm")}
-                  className="sr-only"
-                />
-                <label
-                  htmlFor={`answer-${i}-${option}`}
-                  className="relative rounded-full p-2  mr-2 cursor-pointer"
-                  style={{
-                    background:
-                      answers[i].answer === option
-                        ? selectedAnswers[i]?.answer?.length > 0
-                          ? "#77DD77"
-                          : "#1084da" // Green color for correct answer
-                        : option === selectedAnswers[i]?.answer
-                        ? "#FF6961"
-                        : "rgb(229 231 235)", // Default color
-                  }}
-                >
-                  <span className="h-6 w-6 flex items-center justify-center bg-white rounded-full">
+
+  const defs =
+    questions && questions.length > 0
+      ? questions.map((q) => ({
+          type: q.type || "Cm",
+          options: q.options?.length ? q.options : DEFAULT_OPTIONS,
+        }))
+      : countBased();
+
+  const optionClass = (i, option) => {
+    const isCorrectOpt = answers[i]?.answer === option;
+    const userAns = selectedAnswers[i]?.answer;
+    if (isReview) {
+      if (isCorrectOpt) return "border-success bg-success/15 text-success";
+      if (option === userAns) return "border-danger bg-danger/15 text-danger";
+      return "border-line bg-surface text-muted";
+    }
+    if (isCorrectOpt) return "border-primary bg-primary text-primary-fg";
+    return "border-line bg-surface text-muted hover:border-primary/40";
+  };
+
+  const setAnswer = (i, value, type) =>
+    handleAnswerChange?.({ target: { value } }, i, type);
+
+  return (
+    <div className="flex flex-col gap-5">
+      {defs.map((def, i) => {
+        if (def.type === "Cm") {
+          return (
+            <div key={i}>
+              <p className="mb-2 text-sm font-medium text-text">
+                {LABELS.Cm} {i + 1}
+              </p>
+              <div className="flex flex-wrap gap-2.5">
+                {(def.options || DEFAULT_OPTIONS).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    disabled={isReview}
+                    onClick={() => setAnswer(i, option, "Cm")}
+                    className={`grid h-11 w-11 place-items-center rounded-full border font-semibold transition-colors ${optionClass(
+                      i,
+                      option
+                    )}`}
+                  >
                     {option}
-                  </span>
-                </label>
+                  </button>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
-      );
-    }
+            </div>
+          );
+        }
 
-    for (let i = 0; i < openQuestionCount; i++) {
-      const correctAnswer = answers[multipleChoiceCount + i]?.answer || null;
-      const selectedAnswer =
-        selectedAnswers[multipleChoiceCount + i]?.answer || null;
-      const isCorrect =
-        correctAnswer === null || selectedAnswer === null
-          ? null
-          : correctAnswer === selectedAnswer;
-      questionInputs.push(
-        <div key={`open-${i}`} className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            {`Açıq sual ${multipleChoiceCount + i + 1}: ${
-              isCorrect == null ? "" : isCorrect ? "✔" : "❌ " + correctAnswer
-            }`}
-          </label>
-          <textarea
-            rows={4}
-            className="w-full border rounded-md p-2 focus:outline-none focus:ring focus:ring-blue-200"
-            placeholder="Enter your answer..."
-            value={selectedAnswer}
-            onChange={(e) =>
-              handleAnswerChange(e, multipleChoiceCount + i, "Co")
-            }
-          ></textarea>
-          {}
-        </div>
-      );
-    }
-
-    // Add matching question input if applicable
-    for (let i = 0; i < matchingQuestionCount; i++) {
-      const correctAnswer =
-        answers[multipleChoiceCount + openQuestionCount + i]?.answer || null;
-      const selectedAnswer =
-        selectedAnswers[multipleChoiceCount + openQuestionCount + i]?.answer ||
-        null;
-      const isCorrect =
-        correctAnswer === null || selectedAnswer === null
-          ? null
-          : correctAnswer === selectedAnswer;
-
-      if (matchingQuestionCount > 0) {
-        questionInputs.push(
-          <div key={`matching-0`} className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {`Uyğunluq ${multipleChoiceCount + openQuestionCount + i + 1}: ${
-                isCorrect == null ? "" : isCorrect ? "✔" : "❌ " + correctAnswer
-              }`}
-            </label>
+        const correctAnswer = answers[i]?.answer || null;
+        const userAnswer = selectedAnswers[i]?.answer || null;
+        const isCorrect =
+          isReview && correctAnswer && userAnswer ? correctAnswer === userAnswer : null;
+        return (
+          <div key={i}>
+            <p className="mb-2 flex flex-wrap items-center gap-2 text-sm font-medium text-text">
+              {LABELS[def.type] || "Sual"} {i + 1}
+              {isCorrect === true && <span className="text-success">✓</span>}
+              {isCorrect === false && (
+                <span className="text-danger">✕ Doğru: {correctAnswer}</span>
+              )}
+            </p>
             <textarea
-              rows={6}
-              className="w-full border rounded-md p-2 focus:outline-none focus:ring focus:ring-blue-200"
-              placeholder="Enter your answer..."
-              value={selectedAnswer}
-              onChange={(e) =>
-                handleAnswerChange(
-                  e,
-                  multipleChoiceCount + openQuestionCount + i,
-                  "Cma"
-                )
-              }
-            ></textarea>
+              rows={def.type === "Co" ? 4 : 6}
+              readOnly={isReview}
+              value={isReview ? userAnswer || "" : answers[i]?.answer || ""}
+              onChange={(e) => setAnswer(i, e.target.value, def.type)}
+              placeholder="Cavabını yaz..."
+              className="w-full rounded-xl border border-line bg-surface p-3 text-[15px] text-text outline-none transition placeholder:text-muted/60 read-only:bg-surface2 focus:border-primary focus:ring-4 focus:ring-ring/25"
+            />
           </div>
         );
-      }
-    }
-
-    for (let i = 0; i < detailedQuestionCount; i++) {
-      const correctAnswer =
-        answers[
-          multipleChoiceCount + openQuestionCount + matchingQuestionCount + i
-        ]?.answer || null;
-      const selectedAnswer =
-        selectedAnswers[
-          multipleChoiceCount + openQuestionCount + matchingQuestionCount + i
-        ]?.answer || null;
-      const isCorrect =
-        correctAnswer === null || selectedAnswer === null
-          ? null
-          : correctAnswer === selectedAnswer;
-      questionInputs.push(
-        <div key={`detailed-${i}`} className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            {`Ətraflı yazı ${
-              multipleChoiceCount +
-              openQuestionCount +
-              matchingQuestionCount +
-              i +
-              1
-            }: ${
-              isCorrect == null ? "" : isCorrect ? "✔" : "❌ " + correctAnswer
-            }`}
-          </label>
-          <textarea
-            rows={6}
-            className="w-full border rounded-md p-2 focus:outline-none focus:ring focus:ring-blue-200"
-            placeholder="Enter your answer..."
-            value={selectedAnswer}
-            onChange={(e) =>
-              handleAnswerChange(
-                e,
-                multipleChoiceCount +
-                  openQuestionCount +
-                  matchingQuestionCount +
-                  i,
-                "Cd"
-              )
-            }
-          ></textarea>
-        </div>
-      );
-    }
-
-    return questionInputs;
-  };
-  return <div>{renderQuestionInputs()}</div>;
+      })}
+    </div>
+  );
 };
 
 export default QuestionType;

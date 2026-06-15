@@ -22,12 +22,12 @@ export function earnPoints_Number(
   result.forEach((selectedAnswer, index) => {
     if (!queue) return; // Skip if no corresponding question
     // Determine the type of question
-    const { type } = correctAnswers[index];
+    const correctAnswer = correctAnswers[index];
+    if (!correctAnswer) return; // No corresponding correct answer for this index
+    const { type } = correctAnswer;
 
     // Increment counters based on the correctness of the answer
     if (selectedAnswer != null) {
-      const correctAnswer = correctAnswers[index]; // Get correct answer from exam data
-
       if (selectedAnswer.answer === correctAnswer.answer) {
         switch (type) {
           case "Cm":
@@ -71,7 +71,7 @@ export function earnPoints_Number(
   });
 
   // Apply the formula to calculate earned points
-  let earnedPoints;
+  let earnedPoints = 0;
   if (singleTag.name === "Buraxılış" && singleClass.level === 11) {
     earnedPoints =
       (correctMultipleChoice +
@@ -90,7 +90,7 @@ export function earnPoints_Number(
 
   if (
     singleTag.name === "Blok" &&
-    (singleClass.level === 1 || singleClass || 2)
+    (singleClass.level === 1 || singleClass.level === 2)
   ) {
     earnedPoints =
       ((
@@ -117,7 +117,7 @@ export function earnPoints_Number(
     },
     {
       type: "Cma",
-      count: correctDetailedQuestion,
+      count: correctMatchedQuestion,
     },
   ];
   return {

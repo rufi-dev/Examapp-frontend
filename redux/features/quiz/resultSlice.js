@@ -183,7 +183,7 @@ const resultSlice = createSlice({
             .addCase(getResultsByExam.rejected, (state, action) => {
                 state.isLoading = false;
                 state.isError = true;
-                state.resultByExam = null;
+                state.resultsByExam = [];
                 toast.error(action.payload)
             })
 

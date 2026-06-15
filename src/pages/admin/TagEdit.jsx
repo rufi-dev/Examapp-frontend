@@ -1,92 +1,66 @@
-import React, { useEffect, useState } from 'react';
-import PageMenu from '../../components/PageMenu';
-import Categories from '../../components/Categories';
-import useRedirectLoggedOutUser from '../../customHook/useRedirectLoggedOutUser';
-import { useDispatch, useSelector } from 'react-redux';
-import { editTag, getTag } from '../../../redux/features/quiz/quizSlice';
-import { toast } from 'react-toastify';
-import { useNavigate, useParams } from 'react-router-dom';
-import Loader from '../../components/Loader';
+import { useEffect, useState } from "react";
+import AccountLayout from "../../components/AccountLayout";
+import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser";
+import { useDispatch, useSelector } from "react-redux";
+import { editTag, getTag } from "../../../redux/features/quiz/quizSlice";
+import { toast } from "react-toastify";
+import { useNavigate, useParams } from "react-router-dom";
+import Loader from "../../components/Loader";
+import Button from "../../components/ui/Button";
+import { Field, inputClass } from "../../components/ui/Field";
 
 const TagEdit = () => {
-    useRedirectLoggedOutUser('/login');
-    const { singleTag, isLoading } = useSelector(state => state.quiz)
-    const navigate = useNavigate()
-    const { tagId } = useParams()
-    const initialState = {
-        name: "",
-    }
-    const [tagForm, setTagForm] = useState(initialState)
-    const { name } = tagForm
+  useRedirectLoggedOutUser("/login");
+  const { singleTag, isLoading } = useSelector((state) => state.quiz);
+  const navigate = useNavigate();
+  const { tagId } = useParams();
+  const [tagForm, setTagForm] = useState({ name: "" });
+  const { name } = tagForm;
+  const dispatch = useDispatch();
 
-    const handleInputChange = (e) => {
-        const { name, value } = e.target
-        setTagForm({ ...tagForm, [name]: value })
-    }
+  const handleInputChange = (e) =>
+    setTagForm({ ...tagForm, [e.target.name]: e.target.value });
 
-    const dispatch = useDispatch()
+  useEffect(() => {
+    if (singleTag) setTagForm({ name: singleTag.name || "" });
+  }, [singleTag]);
 
-    useEffect(() => {
-        if (singleTag) {
-            setTagForm({
-                name: singleTag.name || "",
-            });
-        }
-    }, [singleTag]);
+  useEffect(() => {
+    dispatch(getTag(tagId));
+  }, [dispatch, tagId]);
 
-    useEffect(() => {
-        dispatch(getTag(tagId))
-    }, [dispatch])
+  const editTagForm = async (e) => {
+    e.preventDefault();
+    if (!name) return toast.error("Ad xanasını doldurun");
+    const editTagData = await dispatch(editTag({ tagId, tagData: { name } }));
+    if (editTagData.type != "quiz/editTag/rejected") navigate(-1);
+  };
 
-    const editTagForm = async (e) => {
-        e.preventDefault()
+  if (isLoading) return <Loader />;
 
-        const tagData = {
-            name
-        }
-
-        if (name) {
-            const editTagData = await dispatch(editTag({ tagId, tagData }))
-
-            if (editTagData.type != "quiz/editTag/rejected") {
-                navigate(-1);
-            }
-        } else {
-            toast.error("All fields are required")
-        }
-    }
-
-    if (isLoading) {
-        return <Loader />
-    }
-    return (
-        <div className="bg-gray-50  flex justify-center py-[200px]">
-            <div className="w-full max-w-[1240px] bg-white p-8 rounded-md shadow-md">
-                <form onSubmit={editTagForm}>
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700" htmlFor="name">
-                            Name:
-                        </label>
-                        <input
-                            value={name}
-                            onChange={handleInputChange}
-                            type="text"
-                            name='name'
-                            id="name"
-                            className="mt-1 block w-full border-gray-300 outline-none border px-2 py-1 shadow-sm"
-                        />
-                    </div>
-
-                    <button
-                        type="submit"
-                        className="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                    >
-                        Edit Tag
-                    </button>
-                </form>
-            </div>
-        </div>
-    );
+  return (
+    <AccountLayout title="Kateqoriyanı redaktə et" subtitle="Kateqoriya adını yenilə.">
+      <div className="max-w-xl">
+        <form
+          onSubmit={editTagForm}
+          className="rounded-3xl border border-line bg-surface p-6 shadow-soft sm:p-8"
+        >
+          <Field label="Kateqoriya adı" htmlFor="name">
+            <input
+              id="name"
+              name="name"
+              value={name}
+              onChange={handleInputChange}
+              className={inputClass}
+            />
+          </Field>
+          <Button type="submit" className="mt-6">
+            Yadda saxla
+          </Button>
+        </form>
+      </div>
+    </AccountLayout>
+  );
 };
 
 export default TagEdit;

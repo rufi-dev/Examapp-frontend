@@ -1,112 +1,72 @@
 const ResultCard = ({ result }) => {
-  let defaultMultipleChoice = 0;
-  let defaultOpenQuestion = 0;
-  let defaultDetailedQuestion = 0;
-  let defaultMatchedQuestion = 0;
-  result?.correctAnswers?.forEach((answer) => {
-    switch (answer.type) {
-      case "Cm":
-        defaultMultipleChoice++;
-        break;
-      case "Co":
-        defaultOpenQuestion++;
-        break;
-      case "Cd":
-        defaultDetailedQuestion++;
-        break;
-      case "Cma":
-        defaultMatchedQuestion++;
-        break;
-      default:
-        break;
-    }
-  });
+  const correctAnswers = result?.correctAnswers || [];
+  const selectedAnswers = result?.selectedAnswers || [];
+  const count = Math.max(correctAnswers.length, selectedAnswers.length);
+  const cells = Array.from({ length: count }, (_, i) => i);
+
+  const isCorrect = (i) =>
+    !!selectedAnswers[i]?.answer &&
+    !!correctAnswers[i]?.answer &&
+    selectedAnswers[i].answer === correctAnswers[i].answer;
+
+  const rowLabel =
+    "sticky left-0 z-10 bg-surface px-4 py-3 text-left font-semibold text-text whitespace-nowrap border-r border-line";
 
   return (
-    <table className="w-full border-collapse border border-gray-200">
-      <thead>
-        {
-          <tr className="bg-gray-100">
-            <th className="border border-gray-200"></th>
-            <th
-              colSpan={defaultMultipleChoice}
-              className="border border-gray-200 p-2"
-            >
-              Qapalı testlər
-            </th>
-            <th
-              colSpan={defaultOpenQuestion}
-              className="border border-gray-200 p-2"
-            >
-              Açıq testlər
-            </th>
-            {defaultMatchedQuestion > 0 && (
-              <th
-                colSpan={defaultMatchedQuestion}
-                className="border border-gray-200 p-2"
+    <div className="scrollbar-thin overflow-x-auto rounded-2xl border border-line bg-surface shadow-soft">
+      <table className="w-full border-collapse text-sm">
+        <tbody>
+          <tr className="border-b border-line">
+            <td className={rowLabel}>Sual</td>
+            {cells.map((i) => (
+              <td
+                key={i}
+                className="border-l border-line px-3 py-3 text-center font-semibold text-muted"
               >
-                Uyğunluq
-              </th>
-            )}
-            <th
-              colSpan={defaultDetailedQuestion}
-              className="border border-gray-200 p-2"
-            >
-              Yazı işləri
-            </th>
+                {i + 1}
+              </td>
+            ))}
           </tr>
-        }
-      </thead>
-      <tbody>
-        <tr>
-          <td className="border border-gray-200 p-2 font-bold">Doğru Cavab</td>
-          {result?.correctAnswers.map((answer, index) => (
-            <td
-              key={index}
-              className={`border text-center border-gray-200 p-2 ${
-                answer?.answer === result?.selectedAnswers[index]?.answer
-                  ? "bg-[#77DD77]"
-                  : "bg-[#FF6961]"
-              }`}
-            >
-              {answer.answer}
-            </td>
-          ))}
-        </tr>
-        <tr>
-          <td className="border border-gray-200 p-2 font-bold">Cavab</td>
-          {result?.selectedAnswers.map((answer, index) => (
-            <td
-              key={index}
-              className={`border text-center border-gray-200 p-2 ${
-                answer?.answer === result.correctAnswers[index].answer
-                  ? "bg-[#77DD77]"
-                  : "bg-[#FF6961]"
-              }`}
-            >
-              {answer?.answer}
-            </td>
-          ))}
-        </tr>
-        <tr>
-          <td className="border border-gray-200 p-2 font-bold">Nəticə</td>
-          {result?.selectedAnswers.map((answer, index) => (
-            <td
-              key={index}
-              className={`border text-center border-gray-200 p-2 ${
-                answer?.answer === result.correctAnswers[index].answer
-                  ? "bg-[#77DD77]"
-                  : "bg-[#FF6961]"
-              }`}
-            >
-              {answer?.answer === result?.correctAnswers[index].answer
-                ? "+"
-                : "-"}
-            </td>
-          ))}
-        </tr>
-      </tbody>
-    </table>
+          <tr className="border-b border-line">
+            <td className={rowLabel}>Doğru cavab</td>
+            {cells.map((i) => (
+              <td key={i} className="border-l border-line px-3 py-3 text-center text-text">
+                {correctAnswers[i]?.answer || "—"}
+              </td>
+            ))}
+          </tr>
+          <tr className="border-b border-line">
+            <td className={rowLabel}>Sənin cavabın</td>
+            {cells.map((i) => (
+              <td
+                key={i}
+                className={`border-l border-line px-3 py-3 text-center font-medium ${
+                  selectedAnswers[i]?.answer
+                    ? isCorrect(i)
+                      ? "bg-success/15 text-success"
+                      : "bg-danger/12 text-danger"
+                    : "text-muted"
+                }`}
+              >
+                {selectedAnswers[i]?.answer || "—"}
+              </td>
+            ))}
+          </tr>
+          <tr>
+            <td className={rowLabel}>Nəticə</td>
+            {cells.map((i) => (
+              <td key={i} className="border-l border-line px-3 py-3 text-center">
+                {isCorrect(i) ? (
+                  <span className="font-bold text-success">✓</span>
+                ) : (
+                  <span className="font-bold text-danger">✕</span>
+                )}
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+    </div>
   );
 };
 

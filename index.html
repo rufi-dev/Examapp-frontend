@@ -1,14 +1,33 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="az">
   <head>
     <meta charset="UTF-8" />
     <link rel="shorcut icon" href="./src/assets/favicon/favicon.ico" />
     <link rel="icon" type="image/svg+xml" href="./src/assets/logomath.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="manifest" href="manifest.json">
-    <link href="/dist/output.css" rel="stylesheet">
-    <meta name="theme-color" content="#fff"/>
-    <title>Imtahan Platforması</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#f6f7fb" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#14151b" media="(prefers-color-scheme: dark)" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <script>
+      // Apply theme before paint to avoid a flash of the wrong theme.
+      (function () {
+        try {
+          var t = localStorage.getItem('theme');
+          var dark = t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (dark) document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
+
+    <title>Imtahan Platforması — Onlayn sınaq imtahanları</title>
   </head>
   <body>
     <div id="loader"></div>

@@ -1,21 +1,14 @@
-import ReactDOM from 'react-dom'
-import { TailSpin } from 'react-loader-spinner'
+import ReactDOM from "react-dom";
+import Spinner from "./Spinner";
 
 const Loader = () => {
-    return ReactDOM.createPortal(
-        <div className="w-full flex justify-center items-center h-screen fixed top-0 bg-[white] z-[100]">
-            <TailSpin
-                height="130"
-                width="130"
-                color="#1084da"
-                ariaLabel="triangle-loading"
-                wrapperStyle={{}}
-                wrapperClassName=""
-                visible={true}
-            />
-        </div>,
-        document.getElementById("loader")
-    )
-}
+  return ReactDOM.createPortal(
+    <div className="fixed inset-0 z-[1000] flex flex-col items-center justify-center gap-4 bg-bg/80 backdrop-blur-sm">
+      <Spinner size={46} className="text-primary" />
+      <p className="text-sm font-medium text-muted">Yüklənir...</p>
+    </div>,
+    document.getElementById("loader")
+  );
+};
 
-export default Loader
+export default Loader;

@@ -1,80 +1,58 @@
-import React, { useEffect, useState } from 'react';
-import { HiUsers } from 'react-icons/hi';
-import { BiSolidUserCheck, BiUserMinus, BiUserX } from 'react-icons/bi';
-import { AiFillDelete } from 'react-icons/ai';
-import PageMenu from '../../components/PageMenu';
-import Categories from '../../components/Categories';
-import useRedirectLoggedOutUser from '../../customHook/useRedirectLoggedOutUser';
-import { useDispatch, useSelector } from 'react-redux';
-import { getTags, addExam, getTag, addTag } from '../../../redux/features/quiz/quizSlice';
-import { toast } from 'react-toastify';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useState } from "react";
+import AccountLayout from "../../components/AccountLayout";
+import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser";
+import { useDispatch } from "react-redux";
+import { addTag } from "../../../redux/features/quiz/quizSlice";
+import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
+import Button from "../../components/ui/Button";
+import { Field, inputClass } from "../../components/ui/Field";
 
 const TagAdd = () => {
-    useRedirectLoggedOutUser('/login');
-    const navigate = useNavigate()
+  useRedirectLoggedOutUser("/login");
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const [tagForm, setTagForm] = useState({ name: "" });
+  const { name } = tagForm;
 
-    const initialState = {
-        name: "",
+  const handleInputChange = (e) =>
+    setTagForm({ ...tagForm, [e.target.name]: e.target.value });
+
+  const addTagForm = async (e) => {
+    e.preventDefault();
+    if (!name) {
+      return toast.error("Ad xanasını doldurun");
     }
-    const [tagForm, setTagForm] = useState(initialState)
-    const { name } = tagForm
-
-    const handleInputChange = (e) => {
-        const { name, value } = e.target
-        setTagForm({ ...tagForm, [name]: value })
+    const addTagData = await dispatch(addTag({ name }));
+    if (addTagData.type != "quiz/addTag/rejected") {
+      navigate("/tags");
     }
+  };
 
-    const dispatch = useDispatch()
-
-    useEffect(() => {
-        dispatch(getTags())
-    }, [dispatch])
-
-    const addTagForm = async (e) => {
-        e.preventDefault()
-
-        const tagData = {
-            name
-        }
-        if (name) {
-            const addTagData = await dispatch(addTag(tagData))
-
-            if (addTagData.type != "quiz/addTag/rejected") {
-                navigate("/tags");
-            }
-        } else {
-            toast.error("All fields are required")
-        }
-    }
-    return (
-        <div className="bg-gray-50  flex justify-center py-[200px]">
-            <div className="w-full max-w-[1240px] bg-white p-8 rounded-md shadow-md">
-                <form onSubmit={addTagForm}>
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700" htmlFor="name">
-                            Name:
-                        </label>
-                        <input
-                            value={name}
-                            onChange={handleInputChange}
-                            type="text"  
-                            name='name'
-                            id="name"
-                            className="mt-1 block w-full border-gray-300 outline-none border px-2 py-1 shadow-sm"
-                        />
-                    </div>
-
-                    <button
-                        type="submit"
-                        className="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                    >
-                        Add Tag
-                    </button>
-                </form>
-            </div>
-        </div>
-    );
+  return (
+    <AccountLayout title="İmtahan kateqoriyası" subtitle="Yeni kateqoriya (tag) əlavə et.">
+      <div className="max-w-xl">
+        <form
+          onSubmit={addTagForm}
+          className="rounded-3xl border border-line bg-surface p-6 shadow-soft sm:p-8"
+        >
+          <Field label="Kateqoriya adı" htmlFor="name">
+            <input
+              id="name"
+              name="name"
+              value={name}
+              onChange={handleInputChange}
+              className={inputClass}
+              placeholder="Məsələn: Buraxılış"
+            />
+          </Field>
+          <Button type="submit" className="mt-6">
+            Əlavə et
+          </Button>
+        </form>
+      </div>
+    </AccountLayout>
+  );
 };
 
 export default TagAdd;

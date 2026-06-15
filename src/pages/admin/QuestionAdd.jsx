@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import PdfOpener from "../../components/PdfOpener";
 import {
@@ -10,19 +10,31 @@ import {
 } from "../../../redux/features/quiz/quizSlice";
 import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser";
 import Spinner from "../../components/Spinner";
-import Loader from "../../components/Loader";
-import { TailSpin } from "react-loader-spinner";
-import QuestionType from "../../components/QuestionType";
-import PDFPreview from "../../components/PDFPreview";
+import Container from "../../components/ui/Container";
+import Button from "../../components/ui/Button";
+import { inputClass } from "../../components/ui/Field";
+import { FiPlus, FiX } from "react-icons/fi";
+
+const newQuestion = () => ({ type: "Cm", answer: "", options: ["a", "b", "c", "d", "e"] });
+
+const nextLetter = (options) => {
+  const used = new Set(options);
+  for (let i = 0; i < 26; i++) {
+    const ch = String.fromCharCode(97 + i);
+    if (!used.has(ch)) return ch;
+  }
+  return String(options.length + 1);
+};
 
 const QuestionAdd = () => {
   useRedirectLoggedOutUser("/login");
   const dispatch = useDispatch();
-  const { singleClass, singleTag } = useSelector((state) => state.quiz);
+  const navigate = useNavigate();
   const [pdfData, setPdfData] = useState(null);
-  const [questionCount, setQuestionCount] = useState(25);
-  const [answers, setAnswers] = useState(Array.from({ length: 25 }, () => ({ answer: "", type: "" })));
-  const [loading, setLoading] = useState(false); // State to track loading
+  const [loading, setLoading] = useState(false);
+  const [questions, setQuestions] = useState(() =>
+    Array.from({ length: 25 }, () => newQuestion())
+  );
   const { examId } = useParams();
 
   useEffect(() => {
@@ -35,103 +47,197 @@ const QuestionAdd = () => {
         console.error("Error fetching PDF:", error);
       }
     };
-
     fetchData();
   }, [dispatch, examId]);
 
-  const handleAnswerChange = (e, index, type) => {
-    const value = e.target.value;
-    setAnswers((prevAnswers) => {
-      const updatedAnswers = [...prevAnswers];
-      updatedAnswers[index] = { ...updatedAnswers[index], answer: value, type };
-      return updatedAnswers;
-    });
-  };
+  const update = (i, patch) =>
+    setQuestions((prev) => prev.map((q, idx) => (idx === i ? { ...q, ...patch } : q)));
 
-  const submitAnswerSheet = async (e) => {
+  const setType = (i, type) => update(i, { type, answer: "" });
+  const setAnswer = (i, answer) => update(i, { answer });
+  const addOption = (i) =>
+    setQuestions((prev) =>
+      prev.map((q, idx) =>
+        idx === i ? { ...q, options: [...q.options, nextLetter(q.options)] } : q
+      )
+    );
+  const removeOption = (i, opt) =>
+    setQuestions((prev) =>
+      prev.map((q, idx) =>
+        idx === i
+          ? {
+              ...q,
+              options: q.options.filter((o) => o !== opt),
+              answer: q.answer === opt ? "" : q.answer,
+            }
+          : q
+      )
+    );
+  const removeQuestion = (i) => setQuestions((prev) => prev.filter((_, idx) => idx !== i));
+  const addQuestionRow = () => setQuestions((prev) => [...prev, newQuestion()]);
+
+  const submit = async (e) => {
     e.preventDefault();
-    setLoading(true); // Set loading to true when submitting
-
+    if (questions.length === 0) return toast.error("Ən azı bir sual əlavə edin");
+    if (questions.some((q) => !q.answer)) {
+      return toast.error("Bütün suallara düzgün cavab seçin və ya yazın");
+    }
+    setLoading(true);
     try {
-      const questionData = {
-        correctAnswers: answers,
-      };
-      await dispatch(addQuestion({ examId, questionData }));
+      const correctAnswers = questions.map((q) => ({
+        type: q.type,
+        answer: q.answer,
+        ...(q.type === "Cm" ? { options: q.options } : {}),
+      }));
+      await dispatch(addQuestion({ examId, questionData: { correctAnswers } }));
+      toast.success("Suallar əlavə edildi");
+      navigate(-1);
     } catch (error) {
-      console.error("Error submitting answer sheet:", error);
-      toast.error("Failed to submit answer sheet");
+      toast.error("Sualları əlavə etmək alınmadı");
     } finally {
       setLoading(false);
     }
   };
 
-  // Function to increase question count
-  const increaseQuestionCount = () => {
-    setQuestionCount((prevCount) => prevCount + 1);
-    setAnswers((prevAnswers) => [...prevAnswers, ""]); // Add an empty answer for the new question
-  };
-
-  // Determine question count and types based on singleTag and singleClass
-
   return (
-    <div className="bg-gray-50 max-w-[1640px] mx-auto my-5 relative">
-      {loading && (
-        <div className="absolute bg-gray-200 z-[1000] opacity-50 w-full h-full">
-          <div className="w-full flex justify-center items-center h-full z-[100]">
-            <TailSpin
-              height="130"
-              width="130"
-              color="#1084da"
-              ariaLabel="triangle-loading"
-              wrapperStyle={{}}
-              wrapperClassName=""
-              visible={true}
-            />
-          </div>
+    <section className="py-8">
+      <Container>
+        <div className="mb-6">
+          <h1 className="font-display text-2xl font-bold text-text sm:text-3xl">
+            Sualları əlavə et
+          </h1>
+          <p className="mt-1 text-muted">
+            Hər sual üçün tipi (qapalı / açıq) seç və düzgün cavabı təyin et.
+          </p>
         </div>
-      )}
 
-      <div className="flex lg:flex-row relative flex-col py-10 justify-center gap-[50px] mx-5">
-        <div>
-          <PdfOpener pdfFile={pdfData} />
-          {/* <PDFPreview pdfPath={pdfData} /> */}
-        </div>
-        <div className="w-full max-w-[1240px] lg:max-w-[700px] bg-white p-8 rounded-md shadow-md">
-          <form onSubmit={submitAnswerSheet}>
-            {pdfData && (
-              <div>
-                {/* Render dynamic question inputs */}
-                {
-                  <QuestionType
-                    answers={answers}
-                    singleTag={singleTag}
-                    singleClass={singleClass}
-                    handleAnswerChange={handleAnswerChange}
-                  />
-                }
-              </div>
-            )}
-            <div className="mb-4">
-              <button
-                type="submit"
-                className="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                disabled={loading} // Disable button when loading
-              >
-                {loading ? "Əlavə Olunur..." : "Sualları Əlavə Et"}
-              </button>
+        <div className="relative grid gap-6 lg:grid-cols-2">
+          {loading && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center rounded-3xl bg-bg/70 backdrop-blur-sm">
+              <Spinner size={46} className="text-primary" />
             </div>
-          </form>
-          <div className="text-center">
-            <button
-              onClick={increaseQuestionCount}
-              className="text-blue-500 underline cursor-pointer"
-            >
-              Sual sayını artır
-            </button>
+          )}
+
+          {/* PDF */}
+          <div className="flex h-[80vh] min-w-0 flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-soft lg:sticky lg:top-20 lg:h-[calc(100vh-9rem)]">
+            <div className="border-b border-line px-5 py-3 text-sm font-semibold text-muted">
+              İmtahan sualları (PDF)
+            </div>
+            <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
+              <PdfOpener pdfFile={pdfData} />
+            </div>
+          </div>
+
+          {/* Builder */}
+          <div className="flex min-w-0 flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-soft lg:h-[calc(100vh-9rem)]">
+            <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col">
+              <div className="scrollbar-thin flex-1 space-y-3 overflow-y-auto p-5 sm:p-6">
+                {questions.map((q, i) => (
+                  <div key={i} className="rounded-2xl border border-line bg-surface2/40 p-4">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <span className="font-display text-sm font-bold text-text">
+                        Sual {i + 1}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <div className="flex rounded-lg border border-line bg-surface p-0.5 text-xs font-semibold">
+                          <button
+                            type="button"
+                            onClick={() => setType(i, "Cm")}
+                            className={`rounded-md px-3 py-1 transition-colors ${
+                              q.type === "Cm" ? "bg-primary text-primary-fg" : "text-muted"
+                            }`}
+                          >
+                            Qapalı
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setType(i, "Co")}
+                            className={`rounded-md px-3 py-1 transition-colors ${
+                              q.type === "Co" ? "bg-primary text-primary-fg" : "text-muted"
+                            }`}
+                          >
+                            Açıq
+                          </button>
+                        </div>
+                        {questions.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeQuestion(i)}
+                            className="grid h-7 w-7 place-items-center rounded-lg text-muted transition-colors hover:bg-danger/12 hover:text-danger"
+                            aria-label="Sualı sil"
+                          >
+                            <FiX />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {q.type === "Cm" ? (
+                      <div className="flex flex-wrap items-center gap-2">
+                        {q.options.map((opt) => (
+                          <div key={opt} className="group relative">
+                            <button
+                              type="button"
+                              onClick={() => setAnswer(i, opt)}
+                              className={`grid h-11 w-11 place-items-center rounded-full border font-semibold transition-colors ${
+                                q.answer === opt
+                                  ? "border-success bg-success/15 text-success"
+                                  : "border-line bg-surface text-muted hover:border-primary/40"
+                              }`}
+                            >
+                              {opt}
+                            </button>
+                            {q.options.length > 2 && (
+                              <button
+                                type="button"
+                                onClick={() => removeOption(i, opt)}
+                                className="absolute -right-1 -top-1 hidden h-4 w-4 place-items-center rounded-full bg-danger text-[10px] leading-none text-white group-hover:grid"
+                                aria-label="Variantı sil"
+                              >
+                                ×
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => addOption(i)}
+                          className="grid h-11 w-11 place-items-center rounded-full border border-dashed border-line text-muted transition-colors hover:border-primary hover:text-primary"
+                          aria-label="Variant əlavə et"
+                        >
+                          <FiPlus />
+                        </button>
+                      </div>
+                    ) : (
+                      <input
+                        value={q.answer}
+                        onChange={(e) => setAnswer(i, e.target.value)}
+                        placeholder="Düzgün cavabı yaz..."
+                        className={inputClass}
+                      />
+                    )}
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={addQuestionRow}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-line py-3 text-sm font-semibold text-muted transition-colors hover:border-primary hover:text-primary"
+                >
+                  <FiPlus /> Sual əlavə et
+                </button>
+              </div>
+
+              <div className="border-t border-line p-4">
+                <Button type="submit" disabled={loading} size="lg" className="w-full">
+                  {loading ? <Spinner /> : `Sualları yadda saxla (${questions.length})`}
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
-      </div>
-    </div>
+      </Container>
+    </section>
   );
 };
 

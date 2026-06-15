@@ -106,7 +106,7 @@ const loginWithCode = async (code, email) => {
 
 // Login With Google
 const loginWithGoogle = async (userToken) => {
-    const response = await axios.post(API_URL + "/google/callback", userToken)
+    const response = await axios.post(API_URL + "google/callback", userToken)
     return response.data
 }
 
