@@ -423,6 +423,21 @@ export const addExamToUserById = createAsyncThunk(
   }
 );
 
+export const startAttempt = createAsyncThunk(
+  "quiz/startAttempt",
+  async (examId, thunkAPI) => {
+    try {
+      return await quizService.startAttempt(examId);
+    } catch (error) {
+      const data = (error.response && error.response.data) || {};
+      return thunkAPI.rejectWithValue({
+        reason: data.reason,
+        message: data.message || error.message || error.toString(),
+      });
+    }
+  }
+);
+
 export const startExamAction = createAsyncThunk(
   "quiz/startExam",
   async ({ examId, setPdfData }, thunkAPI) => {

@@ -1,14 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { useSelector, useDispatch } from "react-redux";
-import {
-  getExam,
-  startExam,
-  startExamAction,
-  userSelectedAnswer,
-} from "../../../redux/features/quiz/quizSlice";
-import { addResult, getResultsByUserByExam } from "../../../redux/features/quiz/resultSlice";
-import { getUser } from "../../../redux/features/auth/authSlice";
-import { attempts_Number, earnPoints_Number } from "../../helper/helper";
+import { useDispatch } from "react-redux";
+import { startAttempt, getPdfByExam } from "../../../redux/features/quiz/quizSlice";
+import { addResult } from "../../../redux/features/quiz/resultSlice";
 import { useNavigate, useParams } from "react-router-dom";
 import { FiClock, FiCheckCircle } from "react-icons/fi";
 import { toast } from "react-toastify";
@@ -18,20 +11,23 @@ import Spinner from "../../components/Spinner";
 import Button from "../../components/ui/Button";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
+// Maps server denial reasons to a message + where to send the user.
+const DENY = {
+  unverified: { msg: "Hesabınız təsdiqlənməyib", to: (id) => `/exam/details/${id}` },
+  not_started: { msg: "İmtahan hələ başlamayıb", to: (id) => `/exam/details/${id}` },
+  finished: { msg: "İmtahan artıq bitib", to: (id) => `/exam/details/${id}` },
+  no_questions: { msg: "Bu imtahana suallar əlavə edilməyib", to: (id) => `/exam/details/${id}` },
+  max_tries: { msg: "Maksimum cəhd sayına çatmısınız", to: (id) => `/exam/${id}/result` },
+};
+
 const Quiz = () => {
   const { examId } = useParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const { singleExam, singleClass, singleTag, isExamStarted } = useSelector(
-    (state) => state.quiz
-  );
-  const { user } = useSelector((state) => state.auth);
-
   const answersKey = `examAnswers_${examId}`;
-  const deadlineKey = `quizDeadline_${examId}`;
 
-  // Persisted answers: survive accidental leave/return.
+  // Draft answers persist locally so a refresh/return doesn't lose them.
   const [answers, setAnswers] = useState(() => {
     try {
       const saved = localStorage.getItem(`examAnswers_${examId}`);
@@ -42,66 +38,47 @@ const Quiz = () => {
     return Array.from({ length: 25 }, () => ({ answer: "", type: "" }));
   });
 
+  const [attempt, setAttempt] = useState(null); // { expiresAt, name, duration, questions }
   const [pdfData, setPdfData] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mobileView, setMobileView] = useState("pdf"); // mobile: "pdf" | "answers"
   const [access, setAccess] = useState("checking"); // "checking" | "allowed" | "denied"
   const [confirmFinish, setConfirmFinish] = useState(false);
-
-  // Absolute end time (ms epoch). The timer is wall-clock based: it keeps
-  // elapsing even if the tab is closed, the device sleeps, or the battery dies.
-  const [deadline, setDeadline] = useState(() => {
-    const saved = parseInt(localStorage.getItem(`quizDeadline_${examId}`), 10);
-    return Number.isFinite(saved) ? saved : null;
-  });
   const [timeLeft, setTimeLeft] = useState(null); // seconds remaining
   const warned5 = useRef(false);
   const warned1 = useRef(false);
 
-  // Access guard: confirm with the server (fresh) that the exam is open and the
-  // user is allowed BEFORE loading or showing anything. Blocks direct-URL access
-  // when the exam hasn't started, has finished, the user is out of tries, or the
-  // account isn't verified.
+  // Refs so the (interval-based) auto-submit always reads the latest values.
+  const answersRef = useRef(answers);
+  answersRef.current = answers;
+  const submittingRef = useRef(false);
+
+  const deadline = attempt?.expiresAt ? new Date(attempt.expiresAt).getTime() : null;
+  const questions = attempt?.questions || [];
+  const totalCount = questions.length || answers.length;
+
+  // Start (or resume) the attempt on the server, then load the PDF. The server
+  // gates access, owns the deadline, and returns questions without answers.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const exam = await dispatch(getExam(examId)).unwrap();
-        const results = await dispatch(getResultsByUserByExam(examId)).unwrap();
-        let u = user;
-        if (!u) {
-          try {
-            u = await dispatch(getUser()).unwrap();
-          } catch {
-            u = null;
-          }
-        }
+        const data = await dispatch(startAttempt(examId)).unwrap();
         if (cancelled) return;
-
-        const now = new Date();
-        const start = exam?.startDate ? new Date(exam.startDate) : null;
-        const end = exam?.endDate ? new Date(exam.endDate) : null;
-        const maxTry = exam?.maxTry || 0;
-        const attempts = Array.isArray(results) ? results.length : 0;
-
-        const deny = (msg, to) => {
-          toast.error(msg);
-          setAccess("denied");
-          navigate(to, { replace: true });
-        };
-
-        if (!u?.isVerified) return deny("Hesabınız təsdiqlənməyib", `/exam/details/${examId}`);
-        if (start && now < start) return deny("İmtahan hələ başlamayıb", `/exam/details/${examId}`);
-        if (end && now > end) return deny("İmtahan artıq bitib", `/exam/details/${examId}`);
-        if (maxTry > 0 && attempts >= maxTry)
-          return deny("Maksimum cəhd sayına çatmısınız", `/exam/${examId}/result`);
-
+        setAttempt(data);
         setAccess("allowed");
-      } catch {
+        dispatch(getPdfByExam({ examId }))
+          .unwrap()
+          .then((pdf) => {
+            if (!cancelled) setPdfData(pdf?.path || null);
+          })
+          .catch(() => {});
+      } catch (err) {
         if (cancelled) return;
-        toast.error("İmtahana giriş alınmadı");
+        const rule = DENY[err?.reason];
+        toast.error(rule ? rule.msg : err?.message || "İmtahana giriş alınmadı");
         setAccess("denied");
-        navigate(`/exam/details/${examId}`, { replace: true });
+        navigate(rule ? rule.to(examId) : `/exam/details/${examId}`, { replace: true });
       }
     })();
     return () => {
@@ -110,15 +87,7 @@ const Quiz = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch, examId]);
 
-  // Load the exam content (pdf + questions) only after access is granted.
-  useEffect(() => {
-    if (access !== "allowed") return;
-    dispatch(startExamAction({ examId, setPdfData })).catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [access, examId]);
-
-  // Lock the page to the viewport while the exam runs: no page scroll or
-  // scrollbar — only the PDF and the answers list scroll, inside their panels.
+  // Lock the page to the viewport while the exam runs (no page scroll).
   useEffect(() => {
     const html = document.documentElement;
     const body = document.body;
@@ -132,9 +101,9 @@ const Quiz = () => {
     };
   }, []);
 
-  // Resize the answers array to match the question count once loaded.
+  // Resize answers array to match the question count once loaded.
   useEffect(() => {
-    const len = singleExam?.questions?.correctAnswers?.length;
+    const len = questions.length;
     if (len) {
       setAnswers((prev) => {
         if (prev.length >= len) return prev;
@@ -143,9 +112,10 @@ const Quiz = () => {
         return next;
       });
     }
-  }, [singleExam]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attempt]);
 
-  // Persist answers on every change.
+  // Persist draft answers on change.
   useEffect(() => {
     try {
       localStorage.setItem(answersKey, JSON.stringify(answers));
@@ -154,21 +124,8 @@ const Quiz = () => {
     }
   }, [answers, answersKey]);
 
-  // Establish the absolute deadline once the exam is open (or keep the stored
-  // one on resume). Stored as an epoch timestamp -> wall-clock based countdown.
-  useEffect(() => {
-    if (access !== "allowed" || deadline != null) return;
-    const dur = singleExam?.duration;
-    if (dur) {
-      const dl = Date.now() + dur * 1000;
-      localStorage.setItem(deadlineKey, String(dl));
-      setDeadline(dl);
-    }
-  }, [access, deadline, singleExam, deadlineKey]);
-
-  // Wall-clock countdown: recompute remaining from the absolute deadline every
-  // second, so leaving / sleeping / closing the tab does NOT pause the timer.
-  // On return after the deadline, remaining is 0 and it auto-submits at once.
+  // Wall-clock countdown from the SERVER deadline: leaving / sleeping / closing
+  // the tab can't pause it, and it can't be extended from localStorage.
   useEffect(() => {
     if (access !== "allowed" || deadline == null) return;
     let id;
@@ -197,8 +154,7 @@ const Quiz = () => {
 
   // Block back navigation + warn on reload/close while the exam is active.
   useEffect(() => {
-    if (!isExamStarted) return;
-
+    if (access !== "allowed") return;
     window.history.pushState(null, "", window.location.href);
     const onPopState = () => {
       window.history.pushState(null, "", window.location.href);
@@ -214,49 +170,26 @@ const Quiz = () => {
       window.removeEventListener("popstate", onPopState);
       window.removeEventListener("beforeunload", onBeforeUnload);
     };
-  }, [isExamStarted]);
-
-  const calculateResultData = () => {
-    const correctAnswers = singleExam?.questions?.correctAnswers || [];
-    // Only score against as many answers as there are questions.
-    const len = correctAnswers.length || answers.length;
-    const sliced = answers.slice(0, len);
-
-    const attempts = attempts_Number(sliced);
-    const earnPoints = earnPoints_Number(
-      sliced,
-      correctAnswers,
-      correctAnswers,
-      singleClass,
-      singleTag
-    );
-
-    return {
-      attempts,
-      earnPoints: earnPoints.earnedPoints > 0 ? earnPoints.earnedPoints : 0,
-      selectedAnswers: sliced.map((a) => ({ type: a?.type, answer: a?.answer })),
-      correctAnswers: correctAnswers.map((a) => ({ type: a.type, answer: a.answer })),
-      correctAnswersByType: earnPoints.correctAnswersByType.map((item) => ({
-        type: item.type,
-        count: item.count,
-      })),
-    };
-  };
+  }, [access]);
 
   const submitAnswerSheet = async () => {
-    if (isSubmitting) return;
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setIsSubmitting(true);
     try {
-      const resultData = calculateResultData();
-      await dispatch(addResult({ examId, resultData }));
-      await dispatch(startExam(false));
-      localStorage.removeItem(deadlineKey);
+      const latest = answersRef.current;
+      const len = questions.length || latest.length;
+      const selectedAnswers = latest
+        .slice(0, len)
+        .map((a) => ({ type: a?.type, answer: a?.answer }));
+      // The server scores it (the browser never had the answer key).
+      await dispatch(addResult({ examId, resultData: { selectedAnswers } })).unwrap();
       localStorage.removeItem(answersKey);
       navigate(`/exam/${examId}/result`);
     } catch (error) {
-      console.error("Error submitting answer sheet:", error);
-      toast.error("Cavabları təqdim etmək alınmadı");
+      // error toast is shown by the addResult slice
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -268,7 +201,6 @@ const Quiz = () => {
       updated[index] = { ...updated[index], answer: value, type };
       return updated;
     });
-    dispatch(userSelectedAnswer({ index, answer: value, type }));
   };
 
   const remaining = () => {
@@ -279,19 +211,13 @@ const Quiz = () => {
   };
 
   const aboutToEnd = timeLeft !== null && timeLeft <= 30;
-  const answeredCount = answers.filter((a) => a && a.answer).length;
-  const totalCount = singleExam?.questions?.correctAnswers?.length || answers.length;
-  const questionDefs = singleExam?.questions?.correctAnswers?.map((q) => ({
-    type: q.type,
-    options: q.options,
-  }));
+  const answeredCount = answers.slice(0, totalCount).filter((a) => a && a.answer).length;
   const unansweredNums = answers
     .slice(0, totalCount)
     .map((a, i) => (a && a.answer ? null : i + 1))
     .filter((n) => n != null);
 
-  // Don't render exam content until access is confirmed (avoids flashing the
-  // PDF/answers during the check or to a denied user who is being redirected).
+  // Don't render exam content until access is confirmed.
   if (access !== "allowed") {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-bg">
@@ -302,12 +228,11 @@ const Quiz = () => {
 
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-bg">
-      {/* Top bar — timer + progress always visible; tab switch on mobile */}
       <header className="flex shrink-0 flex-col gap-3 border-b border-line bg-surface px-4 py-3 sm:px-6">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
-            {singleExam?.name && (
-              <p className="mb-0.5 truncate text-xs font-medium text-muted">{singleExam.name}</p>
+            {attempt?.name && (
+              <p className="mb-0.5 truncate text-xs font-medium text-muted">{attempt.name}</p>
             )}
             <div
               className={`flex items-center gap-2 font-display text-xl font-bold sm:text-2xl ${
@@ -345,7 +270,6 @@ const Quiz = () => {
         </div>
       </header>
 
-      {/* Body — side-by-side on desktop; one full-screen panel per tab on mobile */}
       <div className="flex min-h-0 flex-1 gap-4 p-3 sm:p-4 lg:p-6">
         <div
           className={`min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft lg:flex ${
@@ -369,9 +293,7 @@ const Quiz = () => {
             {pdfData ? (
               <QuestionType
                 answers={answers}
-                singleTag={singleTag}
-                singleClass={singleClass}
-                questions={questionDefs}
+                questions={questions}
                 handleAnswerChange={handleAnswerChange}
               />
             ) : (

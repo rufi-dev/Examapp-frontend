@@ -106,6 +106,12 @@ const addResult = async (examId, resultData) => {
     return response.data.message
 }
 
+//Start (or resume) a server-tracked attempt
+const startAttempt = async (examId) => {
+    const response = await axios.post(API_URL + "exam/" + examId + "/start")
+    return response.data
+}
+
 //Get Results By User
 const getResultsByUser = async () => {
     const response = await axios.get(API_URL + "getResultsByUser")
@@ -182,6 +188,7 @@ const quizService = {
     editTag,
     getQuestionByExam,
     addResult,
+    startAttempt,
     getResultsByUser,
     getResultsByUserByExam,
     addExamToUser,
