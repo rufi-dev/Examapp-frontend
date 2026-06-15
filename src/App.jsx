@@ -52,14 +52,14 @@ import CookieConsent from "./components/CookieConsent";
 axios.defaults.withCredentials = true;
 
 const Wrapper = ({ children }) => {
-  const [cookies] = useCookies(["g_state", "token"]);
+  const [cookies] = useCookies(["cookie_consent"]);
 
   // Scroll reset on route change is handled once by <ScrollToTop /> (instant);
   // no second smooth scroll here, which would otherwise glide on every nav.
   return (
     <div className="relative">
       {children}
-      {!cookies.g_state && !cookies.token && <CookieConsent />}
+      {!cookies.cookie_consent && <CookieConsent />}
     </div>
   );
 };
