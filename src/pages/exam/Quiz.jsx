@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import {
+  getExam,
   startExam,
   startExamAction,
   userSelectedAnswer,
 } from "../../../redux/features/quiz/quizSlice";
-import { addResult } from "../../../redux/features/quiz/resultSlice";
+import { addResult, getResultsByUserByExam } from "../../../redux/features/quiz/resultSlice";
+import { getUser } from "../../../redux/features/auth/authSlice";
 import { attempts_Number, earnPoints_Number } from "../../helper/helper";
 import { useNavigate, useParams } from "react-router-dom";
 import { FiClock, FiCheckCircle } from "react-icons/fi";
@@ -23,6 +25,7 @@ const Quiz = () => {
   const { singleExam, singleClass, singleTag, isExamStarted } = useSelector(
     (state) => state.quiz
   );
+  const { user } = useSelector((state) => state.auth);
 
   const answersKey = `examAnswers_${examId}`;
   const countdownKey = `quizCountdown_${examId}`;
@@ -41,17 +44,71 @@ const Quiz = () => {
   const [pdfData, setPdfData] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mobileView, setMobileView] = useState("pdf"); // mobile: "pdf" | "answers"
+  const [access, setAccess] = useState("checking"); // "checking" | "allowed" | "denied"
 
   const [counter, setCounter] = useState(() => {
     const saved = parseInt(localStorage.getItem(`quizCountdown_${examId}`), 10);
     return Number.isFinite(saved) ? saved : null;
   });
 
-  // Start the exam (loads pdf + questions into state).
+  // Access guard: confirm with the server (fresh) that the exam is open and the
+  // user is allowed BEFORE loading or showing anything. Blocks direct-URL access
+  // when the exam hasn't started, has finished, the user is out of tries, or the
+  // account isn't verified.
   useEffect(() => {
-    dispatch(startExamAction({ examId, setPdfData })).catch(() => {});
+    let cancelled = false;
+    (async () => {
+      try {
+        const exam = await dispatch(getExam(examId)).unwrap();
+        const results = await dispatch(getResultsByUserByExam(examId)).unwrap();
+        let u = user;
+        if (!u) {
+          try {
+            u = await dispatch(getUser()).unwrap();
+          } catch {
+            u = null;
+          }
+        }
+        if (cancelled) return;
+
+        const now = new Date();
+        const start = exam?.startDate ? new Date(exam.startDate) : null;
+        const end = exam?.endDate ? new Date(exam.endDate) : null;
+        const maxTry = exam?.maxTry || 0;
+        const attempts = Array.isArray(results) ? results.length : 0;
+
+        const deny = (msg, to) => {
+          toast.error(msg);
+          setAccess("denied");
+          navigate(to, { replace: true });
+        };
+
+        if (!u?.isVerified) return deny("Hesabınız təsdiqlənməyib", `/exam/details/${examId}`);
+        if (start && now < start) return deny("İmtahan hələ başlamayıb", `/exam/details/${examId}`);
+        if (end && now > end) return deny("İmtahan artıq bitib", `/exam/details/${examId}`);
+        if (maxTry > 0 && attempts >= maxTry)
+          return deny("Maksimum cəhd sayına çatmısınız", `/exam/${examId}/result`);
+
+        setAccess("allowed");
+      } catch {
+        if (cancelled) return;
+        toast.error("İmtahana giriş alınmadı");
+        setAccess("denied");
+        navigate(`/exam/details/${examId}`, { replace: true });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch, examId]);
+
+  // Load the exam content (pdf + questions) only after access is granted.
+  useEffect(() => {
+    if (access !== "allowed") return;
+    dispatch(startExamAction({ examId, setPdfData })).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [access, examId]);
 
   // Lock the page to the viewport while the exam runs: no page scroll or
   // scrollbar — only the PDF and the answers list scroll, inside their panels.
@@ -96,7 +153,7 @@ const Quiz = () => {
 
   // Countdown timer.
   useEffect(() => {
-    if (counter === null) return;
+    if (access !== "allowed" || counter === null) return;
     localStorage.setItem(countdownKey, String(counter));
     if (counter <= 0) {
       submitAnswerSheet();
@@ -197,6 +254,16 @@ const Quiz = () => {
     type: q.type,
     options: q.options,
   }));
+
+  // Don't render exam content until access is confirmed (avoids flashing the
+  // PDF/answers during the check or to a denied user who is being redirected).
+  if (access !== "allowed") {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-bg">
+        <Spinner size={44} className="text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-bg">
