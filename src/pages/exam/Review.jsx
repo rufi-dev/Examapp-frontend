@@ -128,19 +128,25 @@ const Review = () => {
           </div>
 
           <div className="min-w-0">
-            <div className="rounded-3xl border border-line bg-surface p-6 shadow-soft sm:p-8">
-              <QuestionType
-                answers={answers}
-                singleTag={singleTag}
-                singleClass={singleClass}
-                review={review}
-                questions={review?.correctAnswers?.map((q) => ({
-                  type: q.type,
-                  options: q.options,
-                }))}
-                handleAnswerChange={() => {}}
-              />
-            </div>
+            {review?.correctAnswers?.length ? (
+              <div className="rounded-3xl border border-line bg-surface p-6 shadow-soft sm:p-8">
+                <QuestionType
+                  answers={answers}
+                  singleTag={singleTag}
+                  singleClass={singleClass}
+                  review={review}
+                  questions={review?.correctAnswers?.map((q) => ({
+                    type: q.type,
+                    options: q.options,
+                  }))}
+                  handleAnswerChange={() => {}}
+                />
+              </div>
+            ) : (
+              <div className="rounded-3xl border border-dashed border-line bg-surface p-8 text-center text-muted">
+                Düzgün cavablar hələ açıqlanmayıb. Müəllim açıqladıqdan sonra burada görünəcək.
+              </div>
+            )}
 
             {review?.examId?.videoLink && (
               <div className="mt-6">

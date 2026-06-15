@@ -39,6 +39,9 @@ const ExamEdit = () => {
     maxTry: 0,
     startDate: null,
     endDate: null,
+    showScore: true,
+    showCorrectAnswers: false,
+    revealAfterEnd: false,
   };
   const [examForm, setExamForm] = useState(initialState);
   const {
@@ -52,11 +55,14 @@ const ExamEdit = () => {
     passingMarks,
     totalMarks,
     maxTry,
+    showScore,
+    showCorrectAnswers,
+    revealAfterEnd,
   } = examForm;
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setExamForm({ ...examForm, [name]: value });
+    const { name, value, type, checked } = e.target;
+    setExamForm({ ...examForm, [name]: type === "checkbox" ? checked : value });
   };
 
   useEffect(() => {
@@ -72,6 +78,9 @@ const ExamEdit = () => {
         totalMarks: singleExam.totalMarks || 0,
         passingMarks: singleExam.passingMarks || 0,
         maxTry: singleExam.maxTry || 0,
+        showScore: singleExam.showScore ?? true,
+        showCorrectAnswers: singleExam.showCorrectAnswers ?? false,
+        revealAfterEnd: singleExam.revealAfterEnd ?? false,
       });
     }
   }, [singleExam]);
@@ -102,6 +111,9 @@ const ExamEdit = () => {
         passingMarks,
         totalMarks,
         maxTry,
+        showScore,
+        showCorrectAnswers,
+        revealAfterEnd,
         pdfPath: pdfUrl || singleExam.pdf?.path,
       };
       if (name && duration && pdfPath && passingMarks && totalMarks) {
@@ -163,6 +175,26 @@ const ExamEdit = () => {
           <Field label="Maksimum cəhd sayı" htmlFor="maxTry" hint="0 = limitsiz">
             <input value={maxTry} onChange={handleInputChange} type="number" name="maxTry" id="maxTry" className={inputClass} />
           </Field>
+
+          <div className="space-y-3 rounded-2xl border border-line bg-surface2/40 p-4 md:col-span-2">
+            <p className="text-sm font-semibold text-text">Nəticə görünüşü</p>
+            <label className="flex items-center gap-3 text-sm text-text">
+              <input type="checkbox" name="showScore" checked={showScore} onChange={handleInputChange} className="h-4 w-4 accent-[#6366f1]" />
+              Balı göstər
+            </label>
+            <label className="flex items-center gap-3 text-sm text-text">
+              <input type="checkbox" name="showCorrectAnswers" checked={showCorrectAnswers} onChange={handleInputChange} className="h-4 w-4 accent-[#6366f1]" />
+              Düzgün cavabları göstər
+            </label>
+            <label className="flex items-center gap-3 text-sm text-text">
+              <input type="checkbox" name="revealAfterEnd" checked={revealAfterEnd} onChange={handleInputChange} className="h-4 w-4 accent-[#6366f1]" />
+              Yalnız imtahan bitmə tarixindən sonra göstər
+            </label>
+            <p className="text-xs text-muted">
+              Söndürülübsə, tələbə yalnız “cavablar qəbul edildi” mesajını görür. Sonradan açsanız,
+              tələbələr nəticələrə qayıdıb baxa bilər.
+            </p>
+          </div>
         </div>
         <Button type="submit" className="mt-8">
           Yadda saxla

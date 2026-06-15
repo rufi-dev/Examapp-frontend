@@ -54,6 +54,8 @@ const Result = () => {
 
   const correctAnswers = lastResult.correctAnswers || [];
   const selectedAnswers = lastResult.selectedAnswers || [];
+  const canScore = lastResult.earnPoints != null;
+  const canAnswers = correctAnswers.length > 0;
   const total = correctAnswers.length;
   const correct = correctAnswers.filter(
     (a, i) => a?.answer && selectedAnswers[i]?.answer === a.answer
@@ -62,30 +64,51 @@ const Result = () => {
 
   return (
     <AccountLayout title="İmtahan nəticələri" subtitle="Son cəhdinin nəticəsi və təhlili.">
-      <div className="mb-10 grid gap-5 sm:grid-cols-3">
-          <div className="flex items-center gap-5 rounded-3xl border border-line bg-surface p-6 shadow-soft">
-            <ScoreRing value={pct} />
-            <div>
-              <p className="text-sm text-muted">Düzgün cavablar</p>
-              <p className="font-display text-2xl font-bold text-text">
-                {correct} / {total}
+      {!canScore && !canAnswers ? (
+        <div className="mb-10 rounded-3xl border border-line bg-surface p-6 shadow-soft">
+          <p className="font-display text-lg font-bold text-text">Cavablarınız qəbul edildi ✓</p>
+          <p className="mt-1 text-muted">
+            Nəticə və düzgün cavablar açıqlandıqda burada görünəcək.
+          </p>
+        </div>
+      ) : (
+        <div className="mb-10 grid gap-5 sm:grid-cols-3">
+          {canAnswers && (
+            <div className="flex items-center gap-5 rounded-3xl border border-line bg-surface p-6 shadow-soft">
+              <ScoreRing value={pct} />
+              <div>
+                <p className="text-sm text-muted">Düzgün cavablar</p>
+                <p className="font-display text-2xl font-bold text-text">
+                  {correct} / {total}
+                </p>
+              </div>
+            </div>
+          )}
+          {canScore && (
+            <div className="flex flex-col justify-center rounded-3xl border border-line bg-surface p-6 shadow-soft">
+              <p className="text-sm text-muted">Yığılan bal</p>
+              <p className="font-display text-3xl font-extrabold text-primary">
+                {lastResult.earnPoints}
               </p>
             </div>
-          </div>
-          <div className="flex flex-col justify-center rounded-3xl border border-line bg-surface p-6 shadow-soft">
-            <p className="text-sm text-muted">Yığılan bal</p>
-            <p className="font-display text-3xl font-extrabold text-primary">
-              {lastResult.earnPoints}
-            </p>
-          </div>
+          )}
           <div className="flex flex-col justify-center rounded-3xl border border-line bg-surface p-6 shadow-soft">
             <p className="text-sm text-muted">Cəhd sayı</p>
             <p className="font-display text-3xl font-extrabold text-text">{resultByExam.length}</p>
           </div>
         </div>
+      )}
 
-        <h2 className="mb-3 font-display text-lg font-bold text-text">Cavabların təhlili</h2>
-        <ResultCard result={lastResult} />
+      {canAnswers ? (
+        <>
+          <h2 className="mb-3 font-display text-lg font-bold text-text">Cavabların təhlili</h2>
+          <ResultCard result={lastResult} />
+        </>
+      ) : (
+        <div className="rounded-2xl border border-dashed border-line bg-surface p-8 text-center text-muted">
+          Düzgün cavablar hələ açıqlanmayıb.
+        </div>
+      )}
 
         <div className="mt-8 flex flex-wrap gap-3">
           <Button

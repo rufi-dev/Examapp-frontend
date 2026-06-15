@@ -33,6 +33,9 @@ const ExamAdd = () => {
     totalMarks: 100,
     passingMarks: 50,
     maxTry: 0,
+    showScore: true,
+    showCorrectAnswers: false,
+    revealAfterEnd: false,
     pdfPath: null,
   };
   const [examForm, setExamForm] = useState(initialState);
@@ -46,11 +49,14 @@ const ExamAdd = () => {
     passingMarks,
     totalMarks,
     maxTry,
+    showScore,
+    showCorrectAnswers,
+    revealAfterEnd,
   } = examForm;
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setExamForm({ ...examForm, [name]: value });
+    const { name, value, type, checked } = e.target;
+    setExamForm({ ...examForm, [name]: type === "checkbox" ? checked : value });
   };
 
   const dispatch = useDispatch();
@@ -88,6 +94,9 @@ const ExamAdd = () => {
       examData.append("maxTry", maxTry);
       examData.append("startDate", toUtcIso(startDate));
       examData.append("endDate", toUtcIso(endDate));
+      examData.append("showScore", showScore);
+      examData.append("showCorrectAnswers", showCorrectAnswers);
+      examData.append("revealAfterEnd", revealAfterEnd);
       examData.append("pdf", pdfUrl);
 
       const addExamData = await dispatch(addExam({ examData, classId }));
@@ -222,6 +231,25 @@ const ExamAdd = () => {
               className={inputClass}
             />
           </Field>
+
+          <div className="space-y-3 rounded-2xl border border-line bg-surface2/40 p-4 md:col-span-2">
+            <p className="text-sm font-semibold text-text">Nəticə görünüşü</p>
+            <label className="flex items-center gap-3 text-sm text-text">
+              <input type="checkbox" name="showScore" checked={showScore} onChange={handleInputChange} className="h-4 w-4 accent-[#6366f1]" />
+              Balı göstər
+            </label>
+            <label className="flex items-center gap-3 text-sm text-text">
+              <input type="checkbox" name="showCorrectAnswers" checked={showCorrectAnswers} onChange={handleInputChange} className="h-4 w-4 accent-[#6366f1]" />
+              Düzgün cavabları göstər
+            </label>
+            <label className="flex items-center gap-3 text-sm text-text">
+              <input type="checkbox" name="revealAfterEnd" checked={revealAfterEnd} onChange={handleInputChange} className="h-4 w-4 accent-[#6366f1]" />
+              Yalnız imtahan bitmə tarixindən sonra göstər
+            </label>
+            <p className="text-xs text-muted">
+              Söndürülübsə, tələbə yalnız “cavablar qəbul edildi” mesajını görür.
+            </p>
+          </div>
         </div>
 
         <Button type="submit" className="mt-8">

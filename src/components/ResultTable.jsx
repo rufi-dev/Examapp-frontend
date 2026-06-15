@@ -29,7 +29,7 @@ const ResultTable = ({ results }) => {
               <td className="px-6 py-4 text-muted">{result.attempts}</td>
               <td className="px-6 py-4">
                 <span className="inline-flex items-center rounded-full bg-primary/12 px-2.5 py-1 text-xs font-semibold text-primary">
-                  {result.earnPoints} bal
+                  {result.earnPoints != null ? `${result.earnPoints} bal` : "Qəbul edildi"}
                 </span>
               </td>
             </tr>

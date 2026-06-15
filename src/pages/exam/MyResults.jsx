@@ -46,7 +46,7 @@ const MyResults = () => {
                     <td className="whitespace-nowrap px-6 py-4 text-text">{res?.examId?.name}</td>
                     <td className="whitespace-nowrap px-6 py-4">
                       <span className="inline-flex items-center rounded-full bg-primary/12 px-2.5 py-1 text-xs font-semibold text-primary">
-                        {res?.earnPoints} bal
+                        {res?.earnPoints != null ? `${res.earnPoints} bal` : "Qəbul edildi"}
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-right">

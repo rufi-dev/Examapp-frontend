@@ -34,10 +34,11 @@ const Overview = () => {
   const results = result || [];
   const examsCount = myExams?.length || 0;
   const resultsCount = results.length;
-  const avg = resultsCount
-    ? Math.round(results.reduce((a, r) => a + (r.earnPoints || 0), 0) / resultsCount)
+  const scored = results.filter((r) => r.earnPoints != null);
+  const avg = scored.length
+    ? Math.round(scored.reduce((a, r) => a + r.earnPoints, 0) / scored.length)
     : 0;
-  const best = resultsCount ? Math.max(...results.map((r) => r.earnPoints || 0)) : 0;
+  const best = scored.length ? Math.max(...scored.map((r) => r.earnPoints)) : 0;
   const recent = [...results].slice(-5).reverse();
 
   const firstName = user?.name?.split(" ")[0] || "";
@@ -99,7 +100,7 @@ const Overview = () => {
                     </td>
                     <td className="px-6 py-4">
                       <span className="inline-flex rounded-full bg-primary/12 px-2.5 py-1 text-xs font-semibold text-primary">
-                        {res.earnPoints} bal
+                        {res.earnPoints != null ? `${res.earnPoints} bal` : "Qəbul edildi"}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
