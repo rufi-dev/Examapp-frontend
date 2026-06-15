@@ -7,6 +7,7 @@ import { toast } from "react-toastify";
 import { useNavigate, useParams } from "react-router-dom";
 import Button from "../../components/ui/Button";
 import { Field, inputClass } from "../../components/ui/Field";
+import ResultVisibility from "../../components/ui/ResultVisibility";
 import { toLocalInput, toUtcIso } from "../../helper/datetime";
 
 const fileInputClass =
@@ -64,6 +65,7 @@ const ExamEdit = () => {
     const { name, value, type, checked } = e.target;
     setExamForm({ ...examForm, [name]: type === "checkbox" ? checked : value });
   };
+  const setField = (name, value) => setExamForm((f) => ({ ...f, [name]: value }));
 
   useEffect(() => {
     if (singleExam) {
@@ -176,25 +178,12 @@ const ExamEdit = () => {
             <input value={maxTry} onChange={handleInputChange} type="number" name="maxTry" id="maxTry" className={inputClass} />
           </Field>
 
-          <div className="space-y-3 rounded-2xl border border-line bg-surface2/40 p-4 md:col-span-2">
-            <p className="text-sm font-semibold text-text">Nəticə görünüşü</p>
-            <label className="flex items-center gap-3 text-sm text-text">
-              <input type="checkbox" name="showScore" checked={showScore} onChange={handleInputChange} className="h-4 w-4 accent-[#6366f1]" />
-              Balı göstər
-            </label>
-            <label className="flex items-center gap-3 text-sm text-text">
-              <input type="checkbox" name="showCorrectAnswers" checked={showCorrectAnswers} onChange={handleInputChange} className="h-4 w-4 accent-[#6366f1]" />
-              Düzgün cavabları göstər
-            </label>
-            <label className="flex items-center gap-3 text-sm text-text">
-              <input type="checkbox" name="revealAfterEnd" checked={revealAfterEnd} onChange={handleInputChange} className="h-4 w-4 accent-[#6366f1]" />
-              Yalnız imtahan bitmə tarixindən sonra göstər
-            </label>
-            <p className="text-xs text-muted">
-              Söndürülübsə, tələbə yalnız “cavablar qəbul edildi” mesajını görür. Sonradan açsanız,
-              tələbələr nəticələrə qayıdıb baxa bilər.
-            </p>
-          </div>
+          <ResultVisibility
+            showScore={showScore}
+            showCorrectAnswers={showCorrectAnswers}
+            revealAfterEnd={revealAfterEnd}
+            onChange={setField}
+          />
         </div>
         <Button type="submit" className="mt-8">
           Yadda saxla

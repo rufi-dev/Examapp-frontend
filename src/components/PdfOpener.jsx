@@ -42,7 +42,7 @@ const PdfOpener = (props) => {
         maxScale={4}
         limitToBounds
         doubleClick={{ mode: "zoomIn", step: 0.7 }}
-        wheel={{ disabled: true }}
+        wheel={{ step: 0.2 }}
         pinch={{ step: 6 }}
         panning={{ velocityDisabled: true }}
       >
