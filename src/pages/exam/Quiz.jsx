@@ -53,6 +53,21 @@ const Quiz = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch, examId]);
 
+  // Lock the page to the viewport while the exam runs: no page scroll or
+  // scrollbar — only the PDF and the answers list scroll, inside their panels.
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtml = html.style.overflow;
+    const prevBody = body.style.overflow;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    return () => {
+      html.style.overflow = prevHtml;
+      body.style.overflow = prevBody;
+    };
+  }, []);
+
   // Initialise / resize answers + counter once the exam data is loaded.
   useEffect(() => {
     const len = singleExam?.questions?.correctAnswers?.length;
@@ -184,9 +199,9 @@ const Quiz = () => {
   }));
 
   return (
-    <div className="flex h-screen flex-col bg-bg">
+    <div className="fixed inset-0 flex flex-col overflow-hidden bg-bg">
       {/* Top bar — timer + progress always visible; tab switch on mobile */}
-      <header className="flex flex-col gap-3 border-b border-line bg-surface px-4 py-3 sm:px-6">
+      <header className="flex shrink-0 flex-col gap-3 border-b border-line bg-surface px-4 py-3 sm:px-6">
         <div className="flex items-center justify-between gap-4">
           <div
             className={`flex items-center gap-2 font-display text-xl font-bold sm:text-2xl ${
@@ -259,7 +274,7 @@ const Quiz = () => {
             )}
           </div>
 
-          <div className="border-t border-line p-3 sm:p-4">
+          <div className="shrink-0 border-t border-line p-3 sm:p-4">
             <Button
               onClick={submitAnswerSheet}
               disabled={isSubmitting}
