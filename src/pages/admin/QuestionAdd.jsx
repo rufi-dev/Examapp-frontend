@@ -11,7 +11,6 @@ import {
 } from "../../../redux/features/quiz/quizSlice";
 import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser";
 import Spinner from "../../components/Spinner";
-import Container from "../../components/ui/Container";
 import Button from "../../components/ui/Button";
 import { inputClass } from "../../components/ui/Field";
 import { FiPlus, FiX } from "react-icons/fi";
@@ -43,6 +42,7 @@ const QuestionAdd = () => {
   const [questions, setQuestions] = useState(() =>
     Array.from({ length: 25 }, (_, i) => newQuestion(i < CLOSED_COUNT ? "Cm" : "Co"))
   );
+  const [mobileView, setMobileView] = useState("pdf"); // "pdf" | "builder"
   const { examId } = useParams();
 
   useEffect(() => {
@@ -72,6 +72,20 @@ const QuestionAdd = () => {
     };
     fetchData();
   }, [dispatch, examId]);
+
+  // Full-screen focus layout: lock page scroll like the exam runner.
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const ph = html.style.overflow;
+    const pb = body.style.overflow;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    return () => {
+      html.style.overflow = ph;
+      body.style.overflow = pb;
+    };
+  }, []);
 
   const update = (i, patch) =>
     setQuestions((prev) => prev.map((q, idx) => (idx === i ? { ...q, ...patch } : q)));
@@ -126,50 +140,89 @@ const QuestionAdd = () => {
   const points = questionPoints(questions.length);
 
   return (
-    <section className="py-8">
-      <Container>
-        <div className="mb-6">
-          <h1 className="font-display text-2xl font-bold text-text sm:text-3xl">
-            Sualları əlavə et
-          </h1>
-          <p className="mt-1 text-muted">
-            Hər sual üçün tipi (qapalı / açıq) seç və düzgün cavabı təyin et.
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-muted">Qiymətləndirmə (avtomatik):</span>
+    <div className="fixed inset-0 flex flex-col overflow-hidden bg-bg">
+      <header className="flex shrink-0 flex-col gap-3 border-b border-line bg-surface px-4 py-3 sm:px-6">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              aria-label="Geri"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-line bg-surface text-text transition-colors hover:bg-surface2"
+            >
+              <FiX className="text-[18px]" />
+            </button>
+            <div className="min-w-0">
+              <h1 className="truncate font-display text-lg font-bold text-text sm:text-xl">
+                Sualları əlavə et
+              </h1>
+              <p className="hidden text-xs text-muted sm:block">
+                Hər sual üçün tip və düzgün cavabı təyin et.
+              </p>
+            </div>
+          </div>
+          <div className="hidden shrink-0 items-center gap-2 text-xs lg:flex">
             <span className="rounded-full border border-line bg-surface px-2.5 py-0.5 font-semibold text-text">
-              İlk 18 sual → 55 bal
+              İlk 18 → 55
             </span>
             <span className="rounded-full border border-line bg-surface px-2.5 py-0.5 font-semibold text-text">
-              Qalanı → 45 bal
+              Qalanı → 45
             </span>
             <span className="rounded-full bg-primary/12 px-2.5 py-0.5 font-semibold text-primary">
-              Cəmi: 100 bal
+              Cəmi 100 bal
             </span>
           </div>
         </div>
 
-        <div className="relative grid gap-6 lg:grid-cols-2">
-          {loading && (
-            <div className="absolute inset-0 z-50 flex items-center justify-center rounded-3xl bg-bg/70 backdrop-blur-sm">
-              <Spinner size={46} className="text-primary" />
-            </div>
-          )}
+        <div className="grid grid-cols-2 gap-1 rounded-xl border border-line bg-surface2/50 p-1 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setMobileView("pdf")}
+            className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+              mobileView === "pdf" ? "bg-primary text-primary-fg shadow-soft" : "text-muted"
+            }`}
+          >
+            Suallar (PDF)
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileView("builder")}
+            className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+              mobileView === "builder" ? "bg-primary text-primary-fg shadow-soft" : "text-muted"
+            }`}
+          >
+            Cavablar
+          </button>
+        </div>
+      </header>
 
-          {/* PDF */}
-          <div className="flex h-[80vh] min-w-0 flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-soft lg:sticky lg:top-20 lg:h-[calc(100vh-9rem)]">
-            <div className="border-b border-line px-5 py-3 text-sm font-semibold text-muted">
-              İmtahan sualları (PDF)
-            </div>
-            <div className="min-h-0 flex-1">
-              <PdfOpener pdfFile={pdfData} />
-            </div>
+      <div className="relative flex min-h-0 flex-1 gap-4 p-3 sm:p-4 lg:p-6">
+        {loading && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-bg/70 backdrop-blur-sm">
+            <Spinner size={46} className="text-primary" />
           </div>
+        )}
 
-          {/* Builder */}
-          <div className="flex min-w-0 flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-soft lg:h-[calc(100vh-9rem)]">
-            <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col">
-              <div className="scrollbar-thin flex-1 space-y-3 overflow-y-auto p-5 sm:p-6">
+        <div
+          className={`min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft lg:flex ${
+            mobileView === "pdf" ? "flex" : "hidden"
+          }`}
+        >
+          <div className="hidden border-b border-line px-5 py-3 text-sm font-semibold text-muted lg:block">
+            İmtahan sualları (PDF)
+          </div>
+          <div className="min-h-0 flex-1">
+            <PdfOpener pdfFile={pdfData} />
+          </div>
+        </div>
+
+        <div
+          className={`min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft lg:flex ${
+            mobileView === "builder" ? "flex" : "hidden"
+          }`}
+        >
+          <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col">
+            <div className="scrollbar-thin min-h-0 flex-1 space-y-3 overflow-y-auto p-4 sm:p-5">
                 {questions.map((q, i) => (
                   <div key={i} className="rounded-2xl border border-line bg-surface2/40 p-4">
                     <div className="mb-3 flex items-center justify-between gap-3">
@@ -271,16 +324,15 @@ const QuestionAdd = () => {
                 </button>
               </div>
 
-              <div className="border-t border-line p-4">
-                <Button type="submit" disabled={loading} size="lg" className="w-full">
-                  {loading ? <Spinner /> : `Sualları yadda saxla (${questions.length})`}
-                </Button>
-              </div>
-            </form>
-          </div>
+            <div className="shrink-0 border-t border-line p-3 sm:p-4">
+              <Button type="submit" disabled={loading} size="lg" className="w-full">
+                {loading ? <Spinner /> : `Sualları yadda saxla (${questions.length})`}
+              </Button>
+            </div>
+          </form>
         </div>
-      </Container>
-    </section>
+      </div>
+    </div>
   );
 };
 
