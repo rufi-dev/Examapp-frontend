@@ -11,7 +11,7 @@ import {
 import ResultCard from "../../components/ResultCard";
 import AccountLayout from "../../components/AccountLayout";
 import Button from "../../components/ui/Button";
-import { FiRotateCcw, FiList } from "react-icons/fi";
+import { FiRotateCcw, FiList, FiAlertTriangle } from "react-icons/fi";
 
 const ScoreRing = ({ value = 0 }) => {
   const r = 34;
@@ -69,6 +69,23 @@ const Result = () => {
 
   return (
     <AccountLayout title="İmtahan nəticələri" subtitle="Son cəhdinin nəticəsi və təhlili.">
+      {lastResult.terminated && (
+        <div className="mb-8 flex items-start gap-4 rounded-3xl border-2 border-danger bg-danger/10 p-6 shadow-lift">
+          <div className="grid h-12 w-12 shrink-0 animate-pulse place-items-center rounded-2xl bg-danger text-white">
+            <FiAlertTriangle className="text-2xl" />
+          </div>
+          <div>
+            <h2 className="font-display text-lg font-extrabold uppercase tracking-wide text-danger sm:text-xl">
+              İmtahan pozuntuya görə dayandırıldı
+            </h2>
+            <p className="mt-1 text-sm text-text">
+              Anti-cheat qaydaları pozuldu (tab/pəncərə dəyişmə, pəncərəni kiçiltmə və ya ikinci
+              monitor). İmtahan avtomatik təqdim edildi
+              {lastResult.violations ? ` — ${lastResult.violations} pozuntu` : ""}.
+            </p>
+          </div>
+        </div>
+      )}
       {!canScore && !canAnswers ? (
         <div className="mb-10 rounded-3xl border border-line bg-surface p-6 shadow-soft">
           <p className="font-display text-lg font-bold text-text">Cavablarınız qəbul edildi ✓</p>

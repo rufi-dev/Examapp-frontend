@@ -65,6 +65,7 @@ const Quiz = () => {
   const [violations, setViolations] = useState(0);
   const violationsRef = useRef(0);
   const lastVioRef = useRef(0);
+  const terminatedRef = useRef(false); // auto-submitted due to violations
 
   // "Mark for review" flags + jump-to-question (navigator grid).
   const [marked, setMarked] = useState([]);
@@ -261,7 +262,11 @@ const Quiz = () => {
       await dispatch(
         addResult({
           examId,
-          resultData: { selectedAnswers, violations: violationsRef.current },
+          resultData: {
+            selectedAnswers,
+            violations: violationsRef.current,
+            terminated: terminatedRef.current,
+          },
         })
       ).unwrap();
       localStorage.removeItem(answersKey);
@@ -294,7 +299,8 @@ const Quiz = () => {
       const v = violationsRef.current;
       setViolations(v);
       if (v >= ANTICHEAT_LIMIT) {
-        toast.error("Çoxlu pozuntu aşkarlandı — imtahan təqdim olunur.");
+        terminatedRef.current = true;
+        toast.error("Çoxlu pozuntu aşkarlandı — imtahan dayandırılır.");
         submitAnswerSheet();
       } else {
         toast.warn(`Diqqət! Başqa tab/pəncərəyə keçmək qadağandır (${v}/${ANTICHEAT_LIMIT}).`);
@@ -324,6 +330,17 @@ const Quiz = () => {
     document.addEventListener("keydown", onKey);
     const prevSelect = document.body.style.userSelect;
     document.body.style.userSelect = "none";
+
+    // A second monitor is the main way to run an AI tool beside a fullscreen
+    // exam, so flag it where the browser can tell (Chromium's screen.isExtended).
+    if (window.screen && window.screen.isExtended) {
+      violationsRef.current += 1;
+      setViolations(violationsRef.current);
+      lastVioRef.current = Date.now();
+      toast.warn(
+        `İkinci monitor aşkarlandı! Yalnız bir ekran istifadə edin (${violationsRef.current}/${ANTICHEAT_LIMIT}).`
+      );
+    }
 
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);

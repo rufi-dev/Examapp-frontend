@@ -38,7 +38,14 @@ const UserGrid = ({ result }) => {
   return (
     <View style={styles.userBlock} wrap={false}>
       <View style={styles.userHead}>
-        <Text style={styles.userName}>{result.userId?.name || "—"}</Text>
+        <View>
+          <Text style={styles.userName}>{result.userId?.name || "—"}</Text>
+          {result.terminated && (
+            <Text style={styles.terminated}>
+              POZUNTUYA GÖRƏ DAYANDIRILDI ({result.violations || 0} pozuntu)
+            </Text>
+          )}
+        </View>
         <Text style={styles.userScore}>{fmt(result.earnPoints)} bal</Text>
       </View>
 
@@ -165,6 +172,7 @@ const styles = StyleSheet.create({
   },
   userName: { fontSize: 11, color: C.ink },
   userScore: { fontSize: 10, color: C.primary },
+  terminated: { fontSize: 7.5, color: C.red, marginTop: 2 },
 
   table: { borderWidth: 1, borderColor: C.line, borderRadius: 5, overflow: "hidden" },
   row: { flexDirection: "row", borderTopWidth: 0.5, borderTopColor: C.line },

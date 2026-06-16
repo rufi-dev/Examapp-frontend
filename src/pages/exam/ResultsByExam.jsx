@@ -85,8 +85,15 @@ const ResultsByExam = () => {
           {results.map((result, index) => (
             <div
               key={result._id || index}
-              className="rounded-3xl border border-line bg-surface p-6 shadow-soft"
+              className={`rounded-3xl bg-surface p-6 shadow-soft ${
+                result.terminated ? "border-2 border-danger" : "border border-line"
+              }`}
             >
+              {result.terminated && (
+                <div className="mb-4 flex items-center gap-2 rounded-xl bg-danger px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-white">
+                  <FiAlertTriangle /> Pozuntuya görə dayandırıldı ({result.violations || 0} pozuntu)
+                </div>
+              )}
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="font-display text-lg font-bold text-text">

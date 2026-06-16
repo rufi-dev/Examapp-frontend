@@ -149,6 +149,7 @@ const PDFTemplate = ({ results }) => {
                 </View>
                 <Text style={[styles.td, styles.cName, styles.nameText]}>
                   {r.userId?.name || "—"}
+                  {r.terminated ? <Text style={{ color: C.red }}>  • pozuntu</Text> : null}
                 </Text>
                 <Text style={[styles.td, styles.cNum, { color: C.green }]}>
                   {t.hasKey ? t.right : "—"}
