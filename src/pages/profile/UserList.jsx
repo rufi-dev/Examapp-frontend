@@ -16,13 +16,12 @@ import {
   getUsers,
 } from "../../../redux/features/auth/authSlice";
 import { shortenText } from "./Profile";
-import { confirmAlert } from "react-confirm-alert";
-import "react-confirm-alert/src/react-confirm-alert.css";
 import { FILTER_USERS, selectUsers } from "../../../redux/features/auth/filterSlice";
 import ReactPaginate from "react-paginate";
 import { Link } from "react-router-dom";
 import { AdminTeacherLink } from "../../components/protect/hiddenLink";
 import Badge from "../../components/ui/Badge";
+import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
 const roleLabels = {
   admin: "Admin",
@@ -60,20 +59,19 @@ const UserList = () => {
 
   const filteredUsers = useSelector(selectUsers);
 
-  const removeUser = async (id) => {
-    await dispatch(deleteUser(id));
-    dispatch(getUsers());
-  };
+  const [confirmUser, setConfirmUser] = useState(null);
+  const [deletingUser, setDeletingUser] = useState(false);
 
-  const confirmDelete = (user) => {
-    confirmAlert({
-      title: `Bu istifadəçini sil: ${user.email}`,
-      message: "Silmək istədiyinə əminsən?",
-      buttons: [
-        { label: "Sil", onClick: () => removeUser(user._id) },
-        { label: "Ləğv et" },
-      ],
-    });
+  const handleDeleteUser = async () => {
+    if (!confirmUser) return;
+    setDeletingUser(true);
+    try {
+      await dispatch(deleteUser(confirmUser._id));
+      setConfirmUser(null);
+      dispatch(getUsers());
+    } finally {
+      setDeletingUser(false);
+    }
   };
 
   useEffect(() => {
@@ -180,7 +178,7 @@ const UserList = () => {
                       </td>
                       <td className="px-4 py-4 text-right">
                         <button
-                          onClick={() => confirmDelete(user)}
+                          onClick={() => setConfirmUser(user)}
                           aria-label="Sil"
                           className="ml-auto grid h-9 w-9 place-items-center rounded-lg text-muted transition-colors hover:bg-danger/12 hover:text-danger"
                         >
@@ -214,6 +212,23 @@ const UserList = () => {
           )}
         </>
       )}
+
+      <ConfirmDialog
+        open={!!confirmUser}
+        onClose={() => setConfirmUser(null)}
+        onConfirm={handleDeleteUser}
+        title="İstifadəçini silmək?"
+        confirmLabel="Bəli, sil"
+        cancelLabel="Geri"
+        tone="danger"
+        loading={deletingUser}
+      >
+        <p>
+          <span className="font-semibold text-text">{confirmUser?.name}</span>{" "}
+          <span className="text-muted">({confirmUser?.email})</span> hesabı
+          həmişəlik silinəcək. Bu əməliyyat geri qaytarıla bilməz.
+        </p>
+      </ConfirmDialog>
     </AccountLayout>
   );
 };
