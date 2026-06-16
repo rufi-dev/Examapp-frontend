@@ -4,7 +4,7 @@ import { startAttempt, getPdfByExam } from "../../../redux/features/quiz/quizSli
 import { reportViolation, getAttemptStatus } from "../../../redux/features/quiz/quizService";
 import { addResult } from "../../../redux/features/quiz/resultSlice";
 import { useNavigate, useParams } from "react-router-dom";
-import { FiClock, FiCheckCircle, FiLock, FiEye, FiMaximize } from "react-icons/fi";
+import { FiClock, FiCheckCircle, FiLock, FiEye, FiMaximize, FiMonitor } from "react-icons/fi";
 import { toast } from "react-toastify";
 import PdfOpener from "../../components/PdfOpener";
 import QuestionType from "../../components/QuestionType";
@@ -112,6 +112,9 @@ const Quiz = () => {
   // Safety net: if fullscreen can't actually engage (iOS Safari, or a browser
   // that claims support but no-ops), never trap the student behind the gate.
   const [fsBypass, setFsBypass] = useState(false);
+  // A second/extended display gates the exam (questions hidden) rather than
+  // instantly counting a violation — the student can disconnect to continue.
+  const [secondScreen, setSecondScreen] = useState(false);
   const fsSupported = typeof document !== "undefined" && !!document.fullscreenEnabled;
   const enterFullscreen = () => {
     const el = document.documentElement;
@@ -483,12 +486,6 @@ const Quiz = () => {
     const prevSelect = document.body.style.userSelect;
     document.body.style.userSelect = "none";
 
-    // A second monitor is the main way to run an AI tool beside a fullscreen
-    // exam, so flag it where the browser can tell (Chromium's screen.isExtended).
-    if (window.screen && window.screen.isExtended) {
-      registerViolation("second_monitor", true);
-    }
-
     return () => {
       if (blurTimer) clearTimeout(blurTimer);
       document.removeEventListener("visibilitychange", onVisibility);
@@ -506,6 +503,20 @@ const Quiz = () => {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [access, attempt?.antiCheat]);
+
+  // Second-monitor GATE (not a violation): a second/extended display is the main
+  // way to run an AI tool beside the exam, so while one is connected we hide the
+  // questions and ask the student to disconnect — instead of instantly counting
+  // a violation they had no chance to avoid. Polled so it clears the moment the
+  // monitor is unplugged. Chromium-only (screen.isExtended); elsewhere it stays
+  // false and the gate never shows.
+  useEffect(() => {
+    if (access !== "allowed" || !attempt?.antiCheat) return;
+    const check = () => setSecondScreen(!!(window.screen && window.screen.isExtended));
+    check();
+    const id = setInterval(check, 1500);
+    return () => clearInterval(id);
   }, [access, attempt?.antiCheat]);
 
   const handleAnswerChange = (e, index, type) => {
@@ -584,9 +595,26 @@ const Quiz = () => {
 
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-bg">
+      {/* Second-monitor gate: hide the questions while an extended display is
+          connected; clears automatically when it's disconnected. */}
+      {attempt?.antiCheat && secondScreen && (
+        <div className="fixed inset-0 z-[1310] flex items-center justify-center bg-bg/95 p-6 backdrop-blur">
+          <div className="max-w-md text-center">
+            <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-danger/12 text-danger">
+              <FiMonitor className="text-3xl" />
+            </div>
+            <h2 className="font-display text-xl font-bold text-text">Tək ekran tələb olunur</h2>
+            <p className="mt-2 leading-relaxed text-muted">
+              İkinci monitor aşkarlandı. İmtahan yalnız bir ekranda keçirilir. Davam etmək
+              üçün əlavə monitoru ayırın — ayırdıqdan sonra suallar avtomatik görünəcək.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Fullscreen lock: covers everything when anti-cheat is on but the exam
           isn't in fullscreen — so leaving fullscreen / minimizing hides it. */}
-      {attempt?.antiCheat && fsSupported && !fsBypass && !isFs && (
+      {attempt?.antiCheat && fsSupported && !fsBypass && !isFs && !secondScreen && (
         <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-bg/95 p-6 backdrop-blur">
           <div className="max-w-md text-center">
             <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-danger/12 text-danger">
