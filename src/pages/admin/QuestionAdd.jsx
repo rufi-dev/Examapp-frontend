@@ -277,7 +277,7 @@ const QuestionAdd = () => {
                               onClick={() => setAnswer(i, opt)}
                               className={`grid h-11 w-11 place-items-center rounded-full border font-semibold transition-colors ${
                                 q.answer === opt
-                                  ? "border-success bg-success/15 text-success"
+                                  ? "border-success bg-success text-white"
                                   : "border-line bg-surface text-muted hover:border-primary/40"
                               }`}
                             >

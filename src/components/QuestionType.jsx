@@ -73,8 +73,10 @@ const QuestionType = ({
     const isCorrectOpt = answers[i]?.answer === option;
     const userAns = selectedAnswers[i]?.answer;
     if (isReview) {
-      if (isCorrectOpt) return "border-success bg-success/15 text-success";
-      if (option === userAns) return "border-danger bg-danger/15 text-danger";
+      // Solid fills so the correct answer (green) and the student's wrong pick
+      // (red) read at a glance, not just a faint tint.
+      if (isCorrectOpt) return "border-success bg-success text-white";
+      if (option === userAns) return "border-danger bg-danger text-white";
       return "border-line bg-surface text-muted";
     }
     if (isCorrectOpt) return "border-primary bg-primary text-primary-fg";
