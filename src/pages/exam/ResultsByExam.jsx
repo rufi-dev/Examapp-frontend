@@ -1,15 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getResultsByExam } from "../../../redux/features/quiz/resultSlice";
 import { useParams } from "react-router-dom";
 import ResultCard from "../../components/ResultCard";
 import Loader from "../../components/Loader";
-import { PDFDownloadLink } from "@react-pdf/renderer";
-import PDFTemplate from "../../components/PDFTemplate";
-import PDFAnswersTemplate from "../../components/PDFAnswersTemplate";
 import AccountLayout from "../../components/AccountLayout";
 import ExamAnalytics from "../../components/analytics/ExamAnalytics";
-import { FiDownload, FiList, FiAlertTriangle } from "react-icons/fi";
+import { FiDownload, FiAlertTriangle } from "react-icons/fi";
+
+// Heavy (@react-pdf/renderer ~1.3MB) — loaded only when a teacher clicks export.
+const ResultsPdfExport = lazy(() => import("../../components/ResultsPdfExport"));
 
 const pdfBtn =
   "inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-line bg-surface px-4 text-sm font-semibold text-text transition-colors hover:bg-surface2";
@@ -19,6 +19,7 @@ const ResultsByExam = () => {
   const { examId } = useParams();
   const { resultsByExam, isLoading } = useSelector((state) => state.result);
   const [tab, setTab] = useState("analytics"); // "analytics" | "students"
+  const [showPdf, setShowPdf] = useState(false); // defer the PDF export library
 
   useEffect(() => {
     dispatch(getResultsByExam(examId));
@@ -42,26 +43,17 @@ const ResultsByExam = () => {
       subtitle="Sinfin ümumi mənzərəsi və hər şagirdin cavabları."
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          <PDFDownloadLink
-            document={<PDFTemplate results={results} />}
-            fileName="imtahan-neticeleri.pdf"
-          >
-            {({ loading }) => (
-              <span className={pdfBtn}>
-                <FiDownload /> {loading ? "Hazırlanır..." : "Nəticələr (PDF)"}
-              </span>
-            )}
-          </PDFDownloadLink>
-          <PDFDownloadLink
-            document={<PDFAnswersTemplate results={results} />}
-            fileName="imtahan-cavablar.pdf"
-          >
-            {({ loading }) => (
-              <span className={pdfBtn}>
-                <FiList /> {loading ? "Hazırlanır..." : "Cavablar (PDF)"}
-              </span>
-            )}
-          </PDFDownloadLink>
+          {showPdf ? (
+            <Suspense
+              fallback={<span className={pdfBtn}>PDF hazırlanır...</span>}
+            >
+              <ResultsPdfExport results={results} />
+            </Suspense>
+          ) : (
+            <button type="button" onClick={() => setShowPdf(true)} className={pdfBtn}>
+              <FiDownload /> PDF ixrac et
+            </button>
+          )}
         </div>
       }
     >

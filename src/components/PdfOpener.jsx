@@ -1,7 +1,12 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback, memo } from "react";
-import { Document, Page } from "react-pdf";
+import { Document, Page, pdfjs } from "react-pdf";
 import { FiZoomIn, FiZoomOut, FiMaximize, FiAlertCircle } from "react-icons/fi";
 import Spinner from "./Spinner";
+
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.min.js",
+  import.meta.url
+).toString();
 
 // Centered status (spinner while loading, message on error) for the viewer.
 const PdfStatus = ({ children, spinner = false, error = false }) => (

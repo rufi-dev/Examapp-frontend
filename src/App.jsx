@@ -1,20 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
-import Home from "./pages/Home";
 import Layout from "./components/Layout";
 import ScrollToTop from "./components/ScrollToTop";
-import Login from "./pages/auth/Login";
-import Register from "./pages/auth/Register";
-import Forgot from "./pages/auth/Forgot";
-import Reset from "./pages/auth/Reset";
-import LoginWithCode from "./pages/auth/LoginWithCode";
-import Verify from "./pages/auth/Verify";
-import Profile from "./pages/profile/Profile";
-import ChangePassword from "./pages/auth/ChangePassword";
-import UserList from "./pages/profile/UserList";
 import axios from "axios";
 import { ToastContainer, Slide } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   getLoginStatus,
@@ -23,38 +13,48 @@ import {
   selectUser,
 } from "../redux/features/auth/authSlice";
 import { GoogleOAuthProvider } from "@react-oauth/google";
-import Tags from "./pages/Tags";
-import ExamAdd from "./pages/admin/ExamAdd";
-import TagAdd from "./pages/admin/TagAdd";
-import Exams from "./pages/Exams";
-import ExamEdit from "./pages/admin/ExamEdit";
-import QuestionAdd from "./pages/admin/QuestionAdd";
-import TagEdit from "./pages/admin/TagEdit";
-import ExamInstructions from "./pages/exam/ExamInstructions";
-import Quiz from "./pages/exam/Quiz";
-import Result from "./pages/exam/Result";
-import MyResults from "./pages/exam/MyResults";
-import MyExams from "./pages/exam/MyExams";
-import Review from "./pages/exam/Review";
-import UserDetails from "./pages/admin/UserDetails";
-import OurSuccess from "./pages/OurSuccess";
-import Overview from "./pages/Overview";
 import Spinner from "./components/Spinner";
 import Modal from "react-modal";
-import { pdfjs } from "react-pdf";
-import ClassAdd from "./pages/admin/ClassAdd";
-import ClassEdit from "./pages/admin/ClassEdit";
-import ExamResults from "./pages/admin/ExamResults";
-import Notifications from "./pages/admin/Notifications";
 import AccountLayout from "./components/AccountLayout";
-import Classes from "./pages/Classes";
 import { disableReactDevTools } from "@fvilers/disable-react-devtools";
-import ResultsByExam from "./pages/exam/ResultsByExam";
 import { useCookies } from "react-cookie";
 import CookieConsent from "./components/CookieConsent";
 import InstallPrompt from "./components/InstallPrompt";
 
 axios.defaults.withCredentials = true;
+
+const Home = lazy(() => import("./pages/Home"));
+const Login = lazy(() => import("./pages/auth/Login"));
+const Register = lazy(() => import("./pages/auth/Register"));
+const Forgot = lazy(() => import("./pages/auth/Forgot"));
+const Reset = lazy(() => import("./pages/auth/Reset"));
+const LoginWithCode = lazy(() => import("./pages/auth/LoginWithCode"));
+const Verify = lazy(() => import("./pages/auth/Verify"));
+const Profile = lazy(() => import("./pages/profile/Profile"));
+const ChangePassword = lazy(() => import("./pages/auth/ChangePassword"));
+const UserList = lazy(() => import("./pages/profile/UserList"));
+const Tags = lazy(() => import("./pages/Tags"));
+const Classes = lazy(() => import("./pages/Classes"));
+const Exams = lazy(() => import("./pages/Exams"));
+const Overview = lazy(() => import("./pages/Overview"));
+const OurSuccess = lazy(() => import("./pages/OurSuccess"));
+const ExamAdd = lazy(() => import("./pages/admin/ExamAdd"));
+const TagAdd = lazy(() => import("./pages/admin/TagAdd"));
+const ClassAdd = lazy(() => import("./pages/admin/ClassAdd"));
+const ClassEdit = lazy(() => import("./pages/admin/ClassEdit"));
+const ExamEdit = lazy(() => import("./pages/admin/ExamEdit"));
+const QuestionAdd = lazy(() => import("./pages/admin/QuestionAdd"));
+const TagEdit = lazy(() => import("./pages/admin/TagEdit"));
+const UserDetails = lazy(() => import("./pages/admin/UserDetails"));
+const ExamResults = lazy(() => import("./pages/admin/ExamResults"));
+const Notifications = lazy(() => import("./pages/admin/Notifications"));
+const ExamInstructions = lazy(() => import("./pages/exam/ExamInstructions"));
+const Quiz = lazy(() => import("./pages/exam/Quiz"));
+const Result = lazy(() => import("./pages/exam/Result"));
+const MyResults = lazy(() => import("./pages/exam/MyResults"));
+const MyExams = lazy(() => import("./pages/exam/MyExams"));
+const Review = lazy(() => import("./pages/exam/Review"));
+const ResultsByExam = lazy(() => import("./pages/exam/ResultsByExam"));
 
 const Wrapper = ({ children }) => {
   const [cookies] = useCookies(["cookie_consent"]);
@@ -81,11 +81,6 @@ const RedirectIfAuth = () => {
   const isLoggedIn = useSelector(selectIsLoggedIn);
   return isLoggedIn ? <Navigate to="/dashboard" replace /> : <Outlet />;
 };
-
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.js",
-  import.meta.url
-).toString();
 
 function App() {
   const dispatch = useDispatch();
@@ -131,6 +126,13 @@ function App() {
           transition={Slide}
         />
         <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+          <Suspense
+            fallback={
+              <div className="flex min-h-[50vh] items-center justify-center">
+                <Spinner size={44} className="text-primary" />
+              </div>
+            }
+          >
           <Routes>
             {/* Public marketing + auth (logged-in users redirected to /dashboard) */}
             <Route element={<RedirectIfAuth />}>
@@ -207,6 +209,7 @@ function App() {
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </Suspense>
         </GoogleOAuthProvider>
       </Wrapper>
     </BrowserRouter>
