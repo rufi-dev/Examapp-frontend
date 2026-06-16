@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   addExamToUser,
   deleteExam,
+  setExamHidden,
   getExamsByClass,
   getExamsByUser,
 } from "../../redux/features/quiz/quizSlice";
@@ -11,7 +12,7 @@ import Loader from "./Loader";
 import { MdOutlineModeEditOutline } from "react-icons/md";
 import { AdminTeacherLink } from "./protect/hiddenLink";
 import { AiFillDelete, AiOutlinePlus } from "react-icons/ai";
-import { FiClock, FiBarChart2, FiArrowRight, FiFileText } from "react-icons/fi";
+import { FiClock, FiBarChart2, FiArrowRight, FiFileText, FiEye, FiEyeOff } from "react-icons/fi";
 import { payExam } from "../../redux/features/stripe/stripeSlice";
 import Button from "./ui/Button";
 import Badge from "./ui/Badge";
@@ -78,6 +79,15 @@ const ExamList = ({ classId }) => {
     }
   };
 
+  const handleToggleHidden = async (exam) => {
+    try {
+      await dispatch(setExamHidden({ examId: exam._id, hidden: !exam.hidden })).unwrap();
+      dispatch(getExamsByClass(classId));
+    } catch {
+      /* error toast handled by the slice */
+    }
+  };
+
   const addExam = async (e, exam) => {
     e.preventDefault();
     // Free exam: skip Stripe, add directly and go to the success page.
@@ -122,9 +132,16 @@ const ExamList = ({ classId }) => {
               <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-primary/12 text-primary ring-1 ring-inset ring-primary/15">
                 <FiFileText className="text-[26px]" />
               </span>
-              <h3 className="line-clamp-2 min-w-0 font-display text-xl font-bold leading-tight text-text">
-                {exam.name}
-              </h3>
+              <div className="min-w-0">
+                <h3 className="line-clamp-2 font-display text-xl font-bold leading-tight text-text">
+                  {exam.name}
+                </h3>
+                {exam.hidden && (
+                  <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-xs font-semibold text-warning">
+                    <FiEyeOff /> Gizli
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="mt-5 flex flex-wrap items-center gap-2">
@@ -142,6 +159,16 @@ const ExamList = ({ classId }) => {
             <div className="mt-auto pt-6">
               <AdminTeacherLink>
                 <div className="mb-4 flex items-center justify-end gap-1.5 border-t border-line pt-4">
+                  <ExamAction
+                    onClick={() => handleToggleHidden(exam)}
+                    label={exam.hidden ? "Göstər" : "Gizlət"}
+                  >
+                    {exam.hidden ? (
+                      <FiEye className="text-[17px]" />
+                    ) : (
+                      <FiEyeOff className="text-[17px]" />
+                    )}
+                  </ExamAction>
                   <ExamAction to={`/exam/${exam._id}/resultsByExam`} label="Nəticələr">
                     <FiBarChart2 className="text-[17px]" />
                   </ExamAction>

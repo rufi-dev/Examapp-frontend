@@ -197,6 +197,21 @@ export const editExam = createAsyncThunk(
 );
 
 //Delete Exam
+export const setExamHidden = createAsyncThunk(
+  "quiz/setExamHidden",
+  async ({ examId, hidden }, thunkAPI) => {
+    try {
+      return await quizService.setExamHidden(examId, hidden);
+    } catch (error) {
+      const message =
+        (error.response && error.response.data && error.response.data.message) ||
+        error.message ||
+        error.toString();
+      return thunkAPI.rejectWithValue(message);
+    }
+  }
+);
+
 export const deleteExam = createAsyncThunk(
   "quiz/deleteExam",
   async (examId, thunkAPI) => {
@@ -745,6 +760,15 @@ const quizSlice = createSlice({
         state.isLoading = false;
         state.isError = true;
         state.message = action.payload;
+        toast.error(action.payload);
+      })
+
+      .addCase(setExamHidden.fulfilled, (state, action) => {
+        state.isLoading = false;
+        toast.success(action.payload);
+      })
+      .addCase(setExamHidden.rejected, (state, action) => {
+        state.isLoading = false;
         toast.error(action.payload);
       })
 

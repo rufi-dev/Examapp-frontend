@@ -65,6 +65,12 @@ const editExam = async (examData, examId) => {
     return response.data.message
 }
 
+//Hide / show an exam (publish toggle)
+const setExamHidden = async (examId, hidden) => {
+    const response = await axios.patch(API_URL + "setExamHidden/" + examId, { hidden })
+    return response.data.message
+}
+
 //Add Class
 const addClass = async (classData, tagId) => {
     const response = await axios.post(API_URL + "addClass/" + tagId, classData)
@@ -219,6 +225,7 @@ const quizService = {
     addTag,
     getExam,
     editExam,
+    setExamHidden,
     deleteExam,
     deleteClass,
     deleteTag,
