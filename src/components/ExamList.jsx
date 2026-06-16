@@ -107,6 +107,7 @@ const ExamList = ({ classId }) => {
   }
 
   return (
+    <>
     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {exams.map((exam, index) => {
         const owned =
@@ -169,6 +170,24 @@ const ExamList = ({ classId }) => {
         );
       })}
     </div>
+
+      <ConfirmDialog
+        open={!!confirmExam}
+        onClose={() => setConfirmExam(null)}
+        onConfirm={handleDeleteExam}
+        title="İmtahanı silmək?"
+        confirmLabel="Bəli, sil"
+        cancelLabel="Geri"
+        tone="danger"
+        loading={deletingExam}
+      >
+        <p>
+          <span className="font-semibold text-text">{confirmExam?.name}</span> imtahanı,
+          sualları, PDF-i və bütün nəticələri həmişəlik silinəcək. Bu əməliyyat geri
+          qaytarıla bilməz.
+        </p>
+      </ConfirmDialog>
+    </>
   );
 };
 
