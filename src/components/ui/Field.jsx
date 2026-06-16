@@ -4,12 +4,13 @@ export const inputClass =
 export const textareaClass =
   "w-full min-h-[120px] rounded-xl border border-line bg-surface px-3.5 py-2.5 text-[15px] text-text placeholder:text-muted/60 outline-none transition focus:border-primary focus:ring-4 focus:ring-ring/25 resize-y";
 
-export function Field({ label, htmlFor, error, hint, className = "", children }) {
+export function Field({ label, htmlFor, error, hint, required, className = "", children }) {
   return (
     <div className={`flex flex-col gap-1.5 ${className}`}>
       {label && (
         <label htmlFor={htmlFor} className="text-sm font-medium text-text">
           {label}
+          {required && <span className="ml-0.5 text-danger">*</span>}
         </label>
       )}
       {children}
