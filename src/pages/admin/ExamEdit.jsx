@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import axios from "axios";
 import AccountLayout from "../../components/AccountLayout";
 import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser";
 import { useDispatch, useSelector } from "react-redux";
@@ -94,20 +95,12 @@ const ExamEdit = () => {
       if (pdf !== null && pdf.type === "application/pdf") {
         const pdfForm = new FormData();
         pdfForm.append("file", pdf);
-        pdfForm.append("cloud_name", cloud_name);
-        pdfForm.append("upload_preset", upload_preset);
-        const response = await fetch(
-          `https://api.cloudinary.com/v1_1/${cloud_name}/image/upload`,
-          { method: "post", body: pdfForm }
+        const upRes = await axios.post(
+          `${import.meta.env.VITE_BACKEND_URL}/api/quiz/uploadPdf`,
+          pdfForm
         );
-        const pdfData = await response.json();
-        if (!response.ok || !pdfData.secure_url) {
-          return toast.error(
-            pdfData?.error?.message ||
-              "PDF yüklənmədi — fayl çox böyük ola bilər (Cloudinary limiti ~10MB)."
-          );
-        }
-        pdfUrl = pdfData.secure_url.toString();
+        pdfUrl = upRes.data?.url;
+        if (!pdfUrl) return toast.error("PDF yüklənmədi");
       }
       const examData = {
         name,
