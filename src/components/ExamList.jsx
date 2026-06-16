@@ -12,11 +12,45 @@ import Loader from "./Loader";
 import { MdOutlineModeEditOutline } from "react-icons/md";
 import { AdminTeacherLink } from "./protect/hiddenLink";
 import { AiFillDelete, AiOutlinePlus } from "react-icons/ai";
-import { FiClock, FiBarChart2, FiArrowRight, FiFileText, FiEye, FiEyeOff } from "react-icons/fi";
+import { FiClock, FiBarChart2, FiArrowRight, FiFileText, FiEye, FiEyeOff, FiCalendar } from "react-icons/fi";
 import { payExam } from "../../redux/features/stripe/stripeSlice";
 import Button from "./ui/Button";
 import Badge from "./ui/Badge";
 import ConfirmDialog from "./ui/ConfirmDialog";
+import useServerNow from "../customHook/useServerNow";
+import { formatExamWindow, formatRemaining } from "../helper/datetime";
+
+// Scheduled-window line + a live status pill (starts in / closes in / ended),
+// driven by the shared server-synced clock so it ticks and survives reloads.
+const ExamSchedule = ({ exam, now }) => {
+  if (!exam.startDate && !exam.endDate) return null;
+  const s = exam.startDate ? new Date(exam.startDate).getTime() : null;
+  const e = exam.endDate ? new Date(exam.endDate).getTime() : null;
+  let label, cls;
+  if (s && now < s) {
+    label = `Başlamasına ${formatRemaining(s - now)}`;
+    cls = "bg-warning/15 text-warning";
+  } else if (e && now > e) {
+    label = "Bitib";
+    cls = "bg-danger/15 text-danger";
+  } else if (e) {
+    label = `Bağlanmasına ${formatRemaining(e - now)}`;
+    cls = "bg-success/15 text-success";
+  } else {
+    label = "Aktiv";
+    cls = "bg-success/15 text-success";
+  }
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface2/50 px-2.5 py-0.5 text-xs font-medium text-muted">
+        <FiCalendar className="text-[13px]" /> {formatExamWindow(exam.startDate, exam.endDate)}
+      </span>
+      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold tabular-nums ${cls}`}>
+        {label}
+      </span>
+    </div>
+  );
+};
 
 // Admin action button with a hover tooltip so each icon's purpose is clear.
 const ExamAction = ({ to, onClick, label, tone = "primary", children }) => {
@@ -49,6 +83,9 @@ const ExamList = ({ classId }) => {
   const { user } = useSelector((state) => state.auth);
   const navigate = useNavigate();
   const [loadedOnce, setLoadedOnce] = useState(false);
+  const now = useServerNow(); // one ticking clock shared by all cards
+
+
 
   useEffect(() => {
     let active = true;
@@ -155,6 +192,8 @@ const ExamList = ({ classId }) => {
                 {exam.price > 0 ? `${exam.price} AZN` : "Pulsuz"}
               </Badge>
             </div>
+
+            <ExamSchedule exam={exam} now={now} />
 
             <div className="mt-auto pt-6">
               <AdminTeacherLink>
