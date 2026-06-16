@@ -92,6 +92,18 @@ const ExamInstructions = () => {
     "Təqdim edildikdən sonra nəticələri və cavabları görə bilərsiniz.",
     "İmtahan başladıqdan sonra səhifəni yeniləməyin və geri qayıtmayın.",
   ];
+  if (singleExam.negativeMarking) {
+    rules.push(
+      `Səhv cavablar balı azaldır: hər ${singleExam.wrongPerPenalty || 3} səhv ${
+        singleExam.correctPerPenalty || 1
+      } sualın balını aparır (boş suallar cəzalanmır).`
+    );
+  }
+  if (singleExam.antiCheat) {
+    rules.push(
+      "Anti-cheat aktivdir: imtahan tam ekranda açılır, tab keçidi və pəncərədən çıxma qeydə alınır."
+    );
+  }
 
   return (
     <AccountLayout

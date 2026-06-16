@@ -15,6 +15,8 @@ import PasswordField from "../../components/ui/PasswordField";
 import MaxTryField from "../../components/ui/MaxTryField";
 import PriceField from "../../components/ui/PriceField";
 import VideoLinkField from "../../components/ui/VideoLinkField";
+import NegativeMarkingField from "../../components/ui/NegativeMarkingField";
+import AntiCheatField from "../../components/ui/AntiCheatField";
 import { toUtcIso } from "../../helper/datetime";
 
 const fileInputClass =
@@ -30,6 +32,8 @@ const ExamAdd = () => {
   const [maxTryEnabled, setMaxTryEnabled] = useState(false);
   const [priceEnabled, setPriceEnabled] = useState(false);
   const [videoEnabled, setVideoEnabled] = useState(false);
+  const [negEnabled, setNegEnabled] = useState(false);
+  const [antiEnabled, setAntiEnabled] = useState(false);
 
   const navigate = useNavigate();
   const { classId } = useParams();
@@ -48,6 +52,8 @@ const ExamAdd = () => {
     showCorrectAnswers: false,
     revealAfterEnd: true,
     password: "",
+    wrongPerPenalty: 3,
+    correctPerPenalty: 1,
     pdfPath: null,
   };
   const [examForm, setExamForm] = useState(initialState);
@@ -64,6 +70,8 @@ const ExamAdd = () => {
     showScore,
     showCorrectAnswers,
     revealAfterEnd,
+    wrongPerPenalty,
+    correctPerPenalty,
     password,
   } = examForm;
 
@@ -109,6 +117,10 @@ const ExamAdd = () => {
       examData.append("showCorrectAnswers", showCorrectAnswers);
       examData.append("revealAfterEnd", revealAfterEnd);
       examData.append("password", passwordEnabled ? password : "");
+      examData.append("negativeMarking", negEnabled);
+      examData.append("wrongPerPenalty", wrongPerPenalty);
+      examData.append("correctPerPenalty", correctPerPenalty);
+      examData.append("antiCheat", antiEnabled);
       examData.append("pdf", pdfUrl);
 
       const addExamData = await dispatch(addExam({ examData, classId }));
@@ -188,6 +200,14 @@ const ExamAdd = () => {
           <PriceField enabled={priceEnabled} value={price} onToggle={setPriceEnabled} onChange={handleInputChange} />
           <MaxTryField enabled={maxTryEnabled} value={maxTry} onToggle={setMaxTryEnabled} onChange={handleInputChange} />
           <PasswordField enabled={passwordEnabled} value={password} onToggle={setPasswordEnabled} onChange={handleInputChange} />
+          <NegativeMarkingField
+            enabled={negEnabled}
+            wrong={wrongPerPenalty}
+            correct={correctPerPenalty}
+            onToggle={setNegEnabled}
+            onChange={handleInputChange}
+          />
+          <AntiCheatField enabled={antiEnabled} onToggle={setAntiEnabled} />
           <ResultVisibility
             showScore={showScore}
             showCorrectAnswers={showCorrectAnswers}

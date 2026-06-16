@@ -3,7 +3,7 @@ import { useDispatch } from "react-redux";
 import { startAttempt, getPdfByExam } from "../../../redux/features/quiz/quizSlice";
 import { addResult } from "../../../redux/features/quiz/resultSlice";
 import { useNavigate, useParams } from "react-router-dom";
-import { FiClock, FiCheckCircle, FiLock } from "react-icons/fi";
+import { FiClock, FiCheckCircle, FiLock, FiShield } from "react-icons/fi";
 import { toast } from "react-toastify";
 import PdfOpener from "../../components/PdfOpener";
 import QuestionType from "../../components/QuestionType";
@@ -19,6 +19,9 @@ const DENY = {
   no_questions: { msg: "Bu imtahana suallar əlavə edilməyib", to: (id) => `/exam/details/${id}` },
   max_tries: { msg: "Maksimum cəhd sayına çatmısınız", to: (id) => `/exam/${id}/result` },
 };
+
+// Anti-cheat: auto-submit after this many leave-the-page violations.
+const ANTICHEAT_LIMIT = 3;
 
 const Quiz = () => {
   const { examId } = useParams();
@@ -56,6 +59,11 @@ const Quiz = () => {
   const answersRef = useRef(answers);
   answersRef.current = answers;
   const submittingRef = useRef(false);
+
+  // Anti-cheat violation tracking.
+  const [violations, setViolations] = useState(0);
+  const violationsRef = useRef(0);
+  const lastVioRef = useRef(0);
 
   const deadline = attempt?.expiresAt ? new Date(attempt.expiresAt).getTime() : null;
   const questions = attempt?.questions || [];
@@ -210,7 +218,12 @@ const Quiz = () => {
         .slice(0, len)
         .map((a) => ({ type: a?.type, answer: a?.answer }));
       // The server scores it (the browser never had the answer key).
-      await dispatch(addResult({ examId, resultData: { selectedAnswers } })).unwrap();
+      await dispatch(
+        addResult({
+          examId,
+          resultData: { selectedAnswers, violations: violationsRef.current },
+        })
+      ).unwrap();
       localStorage.removeItem(answersKey);
       navigate(`/exam/${examId}/result`);
     } catch (error) {
@@ -220,6 +233,82 @@ const Quiz = () => {
       setIsSubmitting(false);
     }
   };
+
+  // Anti-cheat: when the exam enables it, lock the page down and log leaving.
+  // Tab switch / window blur / leaving fullscreen each count as a violation
+  // (debounced); copy/paste/right-click/selection are blocked; after the limit
+  // the exam auto-submits. Violation count is sent to the server on submit.
+  useEffect(() => {
+    if (access !== "allowed" || !attempt?.antiCheat) return;
+
+    const registerViolation = () => {
+      if (submittingRef.current) return;
+      const now = Date.now();
+      if (now - lastVioRef.current < 1200) return; // de-dupe blur+visibility pair
+      lastVioRef.current = now;
+      violationsRef.current += 1;
+      const v = violationsRef.current;
+      setViolations(v);
+      if (v >= ANTICHEAT_LIMIT) {
+        toast.error("Çoxlu pozuntu aşkarlandı — imtahan təqdim olunur.");
+        submitAnswerSheet();
+      } else {
+        toast.warn(`Diqqət! Səhifədən çıxmaq qadağandır (${v}/${ANTICHEAT_LIMIT}).`);
+      }
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") registerViolation();
+    };
+    const onBlur = () => registerViolation();
+    const onFsChange = () => {
+      if (!document.fullscreenElement) registerViolation();
+    };
+    const block = (e) => e.preventDefault();
+    const onKey = (e) => {
+      const k = (e.key || "").toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && ["c", "v", "x", "p", "s", "u", "a"].includes(k)) {
+        e.preventDefault();
+      }
+    };
+    // Fullscreen needs a user gesture — engage it on the first interaction.
+    const goFullscreen = () => {
+      const el = document.documentElement;
+      if (el.requestFullscreen && !document.fullscreenElement) {
+        el.requestFullscreen().catch(() => {});
+      }
+      window.removeEventListener("pointerdown", goFullscreen);
+    };
+
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("blur", onBlur);
+    document.addEventListener("fullscreenchange", onFsChange);
+    document.addEventListener("contextmenu", block);
+    document.addEventListener("copy", block);
+    document.addEventListener("cut", block);
+    document.addEventListener("paste", block);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("pointerdown", goFullscreen);
+    const prevSelect = document.body.style.userSelect;
+    document.body.style.userSelect = "none";
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("blur", onBlur);
+      document.removeEventListener("fullscreenchange", onFsChange);
+      document.removeEventListener("contextmenu", block);
+      document.removeEventListener("copy", block);
+      document.removeEventListener("cut", block);
+      document.removeEventListener("paste", block);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("pointerdown", goFullscreen);
+      document.body.style.userSelect = prevSelect;
+      if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [access, attempt?.antiCheat]);
 
   const handleAnswerChange = (e, index, type) => {
     const value = e.target.value;
@@ -312,8 +401,20 @@ const Quiz = () => {
               {remaining()}
             </div>
           </div>
-          <div className="shrink-0 text-sm font-medium text-muted">
-            Cavablandı: <span className="text-text">{answeredCount}</span> / {totalCount}
+          <div className="flex shrink-0 items-center gap-3">
+            {attempt?.antiCheat && (
+              <span
+                className={`hidden items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold sm:inline-flex ${
+                  violations > 0 ? "bg-danger/12 text-danger" : "bg-warning/12 text-warning"
+                }`}
+                title="Anti-cheat aktivdir"
+              >
+                <FiShield /> {violations}/{ANTICHEAT_LIMIT}
+              </span>
+            )}
+            <span className="text-sm font-medium text-muted">
+              Cavablandı: <span className="text-text">{answeredCount}</span> / {totalCount}
+            </span>
           </div>
         </div>
 

@@ -15,6 +15,8 @@ import PasswordField from "../../components/ui/PasswordField";
 import MaxTryField from "../../components/ui/MaxTryField";
 import PriceField from "../../components/ui/PriceField";
 import VideoLinkField from "../../components/ui/VideoLinkField";
+import NegativeMarkingField from "../../components/ui/NegativeMarkingField";
+import AntiCheatField from "../../components/ui/AntiCheatField";
 import { toLocalInput, toUtcIso } from "../../helper/datetime";
 import { HiOutlinePhotograph } from "react-icons/hi";
 import { FiX } from "react-icons/fi";
@@ -32,6 +34,8 @@ const ExamEdit = () => {
   const [maxTryEnabled, setMaxTryEnabled] = useState(false);
   const [priceEnabled, setPriceEnabled] = useState(false);
   const [videoEnabled, setVideoEnabled] = useState(false);
+  const [negEnabled, setNegEnabled] = useState(false);
+  const [antiEnabled, setAntiEnabled] = useState(false);
 
   useRedirectLoggedOutUser("/login");
   const { singleExam } = useSelector((state) => state.quiz);
@@ -59,6 +63,8 @@ const ExamEdit = () => {
     revealAfterEnd: false,
     solutionPhotos: [],
     password: "",
+    wrongPerPenalty: 3,
+    correctPerPenalty: 1,
   };
   const [examForm, setExamForm] = useState(initialState);
   const {
@@ -77,6 +83,8 @@ const ExamEdit = () => {
     revealAfterEnd,
     solutionPhotos,
     password,
+    wrongPerPenalty,
+    correctPerPenalty,
   } = examForm;
 
   const handleInputChange = (e) => {
@@ -103,11 +111,15 @@ const ExamEdit = () => {
         revealAfterEnd: singleExam.revealAfterEnd ?? false,
         solutionPhotos: singleExam.solutionPhotos || [],
         password: singleExam.password || "",
+        wrongPerPenalty: singleExam.wrongPerPenalty || 3,
+        correctPerPenalty: singleExam.correctPerPenalty || 1,
       });
       setPasswordEnabled(!!singleExam.password);
       setMaxTryEnabled((singleExam.maxTry || 0) > 0);
       setPriceEnabled((singleExam.price || 0) > 0);
       setVideoEnabled(!!singleExam.videoLink);
+      setNegEnabled(!!singleExam.negativeMarking);
+      setAntiEnabled(!!singleExam.antiCheat);
     }
   }, [singleExam]);
 
@@ -192,6 +204,10 @@ const ExamEdit = () => {
         solutionPhotos,
         // Empty string disables the password gate.
         password: passwordEnabled ? password : "",
+        negativeMarking: negEnabled,
+        wrongPerPenalty,
+        correctPerPenalty,
+        antiCheat: antiEnabled,
         // Only send a path when a new PDF was uploaded (so the old file is
         // replaced/deleted, and untouched edits keep the existing PDF).
         pdfPath: pdfUrl,
@@ -304,6 +320,14 @@ const ExamEdit = () => {
           <PriceField enabled={priceEnabled} value={price} onToggle={setPriceEnabled} onChange={handleInputChange} />
           <MaxTryField enabled={maxTryEnabled} value={maxTry} onToggle={setMaxTryEnabled} onChange={handleInputChange} />
           <PasswordField enabled={passwordEnabled} value={password} onToggle={setPasswordEnabled} onChange={handleInputChange} />
+          <NegativeMarkingField
+            enabled={negEnabled}
+            wrong={wrongPerPenalty}
+            correct={correctPerPenalty}
+            onToggle={setNegEnabled}
+            onChange={handleInputChange}
+          />
+          <AntiCheatField enabled={antiEnabled} onToggle={setAntiEnabled} />
           <ResultVisibility
             showScore={showScore}
             showCorrectAnswers={showCorrectAnswers}

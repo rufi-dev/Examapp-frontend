@@ -9,7 +9,7 @@ import PDFTemplate from "../../components/PDFTemplate";
 import PDFAnswersTemplate from "../../components/PDFAnswersTemplate";
 import AccountLayout from "../../components/AccountLayout";
 import ExamAnalytics from "../../components/analytics/ExamAnalytics";
-import { FiDownload, FiList } from "react-icons/fi";
+import { FiDownload, FiList, FiAlertTriangle } from "react-icons/fi";
 
 const pdfBtn =
   "inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-line bg-surface px-4 text-sm font-semibold text-text transition-colors hover:bg-surface2";
@@ -97,9 +97,19 @@ const ResultsByExam = () => {
                     {result.userId?.phone ? ` · ${result.userId.phone}` : ""}
                   </p>
                 </div>
-                <span className="inline-flex items-center rounded-full bg-primary/12 px-3 py-1 text-sm font-semibold text-primary">
-                  {result.earnPoints} bal
-                </span>
+                <div className="flex items-center gap-2">
+                  {result.violations > 0 && (
+                    <span
+                      className="inline-flex items-center gap-1 rounded-full bg-danger/12 px-3 py-1 text-sm font-semibold text-danger"
+                      title="Anti-cheat pozuntuları (tab keçidi / pəncərədən çıxma)"
+                    >
+                      <FiAlertTriangle /> {result.violations}
+                    </span>
+                  )}
+                  <span className="inline-flex items-center rounded-full bg-primary/12 px-3 py-1 text-sm font-semibold text-primary">
+                    {result.earnPoints} bal
+                  </span>
+                </div>
               </div>
               <ResultCard result={result} />
             </div>
