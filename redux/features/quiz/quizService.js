@@ -149,8 +149,9 @@ const startAttempt = async (examId, password) => {
     return response.data
 }
 
-//Is there an exam in progress for this user (resume available)?
-const getAttemptStatus = async (examId) => {
+//Is there an exam in progress for this user (resume available)? Also used to
+//poll the shared attempt's live state (violations/terminated) across devices.
+export const getAttemptStatus = async (examId) => {
     const response = await axios.get(API_URL + "exam/" + examId + "/attemptStatus")
     return response.data
 }

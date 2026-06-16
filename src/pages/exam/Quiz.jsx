@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import { startAttempt, getPdfByExam } from "../../../redux/features/quiz/quizSlice";
-import { reportViolation } from "../../../redux/features/quiz/quizService";
+import { reportViolation, getAttemptStatus } from "../../../redux/features/quiz/quizService";
 import { addResult } from "../../../redux/features/quiz/resultSlice";
 import { useNavigate, useParams } from "react-router-dom";
 import { FiClock, FiCheckCircle, FiLock, FiEye, FiMaximize } from "react-icons/fi";
@@ -313,12 +313,78 @@ const Quiz = () => {
       localStorage.removeItem(vioKey);
       navigate(`/exam/${examId}/result`);
     } catch (error) {
-      // error toast is shown by the addResult slice
+      // If the attempt is already over (finished on another device, claimed, or
+      // expired) there's nothing left to submit — just open the result page
+      // instead of leaving the student stuck on a dead exam.
+      const msg = String((error && error.message) || error || "");
+      if (/bağlan|tapılmad|vaxt|bitib|already/i.test(msg)) {
+        localStorage.removeItem(answersKey);
+        localStorage.removeItem(vioKey);
+        navigate(`/exam/${examId}/result`);
+        return;
+      }
+      // otherwise: a real error; the addResult slice already toasted it
     } finally {
       submittingRef.current = false;
       setIsSubmitting(false);
     }
   };
+
+  // Multi-device sync: the same attempt can be open on another device, which may
+  // add violations, terminate, or submit it. Poll the server so this device's
+  // eye-icon stays in sync and it finishes/redirects instead of getting stuck on
+  // a dead attempt (e.g. "active exam not found" with no way out).
+  useEffect(() => {
+    if (access !== "allowed") return;
+    let stopped = false;
+
+    const goToResult = (msg) => {
+      if (submittingRef.current) return;
+      submittingRef.current = true; // stop the deadline timer from re-firing
+      if (msg) toast.info(msg);
+      try {
+        localStorage.removeItem(answersKey);
+        localStorage.removeItem(vioKey);
+      } catch {
+        /* ignore */
+      }
+      navigate(`/exam/${examId}/result`);
+    };
+
+    const poll = async () => {
+      let s;
+      try {
+        s = await getAttemptStatus(examId);
+      } catch {
+        return; // transient; retry next tick
+      }
+      if (stopped || submittingRef.current || !s) return;
+      // Finished/expired on another device — open the result here too.
+      if (s.active === false) {
+        goToResult("İmtahan başqa cihazda bağlandı.");
+        return;
+      }
+      // Mirror the server-truth violation count (never moves backward).
+      if (typeof s.violations === "number" && s.violations > violationsRef.current) {
+        violationsRef.current = s.violations;
+        setViolations(s.violations);
+        persistVio(s.violations);
+      }
+      // Terminated elsewhere — finalize here too.
+      if (s.terminated && !terminatedRef.current) {
+        terminatedRef.current = true;
+        toast.error("İmtahan pozuntulara görə dayandırıldı.");
+        submitAnswerSheet(); // submits, or redirects if already claimed
+      }
+    };
+
+    const id = setInterval(poll, 8000);
+    return () => {
+      stopped = true;
+      clearInterval(id);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [access, examId]);
 
   // Anti-cheat: when the exam enables it, lock the page down and log leaving.
   // A violation is counted when the page is hidden (minimize / tab switch) OR
