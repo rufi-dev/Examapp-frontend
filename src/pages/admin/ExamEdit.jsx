@@ -215,118 +215,104 @@ const ExamEdit = () => {
 
   return (
     <AccountLayout title="İmtahanı redaktə et" subtitle="İmtahan məlumatlarını yenilə.">
-      <form onSubmit={editExamForm} className="mx-auto max-w-3xl space-y-6">
-        <FormSection title="İmtahan məlumatı">
-          <div className="space-y-5">
-            <Field label="İmtahan adı" htmlFor="name">
-              <input value={name} onChange={handleInputChange} type="text" name="name" id="name" className={inputClass} />
-            </Field>
-            <Field label="PDF fayl" htmlFor="pdf" hint="Dəyişmək üçün yeni fayl seçin">
-              <input type="file" id="pdf" name="pdf" accept="application/pdf" onChange={handlePdfChange} className={fileInputClass} />
-            </Field>
-          </div>
-        </FormSection>
+      <form
+        onSubmit={editExamForm}
+        className="grid items-start gap-6 lg:grid-cols-2"
+      >
+        {/* Left: core exam data */}
+        <div className="space-y-6">
+          <FormSection title="İmtahan məlumatı">
+            <div className="space-y-5">
+              <Field label="İmtahan adı" htmlFor="name">
+                <input value={name} onChange={handleInputChange} type="text" name="name" id="name" className={inputClass} />
+              </Field>
+              <Field label="PDF fayl" htmlFor="pdf" hint="Dəyişmək üçün yeni fayl seçin">
+                <input type="file" id="pdf" name="pdf" accept="application/pdf" onChange={handlePdfChange} className={fileInputClass} />
+              </Field>
+            </div>
+          </FormSection>
 
-        <FormSection title="Vaxt və müddət">
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Müddət (saniyə)" htmlFor="duration" hint={minuteHint}>
-              <input value={duration} onChange={handleInputChange} type="number" id="duration" name="duration" className={inputClass} />
-            </Field>
-            <div className="hidden sm:block" />
-            <Field label="Başlanma tarixi" htmlFor="startDate">
-              <input value={startDate || ""} onChange={handleInputChange} type="datetime-local" id="startDate" name="startDate" className={inputClass} />
-            </Field>
-            <Field label="Bitmə tarixi" htmlFor="endDate">
-              <input value={endDate || ""} onChange={handleInputChange} type="datetime-local" id="endDate" name="endDate" className={inputClass} />
-            </Field>
-          </div>
-        </FormSection>
-
-        <FormSection title="Qiymətləndirmə">
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Ümumi bal" htmlFor="totalMarks">
-              <input value={totalMarks} onChange={handleInputChange} type="number" id="totalMarks" name="totalMarks" className={inputClass} />
-            </Field>
-            <Field label="Keçid balı" htmlFor="passingMarks">
-              <input value={passingMarks} onChange={handleInputChange} type="number" name="passingMarks" id="passingMarks" className={inputClass} />
-            </Field>
-          </div>
-        </FormSection>
-
-        <VideoLinkField
-          enabled={videoEnabled}
-          value={videoLink}
-          onToggle={setVideoEnabled}
-          onChange={handleInputChange}
-        />
-
-        <PriceField
-          enabled={priceEnabled}
-          value={price}
-          onToggle={setPriceEnabled}
-          onChange={handleInputChange}
-        />
-
-        <MaxTryField
-          enabled={maxTryEnabled}
-          value={maxTry}
-          onToggle={setMaxTryEnabled}
-          onChange={handleInputChange}
-        />
-
-        <PasswordField
-          enabled={passwordEnabled}
-          value={password}
-          onToggle={setPasswordEnabled}
-          onChange={handleInputChange}
-        />
-
-        <ResultVisibility
-          showScore={showScore}
-          showCorrectAnswers={showCorrectAnswers}
-          revealAfterEnd={revealAfterEnd}
-          onChange={setField}
-        />
-
-        <FormSection
-          title="Həll (yazı işi) şəkilləri"
-          description="Bir dəfə əlavə et — bütün şagirdlər nəticə səhifəsində görür."
-        >
-          <div className="rounded-2xl border border-dashed border-line p-4">
-            {solutionPhotos?.length > 0 && (
-              <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {solutionPhotos.map((src, i) => (
-                  <div key={i} className="group relative overflow-hidden rounded-xl border border-line">
-                    <img src={src} alt="" className="h-32 w-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => removeSolutionPhoto(i)}
-                      className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-lg bg-black/55 text-white transition-colors hover:bg-danger"
-                      aria-label="Sil"
-                    >
-                      <FiX />
-                    </button>
-                  </div>
-                ))}
+          <FormSection title="Vaxt və müddət">
+            <div className="space-y-5">
+              <Field label="Müddət (saniyə)" htmlFor="duration" hint={minuteHint}>
+                <input value={duration} onChange={handleInputChange} type="number" id="duration" name="duration" className={inputClass} />
+              </Field>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field label="Başlanma tarixi" htmlFor="startDate">
+                  <input value={startDate || ""} onChange={handleInputChange} type="datetime-local" id="startDate" name="startDate" className={inputClass} />
+                </Field>
+                <Field label="Bitmə tarixi" htmlFor="endDate">
+                  <input value={endDate || ""} onChange={handleInputChange} type="datetime-local" id="endDate" name="endDate" className={inputClass} />
+                </Field>
               </div>
-            )}
-            <label
-              htmlFor="solutionInput"
-              className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-surface2/40 px-4 py-3 text-sm font-semibold text-text transition-colors hover:border-primary/50"
-            >
-              {uploadingSolution ? (
-                <Spinner size={18} />
-              ) : (
-                <>
-                  <HiOutlinePhotograph className="text-lg" /> Şəkil əlavə et
-                </>
-              )}
-            </label>
-            <input id="solutionInput" type="file" accept="image/*" multiple className="hidden" onChange={handleSolutionUpload} />
-          </div>
-        </FormSection>
+            </div>
+          </FormSection>
 
-        <div className="flex justify-end pb-2">
+          <FormSection title="Qiymətləndirmə">
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Field label="Ümumi bal" htmlFor="totalMarks">
+                <input value={totalMarks} onChange={handleInputChange} type="number" id="totalMarks" name="totalMarks" className={inputClass} />
+              </Field>
+              <Field label="Keçid balı" htmlFor="passingMarks">
+                <input value={passingMarks} onChange={handleInputChange} type="number" name="passingMarks" id="passingMarks" className={inputClass} />
+              </Field>
+            </div>
+          </FormSection>
+
+          <FormSection
+            title="Həll (yazı işi) şəkilləri"
+            description="Bir dəfə əlavə et — bütün şagirdlər nəticə səhifəsində görür."
+          >
+            <div className="rounded-2xl border border-dashed border-line p-4">
+              {solutionPhotos?.length > 0 && (
+                <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {solutionPhotos.map((src, i) => (
+                    <div key={i} className="group relative overflow-hidden rounded-xl border border-line">
+                      <img src={src} alt="" className="h-32 w-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => removeSolutionPhoto(i)}
+                        className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-lg bg-black/55 text-white transition-colors hover:bg-danger"
+                        aria-label="Sil"
+                      >
+                        <FiX />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <label
+                htmlFor="solutionInput"
+                className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-surface2/40 px-4 py-3 text-sm font-semibold text-text transition-colors hover:border-primary/50"
+              >
+                {uploadingSolution ? (
+                  <Spinner size={18} />
+                ) : (
+                  <>
+                    <HiOutlinePhotograph className="text-lg" /> Şəkil əlavə et
+                  </>
+                )}
+              </label>
+              <input id="solutionInput" type="file" accept="image/*" multiple className="hidden" onChange={handleSolutionUpload} />
+            </div>
+          </FormSection>
+        </div>
+
+        {/* Right: optional settings + result visibility */}
+        <div className="space-y-6">
+          <VideoLinkField enabled={videoEnabled} value={videoLink} onToggle={setVideoEnabled} onChange={handleInputChange} />
+          <PriceField enabled={priceEnabled} value={price} onToggle={setPriceEnabled} onChange={handleInputChange} />
+          <MaxTryField enabled={maxTryEnabled} value={maxTry} onToggle={setMaxTryEnabled} onChange={handleInputChange} />
+          <PasswordField enabled={passwordEnabled} value={password} onToggle={setPasswordEnabled} onChange={handleInputChange} />
+          <ResultVisibility
+            showScore={showScore}
+            showCorrectAnswers={showCorrectAnswers}
+            revealAfterEnd={revealAfterEnd}
+            onChange={setField}
+          />
+        </div>
+
+        <div className="flex justify-end pb-2 lg:col-span-2">
           <Button type="submit" size="lg">
             Yadda saxla
           </Button>

@@ -132,88 +132,71 @@ const ExamAdd = () => {
 
   return (
     <AccountLayout title="İmtahan əlavə et" subtitle="Yeni sınaq imtahanı yarat.">
-      <form onSubmit={addExamForm} className="mx-auto max-w-3xl space-y-6">
-        <FormSection title="İmtahan məlumatı">
-          <div className="space-y-5">
-            <Field label="İmtahan adı" htmlFor="name">
-              <input
-                value={name}
-                onChange={handleInputChange}
-                type="text"
-                name="name"
-                id="name"
-                className={inputClass}
-                placeholder="Məsələn: Buraxılış sınağı #1"
-              />
-            </Field>
-            <Field label="PDF fayl" htmlFor="pdf" hint="İmtahan sualları (PDF)">
-              <input type="file" id="pdf" name="pdf" accept="application/pdf" onChange={handlePdfChange} className={fileInputClass} />
-            </Field>
-          </div>
-        </FormSection>
+      <form onSubmit={addExamForm} className="grid items-start gap-6 lg:grid-cols-2">
+        {/* Left: core exam data */}
+        <div className="space-y-6">
+          <FormSection title="İmtahan məlumatı">
+            <div className="space-y-5">
+              <Field label="İmtahan adı" htmlFor="name">
+                <input
+                  value={name}
+                  onChange={handleInputChange}
+                  type="text"
+                  name="name"
+                  id="name"
+                  className={inputClass}
+                  placeholder="Məsələn: Buraxılış sınağı #1"
+                />
+              </Field>
+              <Field label="PDF fayl" htmlFor="pdf" hint="İmtahan sualları (PDF)">
+                <input type="file" id="pdf" name="pdf" accept="application/pdf" onChange={handlePdfChange} className={fileInputClass} />
+              </Field>
+            </div>
+          </FormSection>
 
-        <FormSection title="Vaxt və müddət">
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Müddət (saniyə)" htmlFor="duration" hint={minuteHint}>
-              <input value={duration} onChange={handleInputChange} type="number" id="duration" name="duration" className={inputClass} />
-            </Field>
-            <div className="hidden sm:block" />
-            <Field label="Başlanma tarixi" htmlFor="startDate">
-              <input value={startDate || ""} onChange={handleInputChange} type="datetime-local" id="startDate" name="startDate" className={inputClass} />
-            </Field>
-            <Field label="Bitmə tarixi" htmlFor="endDate">
-              <input value={endDate || ""} onChange={handleInputChange} type="datetime-local" id="endDate" name="endDate" className={inputClass} />
-            </Field>
-          </div>
-        </FormSection>
+          <FormSection title="Vaxt və müddət">
+            <div className="space-y-5">
+              <Field label="Müddət (saniyə)" htmlFor="duration" hint={minuteHint}>
+                <input value={duration} onChange={handleInputChange} type="number" id="duration" name="duration" className={inputClass} />
+              </Field>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field label="Başlanma tarixi" htmlFor="startDate">
+                  <input value={startDate || ""} onChange={handleInputChange} type="datetime-local" id="startDate" name="startDate" className={inputClass} />
+                </Field>
+                <Field label="Bitmə tarixi" htmlFor="endDate">
+                  <input value={endDate || ""} onChange={handleInputChange} type="datetime-local" id="endDate" name="endDate" className={inputClass} />
+                </Field>
+              </div>
+            </div>
+          </FormSection>
 
-        <FormSection title="Qiymətləndirmə">
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Ümumi bal" htmlFor="totalMarks">
-              <input value={totalMarks} onChange={handleInputChange} type="number" id="totalMarks" name="totalMarks" className={inputClass} />
-            </Field>
-            <Field label="Keçid balı" htmlFor="passingMarks">
-              <input value={passingMarks} onChange={handleInputChange} type="number" name="passingMarks" id="passingMarks" className={inputClass} />
-            </Field>
-          </div>
-        </FormSection>
+          <FormSection title="Qiymətləndirmə">
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Field label="Ümumi bal" htmlFor="totalMarks">
+                <input value={totalMarks} onChange={handleInputChange} type="number" id="totalMarks" name="totalMarks" className={inputClass} />
+              </Field>
+              <Field label="Keçid balı" htmlFor="passingMarks">
+                <input value={passingMarks} onChange={handleInputChange} type="number" name="passingMarks" id="passingMarks" className={inputClass} />
+              </Field>
+            </div>
+          </FormSection>
+        </div>
 
-        <VideoLinkField
-          enabled={videoEnabled}
-          value={videoLink}
-          onToggle={setVideoEnabled}
-          onChange={handleInputChange}
-        />
+        {/* Right: optional settings + result visibility */}
+        <div className="space-y-6">
+          <VideoLinkField enabled={videoEnabled} value={videoLink} onToggle={setVideoEnabled} onChange={handleInputChange} />
+          <PriceField enabled={priceEnabled} value={price} onToggle={setPriceEnabled} onChange={handleInputChange} />
+          <MaxTryField enabled={maxTryEnabled} value={maxTry} onToggle={setMaxTryEnabled} onChange={handleInputChange} />
+          <PasswordField enabled={passwordEnabled} value={password} onToggle={setPasswordEnabled} onChange={handleInputChange} />
+          <ResultVisibility
+            showScore={showScore}
+            showCorrectAnswers={showCorrectAnswers}
+            revealAfterEnd={revealAfterEnd}
+            onChange={setField}
+          />
+        </div>
 
-        <PriceField
-          enabled={priceEnabled}
-          value={price}
-          onToggle={setPriceEnabled}
-          onChange={handleInputChange}
-        />
-
-        <MaxTryField
-          enabled={maxTryEnabled}
-          value={maxTry}
-          onToggle={setMaxTryEnabled}
-          onChange={handleInputChange}
-        />
-
-        <PasswordField
-          enabled={passwordEnabled}
-          value={password}
-          onToggle={setPasswordEnabled}
-          onChange={handleInputChange}
-        />
-
-        <ResultVisibility
-          showScore={showScore}
-          showCorrectAnswers={showCorrectAnswers}
-          revealAfterEnd={revealAfterEnd}
-          onChange={setField}
-        />
-
-        <div className="flex justify-end pb-2">
+        <div className="flex justify-end pb-2 lg:col-span-2">
           <Button type="submit" size="lg">
             İmtahanı əlavə et
           </Button>
