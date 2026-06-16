@@ -3,15 +3,19 @@ import { useEffect, useState } from "react";
 import { LuGraduationCap } from "react-icons/lu";
 import { FiArrowUpRight } from "react-icons/fi";
 import { MdOutlineModeEditOutline } from "react-icons/md";
+import { AiFillDelete } from "react-icons/ai";
 import { useDispatch, useSelector } from "react-redux";
-import { getTags } from "../../redux/features/quiz/quizSlice";
+import { getTags, deleteTag } from "../../redux/features/quiz/quizSlice";
 import { AdminTeacherLink } from "./protect/hiddenLink";
 import CenterLoader from "./ui/CenterLoader";
+import ConfirmDialog from "./ui/ConfirmDialog";
 
 const Categories = () => {
   const dispatch = useDispatch();
   const { tags } = useSelector((state) => state.quiz);
   const [loadedOnce, setLoadedOnce] = useState(false);
+  const [confirmTag, setConfirmTag] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -27,6 +31,20 @@ const Categories = () => {
 
   const hasTags = tags && tags.length > 0;
 
+  const handleDeleteTag = async () => {
+    if (!confirmTag) return;
+    setDeleting(true);
+    try {
+      await dispatch(deleteTag(confirmTag._id)).unwrap();
+      setConfirmTag(null);
+      dispatch(getTags());
+    } catch {
+      /* error toast handled by the slice */
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   // Spinner only on the very first load when there's nothing cached to show.
   if (!hasTags && !loadedOnce) {
     return <CenterLoader />;
@@ -41,37 +59,68 @@ const Categories = () => {
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {tags.map((tag, index) => (
-        <div
-          key={tag._id}
-          className="group relative animate-fade-in"
-          style={{ animationDelay: `${Math.min(index * 70, 420)}ms` }}
-        >
-          <AdminTeacherLink>
-            <Link
-              to={`/tag/edit/${tag._id}`}
-              className="absolute right-3 top-3 z-10 grid h-8 w-8 place-items-center rounded-lg bg-surface2 text-muted opacity-0 transition-all hover:text-primary group-hover:opacity-100"
-              aria-label="Düzəliş et"
-            >
-              <MdOutlineModeEditOutline />
-            </Link>
-          </AdminTeacherLink>
-          <Link
-            to={`/class/${tag._id}`}
-            className="flex h-full flex-col items-start gap-4 rounded-2xl border border-line bg-surface p-6 shadow-soft transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:border-primary/40 hover:shadow-lift"
+    <>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {tags.map((tag, index) => (
+          <div
+            key={tag._id}
+            className="group relative animate-fade-in"
+            style={{ animationDelay: `${Math.min(index * 70, 420)}ms` }}
           >
-            <span className="grid h-12 w-12 place-items-center rounded-xl bg-primary/12 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-fg">
-              <LuGraduationCap className="text-[22px]" />
-            </span>
-            <div className="flex w-full items-center justify-between gap-3">
-              <h3 className="font-display text-lg font-bold text-text">{tag.name}</h3>
-              <FiArrowUpRight className="shrink-0 text-xl text-muted transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary" />
-            </div>
-          </Link>
-        </div>
-      ))}
-    </div>
+            <AdminTeacherLink>
+              <div className="absolute right-3 top-3 z-10 flex gap-1">
+                <Link
+                  to={`/tag/edit/${tag._id}`}
+                  className="grid h-8 w-8 place-items-center rounded-lg border border-line bg-surface text-muted transition-colors hover:text-primary"
+                  aria-label="Düzəliş et"
+                >
+                  <MdOutlineModeEditOutline />
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setConfirmTag(tag)}
+                  className="grid h-8 w-8 place-items-center rounded-lg border border-line bg-surface text-muted transition-colors hover:border-danger/40 hover:text-danger"
+                  aria-label="Sil"
+                >
+                  <AiFillDelete />
+                </button>
+              </div>
+            </AdminTeacherLink>
+            <Link
+              to={`/class/${tag._id}`}
+              className="flex h-full flex-col items-start gap-4 rounded-2xl border border-line bg-surface p-6 shadow-soft transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:border-primary/40 hover:shadow-lift"
+            >
+              <span className="grid h-12 w-12 place-items-center rounded-xl bg-primary/12 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-fg">
+                <LuGraduationCap className="text-[22px]" />
+              </span>
+              <div className="flex w-full items-center justify-between gap-3">
+                <h3 className="font-display text-lg font-bold text-text">{tag.name}</h3>
+                <FiArrowUpRight className="shrink-0 text-xl text-muted transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary" />
+              </div>
+            </Link>
+          </div>
+        ))}
+      </div>
+
+      <ConfirmDialog
+        open={!!confirmTag}
+        onClose={() => setConfirmTag(null)}
+        onConfirm={handleDeleteTag}
+        title="Kateqoriyanı silmək?"
+        confirmLabel="Bəli, sil"
+        cancelLabel="Geri"
+        tone="danger"
+        loading={deleting}
+      >
+        <p>
+          <span className="font-semibold text-text">{confirmTag?.name}</span> və içindəki{" "}
+          <span className="font-semibold text-text">
+            bütün siniflər, imtahanlar, suallar və nəticələr
+          </span>{" "}
+          həmişəlik silinəcək. Bu əməliyyat geri qaytarıla bilməz.
+        </p>
+      </ConfirmDialog>
+    </>
   );
 };
 

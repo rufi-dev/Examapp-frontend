@@ -215,6 +215,36 @@ export const deleteExam = createAsyncThunk(
   }
 );
 
+export const deleteClass = createAsyncThunk(
+  "quiz/deleteClass",
+  async (classId, thunkAPI) => {
+    try {
+      return await quizService.deleteClass(classId);
+    } catch (error) {
+      const message =
+        (error.response && error.response.data && error.response.data.message) ||
+        error.message ||
+        error.toString();
+      return thunkAPI.rejectWithValue(message);
+    }
+  }
+);
+
+export const deleteTag = createAsyncThunk(
+  "quiz/deleteTag",
+  async (tagId, thunkAPI) => {
+    try {
+      return await quizService.deleteTag(tagId);
+    } catch (error) {
+      const message =
+        (error.response && error.response.data && error.response.data.message) ||
+        error.message ||
+        error.toString();
+      return thunkAPI.rejectWithValue(message);
+    }
+  }
+);
+
 //Add Question
 export const addQuestion = createAsyncThunk(
   "quiz/addQuestion",
@@ -655,6 +685,23 @@ const quizSlice = createSlice({
         state.isLoading = false;
         state.isError = true;
         state.message = action.payload;
+        toast.error(action.payload);
+      })
+
+      .addCase(deleteClass.fulfilled, (state, action) => {
+        state.isLoading = false;
+        toast.success(action.payload);
+      })
+      .addCase(deleteClass.rejected, (state, action) => {
+        state.isLoading = false;
+        toast.error(action.payload);
+      })
+      .addCase(deleteTag.fulfilled, (state, action) => {
+        state.isLoading = false;
+        toast.success(action.payload);
+      })
+      .addCase(deleteTag.rejected, (state, action) => {
+        state.isLoading = false;
         toast.error(action.payload);
       })
 

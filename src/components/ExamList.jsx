@@ -15,6 +15,7 @@ import { FiClock, FiBarChart2, FiArrowRight, FiFileText } from "react-icons/fi";
 import { payExam } from "../../redux/features/stripe/stripeSlice";
 import Button from "./ui/Button";
 import Badge from "./ui/Badge";
+import ConfirmDialog from "./ui/ConfirmDialog";
 
 const ExamList = ({ classId }) => {
   const dispatch = useDispatch();
@@ -35,9 +36,21 @@ const ExamList = ({ classId }) => {
     };
   }, [dispatch, classId]);
 
-  const handleDelete = async (examId) => {
-    await dispatch(deleteExam(examId));
-    await dispatch(getExamsByClass(classId));
+  const [confirmExam, setConfirmExam] = useState(null);
+  const [deletingExam, setDeletingExam] = useState(false);
+
+  const handleDeleteExam = async () => {
+    if (!confirmExam) return;
+    setDeletingExam(true);
+    try {
+      await dispatch(deleteExam(confirmExam._id)).unwrap();
+      setConfirmExam(null);
+      dispatch(getExamsByClass(classId));
+    } catch {
+      /* error toast handled by the slice */
+    } finally {
+      setDeletingExam(false);
+    }
   };
 
   const addExam = async (e, exam) => {
@@ -112,7 +125,7 @@ const ExamList = ({ classId }) => {
                     <MdOutlineModeEditOutline />
                   </Link>
                   <button
-                    onClick={() => handleDelete(exam._id)}
+                    onClick={() => setConfirmExam(exam)}
                     className="grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors hover:bg-danger/12 hover:text-danger"
                     aria-label="Sil"
                   >
