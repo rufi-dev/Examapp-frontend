@@ -12,7 +12,7 @@ import Profile from "./pages/profile/Profile";
 import ChangePassword from "./pages/auth/ChangePassword";
 import UserList from "./pages/profile/UserList";
 import axios from "axios";
-import { ToastContainer } from "react-toastify";
+import { ToastContainer, Slide } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -116,7 +116,15 @@ function App() {
     <BrowserRouter>
       <ScrollToTop />
       <Wrapper>
-        <ToastContainer />
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          newestOnTop
+          closeOnClick
+          pauseOnHover
+          draggable
+          transition={Slide}
+        />
         <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
           <Routes>
             {/* Public marketing + auth (logged-in users redirected to /dashboard) */}
