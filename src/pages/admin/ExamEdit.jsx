@@ -19,7 +19,7 @@ import NegativeMarkingField from "../../components/ui/NegativeMarkingField";
 import AntiCheatField from "../../components/ui/AntiCheatField";
 import { toLocalInput, toUtcIso } from "../../helper/datetime";
 import { HiOutlinePhotograph } from "react-icons/hi";
-import { FiX } from "react-icons/fi";
+import { FiX, FiFileText } from "react-icons/fi";
 
 const fileInputClass =
   "block w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-text file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:font-semibold file:text-primary-fg hover:file:bg-primary-hover";
@@ -244,6 +244,27 @@ const ExamEdit = () => {
               </Field>
               <Field label="PDF fayl" htmlFor="pdf" hint="Dəyişmək üçün yeni fayl seçin">
                 <input type="file" id="pdf" name="pdf" accept="application/pdf" onChange={handlePdfChange} className={fileInputClass} />
+                {/* A file input can't be pre-filled by the browser, so show
+                    what's already attached (or the freshly picked file). */}
+                {pdf ? (
+                  <p className="mt-2 text-xs text-muted">
+                    Yeni fayl: <span className="font-semibold text-text">{pdf.name}</span>
+                  </p>
+                ) : pdfPath ? (
+                  <p className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+                    <FiFileText className="shrink-0 text-primary" /> Cari PDF:
+                    <a
+                      href={pdfPath}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-semibold text-primary hover:underline"
+                    >
+                      {decodeURIComponent(pdfPath.split("/").pop().split("?")[0])}
+                    </a>
+                  </p>
+                ) : (
+                  <p className="mt-2 text-xs text-warning">PDF seçilməyib</p>
+                )}
               </Field>
             </div>
           </FormSection>
