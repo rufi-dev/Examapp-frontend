@@ -9,7 +9,7 @@ const InfoBox = ({ tone = "primary", title, count, icon }) => {
   return (
     <div className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 shadow-soft sm:gap-4 sm:p-5">
       <span
-        className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl text-[20px] sm:h-12 sm:w-12 sm:text-[22px] ${
+        className={`hidden h-11 w-11 shrink-0 place-items-center rounded-xl text-[20px] sm:grid sm:h-12 sm:w-12 sm:text-[22px] ${
           tones[tone] || tones.primary
         }`}
       >
