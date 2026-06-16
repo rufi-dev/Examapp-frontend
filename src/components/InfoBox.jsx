@@ -7,16 +7,16 @@ const tones = {
 
 const InfoBox = ({ tone = "primary", title, count, icon }) => {
   return (
-    <div className="flex items-center gap-4 rounded-2xl border border-line bg-surface p-5 shadow-soft">
+    <div className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 shadow-soft sm:gap-4 sm:p-5">
       <span
-        className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl text-[22px] ${
+        className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl text-[20px] sm:h-12 sm:w-12 sm:text-[22px] ${
           tones[tone] || tones.primary
         }`}
       >
         {icon}
       </span>
-      <div>
-        <p className="text-sm text-muted">{title}</p>
+      <div className="min-w-0">
+        <p className="break-words text-sm leading-tight text-muted">{title}</p>
         <p className="font-display text-2xl font-bold text-text">{count}</p>
       </div>
     </div>

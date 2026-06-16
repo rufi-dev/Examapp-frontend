@@ -127,58 +127,7 @@ const UserList = () => {
         </div>
       ) : (
         <>
-          {/* Mobile: stacked cards (a table doesn't fit a phone width) */}
-          <div className="mt-6 space-y-3 md:hidden">
-            {currentItems?.map((user, index) => (
-              <div
-                key={user._id || index}
-                className="rounded-2xl border border-line bg-surface p-4 shadow-soft"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <Link
-                      to={`/user/${user._id}/details`}
-                      className="block truncate font-semibold text-text transition-colors hover:text-primary"
-                    >
-                      {user.name}
-                    </Link>
-                    <p className="mt-0.5 break-all text-sm text-muted">{user.email}</p>
-                    {user.phone && <p className="text-sm text-muted">{user.phone}</p>}
-                  </div>
-                  <span className="shrink-0 text-xs font-semibold text-muted">
-                    #{itemOffset + index + 1}
-                  </span>
-                </div>
-
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <Badge tone={roleTone(user.role)}>
-                    {roleLabels[user.role] || user.role}
-                  </Badge>
-                  {user.isVerified ? (
-                    <Badge tone="success">Təsdiqlənib</Badge>
-                  ) : (
-                    <Badge tone="warning">Təsdiqlənməyib</Badge>
-                  )}
-                </div>
-
-                <AdminTeacherLink>
-                  <div className="mt-3 flex items-center justify-between gap-2 border-t border-line/60 pt-3">
-                    <ChangeRole _id={user._id} email={user.email} />
-                    <button
-                      onClick={() => confirmDelete(user)}
-                      aria-label="Sil"
-                      className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-danger/12 hover:text-danger"
-                    >
-                      <AiFillDelete />
-                    </button>
-                  </div>
-                </AdminTeacherLink>
-              </div>
-            ))}
-          </div>
-
-          {/* Desktop: full table */}
-          <div className="mt-6 hidden overflow-x-auto rounded-2xl border border-line bg-surface shadow-soft scrollbar-thin md:block">
+          <div className="mt-6 overflow-x-auto rounded-2xl border border-line bg-surface shadow-soft scrollbar-thin">
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
