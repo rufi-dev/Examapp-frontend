@@ -105,7 +105,7 @@ const UserList = () => {
           icon={<BiUserMinus />}
           title="Təsdiqlənməmiş"
           count={unVerifiedUser}
-          tone="muted"
+          tone="warning"
         />
         <InfoBox
           icon={<BiUserX />}
