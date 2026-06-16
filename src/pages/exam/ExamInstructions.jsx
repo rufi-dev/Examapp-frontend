@@ -68,13 +68,19 @@ const ExamInstructions = () => {
     setConfirmStart(true);
   };
 
-  // Anti-cheat exams launch in a separate, chromeless window (no tab strip),
-  // which is stricter than a same-tab navigation. Falls back to the same tab if
-  // the popup is blocked.
+  // Anti-cheat exams open in a separate, chromeless window on DESKTOP (no tab
+  // strip — stricter than same-tab). But inside an installed PWA or on mobile,
+  // window.open pops OUT into an in-app browser / Chrome Custom Tab (showing the
+  // URL bar, leaving the app), so there we navigate in place and stay in the
+  // standalone app — fullscreen + anti-cheat still apply.
   const launchExam = () => {
     setConfirmStart(false);
     const url = `/exam/${singleExam._id}/start`;
-    if (singleExam?.antiCheat) {
+    const standalone =
+      window.matchMedia?.("(display-mode: standalone)").matches ||
+      window.navigator.standalone === true;
+    const mobile = /android|iphone|ipad|ipod|mobile/i.test(window.navigator.userAgent);
+    if (singleExam?.antiCheat && !standalone && !mobile) {
       const w = window.open(
         url,
         "examWindow",
@@ -83,12 +89,10 @@ const ExamInstructions = () => {
       if (w) {
         w.focus();
         toast.info("İmtahan ayrıca pəncərədə açıldı.");
-      } else {
-        navigate(url); // popup blocked
+        return;
       }
-    } else {
-      navigate(url);
     }
+    navigate(url); // PWA / mobile / blocked popup -> stay in the app
   };
 
   const meta = [
