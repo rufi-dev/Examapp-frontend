@@ -3,7 +3,7 @@ import { useDispatch } from "react-redux";
 import { startAttempt, getPdfByExam } from "../../../redux/features/quiz/quizSlice";
 import { addResult } from "../../../redux/features/quiz/resultSlice";
 import { useNavigate, useParams } from "react-router-dom";
-import { FiClock, FiCheckCircle } from "react-icons/fi";
+import { FiClock, FiCheckCircle, FiLock } from "react-icons/fi";
 import { toast } from "react-toastify";
 import PdfOpener from "../../components/PdfOpener";
 import QuestionType from "../../components/QuestionType";
@@ -42,7 +42,11 @@ const Quiz = () => {
   const [pdfData, setPdfData] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mobileView, setMobileView] = useState("pdf"); // mobile: "pdf" | "answers"
-  const [access, setAccess] = useState("checking"); // "checking" | "allowed" | "denied"
+  const [access, setAccess] = useState("checking"); // "checking" | "allowed" | "denied" | "password"
+  const [pwInput, setPwInput] = useState("");
+  const [pwError, setPwError] = useState("");
+  const [starting, setStarting] = useState(false);
+  const cancelledRef = useRef(false);
   const [confirmFinish, setConfirmFinish] = useState(false);
   const [timeLeft, setTimeLeft] = useState(null); // seconds remaining
   const warned5 = useRef(false);
@@ -57,35 +61,58 @@ const Quiz = () => {
   const questions = attempt?.questions || [];
   const totalCount = questions.length || answers.length;
 
-  // Start (or resume) the attempt on the server, then load the PDF. The server
-  // gates access, owns the deadline, and returns questions without answers.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const data = await dispatch(startAttempt(examId)).unwrap();
-        if (cancelled) return;
-        setAttempt(data);
-        setAccess("allowed");
-        dispatch(getPdfByExam({ examId }))
-          .unwrap()
-          .then((pdf) => {
-            if (!cancelled) setPdfData(pdf?.path || null);
-          })
-          .catch(() => {});
-      } catch (err) {
-        if (cancelled) return;
-        const rule = DENY[err?.reason];
+  // Start (or resume) the attempt. The server gates access (verification,
+  // window, max tries, AND the exam password) and returns the questions without
+  // the answer key. A password-protected exam rejects until the right password
+  // is sent, so the questions/PDF can't be reached by tampering with the URL.
+  const attemptStart = async (password) => {
+    setStarting(true);
+    setPwError("");
+    try {
+      const data = await dispatch(startAttempt({ examId, password })).unwrap();
+      if (cancelledRef.current) return;
+      setAttempt(data);
+      setAccess("allowed");
+      dispatch(getPdfByExam({ examId }))
+        .unwrap()
+        .then((pdf) => {
+          if (!cancelledRef.current) setPdfData(pdf?.path || null);
+        })
+        .catch(() => {});
+    } catch (err) {
+      if (cancelledRef.current) return;
+      const reason = err?.reason;
+      if (reason === "password_required" || reason === "password_wrong") {
+        setAccess("password");
+        if (reason === "password_wrong") setPwError("Şifrə yanlışdır");
+      } else {
+        const rule = DENY[reason];
         toast.error(rule ? rule.msg : err?.message || "İmtahana giriş alınmadı");
         setAccess("denied");
         navigate(rule ? rule.to(examId) : `/exam/details/${examId}`, { replace: true });
       }
-    })();
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  useEffect(() => {
+    cancelledRef.current = false;
+    attemptStart(""); // try without a password first; protected exams prompt
     return () => {
-      cancelled = true;
+      cancelledRef.current = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch, examId]);
+
+  const submitPassword = (e) => {
+    e.preventDefault();
+    if (!pwInput) {
+      setPwError("Şifrəni daxil edin");
+      return;
+    }
+    attemptStart(pwInput);
+  };
 
   // Lock the page to the viewport while the exam runs (no page scroll).
   useEffect(() => {
@@ -216,6 +243,48 @@ const Quiz = () => {
     .slice(0, totalCount)
     .map((a, i) => (a && a.answer ? null : i + 1))
     .filter((n) => n != null);
+
+  // Password-protected exam: prompt before anything loads.
+  if (access === "password") {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-bg p-4">
+        <form
+          onSubmit={submitPassword}
+          className="w-full max-w-sm rounded-3xl border border-line bg-surface p-7 shadow-lift"
+        >
+          <div className="mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-primary/12 text-primary">
+            <FiLock className="text-[22px]" />
+          </div>
+          <h1 className="font-display text-xl font-bold text-text">İmtahan şifrəsi</h1>
+          <p className="mt-1.5 text-sm text-muted">
+            Bu imtahan şifrə ilə qorunur. Davam etmək üçün müəllimin verdiyi şifrəni daxil edin.
+          </p>
+          <input
+            type="password"
+            autoFocus
+            value={pwInput}
+            onChange={(e) => setPwInput(e.target.value)}
+            placeholder="Şifrə"
+            className="mt-5 h-12 w-full rounded-xl border border-line bg-surface px-3.5 text-[15px] text-text outline-none transition focus:border-primary focus:ring-4 focus:ring-ring/25"
+          />
+          {pwError && <p className="mt-2 text-sm font-medium text-danger">{pwError}</p>}
+          <div className="mt-5 flex flex-col-reverse gap-2.5 sm:flex-row">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => navigate(`/exam/details/${examId}`, { replace: true })}
+              className="w-full"
+            >
+              Geri
+            </Button>
+            <Button type="submit" disabled={starting} className="w-full">
+              {starting ? <Spinner /> : "Daxil ol"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    );
+  }
 
   // Don't render exam content until access is confirmed.
   if (access !== "allowed") {

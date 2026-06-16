@@ -130,9 +130,9 @@ const addResult = async (examId, resultData) => {
     return response.data.message
 }
 
-//Start (or resume) a server-tracked attempt
-const startAttempt = async (examId) => {
-    const response = await axios.post(API_URL + "exam/" + examId + "/start")
+//Start (or resume) a server-tracked attempt (password required for protected exams)
+const startAttempt = async (examId, password) => {
+    const response = await axios.post(API_URL + "exam/" + examId + "/start", { password })
     return response.data
 }
 

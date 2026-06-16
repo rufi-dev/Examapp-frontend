@@ -485,9 +485,9 @@ export const addExamToUserById = createAsyncThunk(
 
 export const startAttempt = createAsyncThunk(
   "quiz/startAttempt",
-  async (examId, thunkAPI) => {
+  async ({ examId, password }, thunkAPI) => {
     try {
-      return await quizService.startAttempt(examId);
+      return await quizService.startAttempt(examId, password);
     } catch (error) {
       const data = (error.response && error.response.data) || {};
       return thunkAPI.rejectWithValue({

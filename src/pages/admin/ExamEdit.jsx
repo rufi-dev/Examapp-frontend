@@ -10,6 +10,7 @@ import Button from "../../components/ui/Button";
 import Spinner from "../../components/Spinner";
 import { Field, inputClass } from "../../components/ui/Field";
 import ResultVisibility from "../../components/ui/ResultVisibility";
+import PasswordField from "../../components/ui/PasswordField";
 import { toLocalInput, toUtcIso } from "../../helper/datetime";
 import { HiOutlinePhotograph } from "react-icons/hi";
 import { FiX } from "react-icons/fi";
@@ -23,6 +24,7 @@ const ExamEdit = () => {
   const upload_preset = import.meta.env.VITE_UPLAD_PRESET;
   const [pdf, setPdf] = useState(null);
   const [uploadingSolution, setUploadingSolution] = useState(false);
+  const [passwordEnabled, setPasswordEnabled] = useState(false);
 
   useRedirectLoggedOutUser("/login");
   const { singleExam } = useSelector((state) => state.quiz);
@@ -49,6 +51,7 @@ const ExamEdit = () => {
     showCorrectAnswers: false,
     revealAfterEnd: false,
     solutionPhotos: [],
+    password: "",
   };
   const [examForm, setExamForm] = useState(initialState);
   const {
@@ -66,6 +69,7 @@ const ExamEdit = () => {
     showCorrectAnswers,
     revealAfterEnd,
     solutionPhotos,
+    password,
   } = examForm;
 
   const handleInputChange = (e) => {
@@ -91,7 +95,9 @@ const ExamEdit = () => {
         showCorrectAnswers: singleExam.showCorrectAnswers ?? false,
         revealAfterEnd: singleExam.revealAfterEnd ?? false,
         solutionPhotos: singleExam.solutionPhotos || [],
+        password: singleExam.password || "",
       });
+      setPasswordEnabled(!!singleExam.password);
     }
   }, [singleExam]);
 
@@ -172,6 +178,8 @@ const ExamEdit = () => {
         showCorrectAnswers,
         revealAfterEnd,
         solutionPhotos,
+        // Empty string disables the password gate.
+        password: passwordEnabled ? password : "",
         // Only send a path when a new PDF was uploaded (so the old file is
         // replaced/deleted, and untouched edits keep the existing PDF).
         pdfPath: pdfUrl,
@@ -235,6 +243,13 @@ const ExamEdit = () => {
           <Field label="Maksimum cəhd sayı" htmlFor="maxTry" hint="0 = limitsiz">
             <input value={maxTry} onChange={handleInputChange} type="number" name="maxTry" id="maxTry" className={inputClass} />
           </Field>
+
+          <PasswordField
+            enabled={passwordEnabled}
+            value={password}
+            onToggle={setPasswordEnabled}
+            onChange={handleInputChange}
+          />
 
           <ResultVisibility
             showScore={showScore}

@@ -10,6 +10,7 @@ import Loader from "../../components/Loader";
 import Button from "../../components/ui/Button";
 import { Field, inputClass } from "../../components/ui/Field";
 import ResultVisibility from "../../components/ui/ResultVisibility";
+import PasswordField from "../../components/ui/PasswordField";
 import { toUtcIso } from "../../helper/datetime";
 
 const fileInputClass =
@@ -21,6 +22,7 @@ const ExamAdd = () => {
   const cloud_name = import.meta.env.VITE_CLOUD_NAME;
   const upload_preset = import.meta.env.VITE_UPLAD_PRESET;
   const [pdf, setPdf] = useState(null);
+  const [passwordEnabled, setPasswordEnabled] = useState(false);
 
   const navigate = useNavigate();
   const { classId } = useParams();
@@ -38,6 +40,7 @@ const ExamAdd = () => {
     showScore: true,
     showCorrectAnswers: false,
     revealAfterEnd: true,
+    password: "",
     pdfPath: null,
   };
   const [examForm, setExamForm] = useState(initialState);
@@ -54,6 +57,7 @@ const ExamAdd = () => {
     showScore,
     showCorrectAnswers,
     revealAfterEnd,
+    password,
   } = examForm;
 
   const handleInputChange = (e) => {
@@ -97,6 +101,7 @@ const ExamAdd = () => {
       examData.append("showScore", showScore);
       examData.append("showCorrectAnswers", showCorrectAnswers);
       examData.append("revealAfterEnd", revealAfterEnd);
+      examData.append("password", passwordEnabled ? password : "");
       examData.append("pdf", pdfUrl);
 
       const addExamData = await dispatch(addExam({ examData, classId }));
@@ -234,6 +239,13 @@ const ExamAdd = () => {
               className={inputClass}
             />
           </Field>
+
+          <PasswordField
+            enabled={passwordEnabled}
+            value={password}
+            onToggle={setPasswordEnabled}
+            onChange={handleInputChange}
+          />
 
           <ResultVisibility
             showScore={showScore}
