@@ -18,6 +18,13 @@ const getExamsByClass = async (id) => {
     return response.data
 }
 
+// Report one anti-cheat violation; the server increments + enforces the limit
+// and returns the authoritative { violations, terminated, limit }.
+export const reportViolation = async (examId, reason) => {
+    const response = await axios.post(`${API_URL}exam/${examId}/violation`, { reason })
+    return response.data
+}
+
 //getResultsByExam
 const getResultsByExam = async (id) => {
     const response = await axios.get(API_URL + "getResultsByExam/" + id)

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import { startAttempt, getPdfByExam } from "../../../redux/features/quiz/quizSlice";
+import { reportViolation } from "../../../redux/features/quiz/quizService";
 import { addResult } from "../../../redux/features/quiz/resultSlice";
 import { useNavigate, useParams } from "react-router-dom";
 import { FiClock, FiCheckCircle, FiLock, FiEye, FiMaximize } from "react-icons/fi";
@@ -30,6 +31,7 @@ const Quiz = () => {
   const navigate = useNavigate();
 
   const answersKey = `examAnswers_${examId}`;
+  const vioKey = `examVio_${examId}`;
 
   // Draft answers persist locally so a refresh/return doesn't lose them.
   const [answers, setAnswers] = useState(() => {
@@ -61,11 +63,29 @@ const Quiz = () => {
   answersRef.current = answers;
   const submittingRef = useRef(false);
 
-  // Anti-cheat violation tracking.
-  const [violations, setViolations] = useState(0);
-  const violationsRef = useRef(0);
+  // Anti-cheat violation tracking. The SERVER owns the real count; this local
+  // value is just a mirror restored from a cache for instant display, then
+  // overwritten by the authoritative server count on load and on every report.
+  const [violations, setViolations] = useState(() => {
+    try {
+      return Number(localStorage.getItem(`examVio_${examId}`)) || 0;
+    } catch {
+      return 0;
+    }
+  });
+  const violationsRef = useRef(violations);
   const lastVioRef = useRef(0);
   const terminatedRef = useRef(false); // auto-submitted due to violations
+
+  // Cache the latest known count so a reload shows it immediately (the server
+  // value still overrides it, so editing this can't lower the real tally).
+  const persistVio = (n) => {
+    try {
+      localStorage.setItem(vioKey, String(n));
+    } catch {
+      /* ignore */
+    }
+  };
 
   // "Mark for review" flags + jump-to-question (navigator grid).
   const [marked, setMarked] = useState([]);
@@ -122,6 +142,21 @@ const Quiz = () => {
       if (cancelledRef.current) return;
       setAttempt(data);
       setAccess("allowed");
+      // Restore the server-truth anti-cheat tally so a reload / iOS app-kill /
+      // battery death can't reset it. The server value always wins.
+      if (typeof data.violations === "number") {
+        violationsRef.current = data.violations;
+        setViolations(data.violations);
+        persistVio(data.violations);
+      }
+      if (data.terminated) {
+        // Already over the limit in a prior session — finalize now so reloading
+        // can't be used to keep writing after a termination.
+        terminatedRef.current = true;
+        toast.error("İmtahan pozuntulara görə dayandırılıb.");
+        setTimeout(() => submitAnswerSheet(), 0);
+        return;
+      }
       dispatch(getPdfByExam({ examId }))
         .unwrap()
         .then((pdf) => {
@@ -270,6 +305,7 @@ const Quiz = () => {
         })
       ).unwrap();
       localStorage.removeItem(answersKey);
+      localStorage.removeItem(vioKey);
       navigate(`/exam/${examId}/result`);
     } catch (error) {
       // error toast is shown by the addResult slice
@@ -292,26 +328,50 @@ const Quiz = () => {
     const startedAt = Date.now();
     let blurTimer = null;
 
-    const registerViolation = () => {
-      if (submittingRef.current) return;
-      if (Date.now() - startedAt < 3000) return; // startup grace (login dialogs)
-      const now = Date.now();
-      if (now - lastVioRef.current < 1200) return; // de-dupe rapid events
-      lastVioRef.current = now;
-      violationsRef.current += 1;
-      const v = violationsRef.current;
-      setViolations(v);
-      if (v >= ANTICHEAT_LIMIT) {
+    // Reconcile the UI to an authoritative count and act on termination.
+    const applyCount = (count, terminated) => {
+      violationsRef.current = count;
+      setViolations(count);
+      persistVio(count);
+      if (terminated || count >= ANTICHEAT_LIMIT) {
+        if (terminatedRef.current) return;
         terminatedRef.current = true;
         toast.error("Çoxlu pozuntu aşkarlandı — imtahan dayandırılır.");
         submitAnswerSheet();
       } else {
-        toast.warn(`Diqqət! İmtahandan çıxmaq qadağandır (${v}/${ANTICHEAT_LIMIT}).`);
+        toast.warn(`Diqqət! İmtahandan çıxmaq qadağandır (${count}/${ANTICHEAT_LIMIT}).`);
       }
     };
 
+    const registerViolation = (reason, force = false) => {
+      if (submittingRef.current || terminatedRef.current) return;
+      if (!force) {
+        if (Date.now() - startedAt < 3000) return; // startup grace (login dialogs)
+        const now = Date.now();
+        if (now - lastVioRef.current < 1200) return; // de-dupe rapid events
+        lastVioRef.current = now;
+      } else {
+        lastVioRef.current = Date.now();
+      }
+      // Optimistic badge bump for instant feedback; the server count then wins.
+      const optimistic = violationsRef.current + 1;
+      violationsRef.current = optimistic;
+      setViolations(optimistic);
+      persistVio(optimistic);
+      // The SERVER increments + enforces the limit, so editing JS/storage or
+      // reloading can never lower the real tally.
+      reportViolation(examId, reason)
+        .then((res) =>
+          applyCount(
+            typeof res?.violations === "number" ? res.violations : optimistic,
+            !!res?.terminated
+          )
+        )
+        .catch(() => applyCount(optimistic, false)); // offline: enforce locally, reconciles later
+    };
+
     const onVisibility = () => {
-      if (document.visibilityState === "hidden") registerViolation();
+      if (document.visibilityState === "hidden") registerViolation("hidden");
     };
     // Window lost focus (another window/app came forward). Confirm after a beat
     // so a transient dialog that returns focus quickly isn't penalised.
@@ -319,7 +379,7 @@ const Quiz = () => {
       if (blurTimer) return;
       blurTimer = setTimeout(() => {
         blurTimer = null;
-        if (!document.hasFocus()) registerViolation();
+        if (!document.hasFocus()) registerViolation("blur");
       }, 700);
     };
     const onFocus = () => {
@@ -353,12 +413,7 @@ const Quiz = () => {
     // A second monitor is the main way to run an AI tool beside a fullscreen
     // exam, so flag it where the browser can tell (Chromium's screen.isExtended).
     if (window.screen && window.screen.isExtended) {
-      violationsRef.current += 1;
-      setViolations(violationsRef.current);
-      lastVioRef.current = Date.now();
-      toast.warn(
-        `İkinci monitor aşkarlandı! Yalnız bir ekran istifadə edin (${violationsRef.current}/${ANTICHEAT_LIMIT}).`
-      );
+      registerViolation("second_monitor", true);
     }
 
     return () => {
