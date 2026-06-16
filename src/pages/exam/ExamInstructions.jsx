@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
-import { getExam } from "../../../redux/features/quiz/quizSlice";
+import { getExam, getAttemptStatus } from "../../../redux/features/quiz/quizSlice";
 import { getResultsByUserByExam } from "../../../redux/features/quiz/resultSlice";
 import Loader from "../../components/Loader";
 import { toast } from "react-toastify";
@@ -18,6 +18,7 @@ const ExamInstructions = () => {
   const [startDateString, setStartDate] = useState(null);
   const [endDateString, setEndDateString] = useState(null);
   const [confirmStart, setConfirmStart] = useState(false);
+  const [resumeActive, setResumeActive] = useState(false);
   const { singleExam, isLoading } = useSelector((state) => state.quiz);
   const { resultByExam } = useSelector((state) => state.result);
   const { user } = useSelector((state) => state.auth);
@@ -28,6 +29,11 @@ const ExamInstructions = () => {
   useEffect(() => {
     dispatch(getExam(examId));
     dispatch(getResultsByUserByExam(examId));
+    // Server-truth: is an attempt already in progress? If so, offer Resume.
+    dispatch(getAttemptStatus(examId))
+      .unwrap()
+      .then((s) => setResumeActive(!!s?.active))
+      .catch(() => setResumeActive(false));
   }, [dispatch, examId]);
 
   useEffect(() => {
@@ -130,7 +136,21 @@ const ExamInstructions = () => {
         </div>
 
         <div className="mt-10">
-          {canStart ? (
+          {resumeActive ? (
+            <div>
+              <div className="mb-3 inline-flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2 text-sm font-medium text-text">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-warning" />
+                İmtahanınız davam edir — qaldığınız yerdən davam edin.
+              </div>
+              <Button
+                onClick={() => navigate(`/exam/${singleExam._id}/start`)}
+                size="lg"
+                className="w-full sm:w-auto"
+              >
+                <FiPlay /> İmtahanı davam et
+              </Button>
+            </div>
+          ) : canStart ? (
             <ExamDeadline>
               <Button onClick={startExam} size="lg" className="w-full sm:w-auto">
                 <FiPlay /> İmtahanı başlat

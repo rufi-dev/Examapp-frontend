@@ -136,6 +136,12 @@ const startAttempt = async (examId, password) => {
     return response.data
 }
 
+//Is there an exam in progress for this user (resume available)?
+const getAttemptStatus = async (examId) => {
+    const response = await axios.get(API_URL + "exam/" + examId + "/attemptStatus")
+    return response.data
+}
+
 //Get Results By User
 const getResultsByUser = async () => {
     const response = await axios.get(API_URL + "getResultsByUser")
@@ -217,6 +223,7 @@ const quizService = {
     getQuestionByExam,
     addResult,
     startAttempt,
+    getAttemptStatus,
     getResultsByUser,
     getResultsByUserByExam,
     addExamToUser,
