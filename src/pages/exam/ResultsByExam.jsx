@@ -6,8 +6,12 @@ import ResultCard from "../../components/ResultCard";
 import Loader from "../../components/Loader";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import PDFTemplate from "../../components/PDFTemplate";
+import PDFAnswersTemplate from "../../components/PDFAnswersTemplate";
 import AccountLayout from "../../components/AccountLayout";
-import { FiDownload } from "react-icons/fi";
+import { FiDownload, FiList } from "react-icons/fi";
+
+const pdfBtn =
+  "inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-line bg-surface px-4 text-sm font-semibold text-text transition-colors hover:bg-surface2";
 
 const ResultsByExam = () => {
   const dispatch = useDispatch();
@@ -27,16 +31,28 @@ const ResultsByExam = () => {
       title="İmtahan nəticələri"
       subtitle="Bu imtahanı həll edən bütün istifadəçilər."
       actions={
-        <PDFDownloadLink
-          document={<PDFTemplate results={resultsByExam} />}
-          fileName="imtahan-neticeleri.pdf"
-        >
-          {({ loading }) => (
-            <span className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-line bg-surface px-4 text-sm font-semibold text-text transition-colors hover:bg-surface2">
-              <FiDownload /> {loading ? "Hazırlanır..." : "Nəticələri yüklə (PDF)"}
-            </span>
-          )}
-        </PDFDownloadLink>
+        <div className="flex flex-wrap items-center gap-2">
+          <PDFDownloadLink
+            document={<PDFTemplate results={resultsByExam} />}
+            fileName="imtahan-neticeleri.pdf"
+          >
+            {({ loading }) => (
+              <span className={pdfBtn}>
+                <FiDownload /> {loading ? "Hazırlanır..." : "Nəticələr (PDF)"}
+              </span>
+            )}
+          </PDFDownloadLink>
+          <PDFDownloadLink
+            document={<PDFAnswersTemplate results={resultsByExam} />}
+            fileName="imtahan-cavablar.pdf"
+          >
+            {({ loading }) => (
+              <span className={pdfBtn}>
+                <FiList /> {loading ? "Hazırlanır..." : "Cavablar (PDF)"}
+              </span>
+            )}
+          </PDFDownloadLink>
+        </div>
       }
     >
         {resultsByExam && resultsByExam.length > 0 ? (
