@@ -17,6 +17,31 @@ import Button from "./ui/Button";
 import Badge from "./ui/Badge";
 import ConfirmDialog from "./ui/ConfirmDialog";
 
+// Admin action button with a hover tooltip so each icon's purpose is clear.
+const ExamAction = ({ to, onClick, label, tone = "primary", children }) => {
+  const toneCls =
+    tone === "danger"
+      ? "hover:border-danger/40 hover:bg-danger/10 hover:text-danger"
+      : "hover:border-primary/40 hover:bg-primary/10 hover:text-primary";
+  const cls = `grid h-9 w-9 place-items-center rounded-xl border border-line bg-surface text-muted transition-colors ${toneCls}`;
+  return (
+    <div className="group/act relative">
+      {to ? (
+        <Link to={to} aria-label={label} className={cls}>
+          {children}
+        </Link>
+      ) : (
+        <button type="button" onClick={onClick} aria-label={label} className={cls}>
+          {children}
+        </button>
+      )}
+      <span className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-text px-2 py-1 text-xs font-semibold text-bg opacity-0 shadow-lift transition-opacity duration-150 group-hover/act:opacity-100">
+        {label}
+      </span>
+    </div>
+  );
+};
+
 const ExamList = ({ classId }) => {
   const dispatch = useDispatch();
   const { exams, myExams } = useSelector((state) => state.quiz);
@@ -92,50 +117,16 @@ const ExamList = ({ classId }) => {
             className="flex animate-fade-in flex-col rounded-3xl border border-line bg-surface p-7 shadow-soft transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:shadow-lift"
             style={{ animationDelay: `${Math.min(index * 60, 360)}ms` }}
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
-                  <FiFileText className="text-[21px]" />
-                </span>
-                <h3 className="font-display text-xl font-bold leading-tight text-text">
-                  {exam.name}
-                </h3>
-              </div>
-              <AdminTeacherLink>
-                <div className="-mr-1 flex shrink-0 items-center">
-                  <Link
-                    to={`/exam/${exam._id}/resultsByExam`}
-                    className="grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors hover:bg-surface2 hover:text-primary"
-                    aria-label="Nəticələr"
-                  >
-                    <FiBarChart2 />
-                  </Link>
-                  <Link
-                    to={`/exam/${exam._id}/addQuestion`}
-                    className="grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors hover:bg-surface2 hover:text-primary"
-                    aria-label="Sual əlavə et"
-                  >
-                    <AiOutlinePlus />
-                  </Link>
-                  <Link
-                    to={`/exam/edit/${exam._id}`}
-                    className="grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors hover:bg-surface2 hover:text-primary"
-                    aria-label="Düzəliş"
-                  >
-                    <MdOutlineModeEditOutline />
-                  </Link>
-                  <button
-                    onClick={() => setConfirmExam(exam)}
-                    className="grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors hover:bg-danger/12 hover:text-danger"
-                    aria-label="Sil"
-                  >
-                    <AiFillDelete />
-                  </button>
-                </div>
-              </AdminTeacherLink>
+            <div className="flex min-w-0 items-center gap-3.5">
+              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-primary/12 text-primary ring-1 ring-inset ring-primary/15">
+                <FiFileText className="text-[26px]" />
+              </span>
+              <h3 className="line-clamp-2 min-w-0 font-display text-xl font-bold leading-tight text-text">
+                {exam.name}
+              </h3>
             </div>
 
-            <div className="mt-6 flex flex-wrap items-center gap-2">
+            <div className="mt-5 flex flex-wrap items-center gap-2">
               <Badge tone="neutral">
                 <FiClock /> {Math.floor(exam.duration / 60)} dəq {exam.duration % 60} san
               </Badge>
@@ -147,7 +138,23 @@ const ExamList = ({ classId }) => {
               </Badge>
             </div>
 
-            <div className="mt-auto pt-7">
+            <div className="mt-auto pt-6">
+              <AdminTeacherLink>
+                <div className="mb-4 flex items-center justify-end gap-1.5 border-t border-line pt-4">
+                  <ExamAction to={`/exam/${exam._id}/resultsByExam`} label="Nəticələr">
+                    <FiBarChart2 className="text-[17px]" />
+                  </ExamAction>
+                  <ExamAction to={`/exam/${exam._id}/addQuestion`} label="Sual əlavə et">
+                    <AiOutlinePlus className="text-[17px]" />
+                  </ExamAction>
+                  <ExamAction to={`/exam/edit/${exam._id}`} label="Redaktə et">
+                    <MdOutlineModeEditOutline className="text-[17px]" />
+                  </ExamAction>
+                  <ExamAction onClick={() => setConfirmExam(exam)} label="Sil" tone="danger">
+                    <AiFillDelete className="text-[17px]" />
+                  </ExamAction>
+                </div>
+              </AdminTeacherLink>
               {owned ? (
                 <Button to={`/exam/details/${exam._id}`} size="lg" className="w-full">
                   İmtahana bax <FiArrowRight />
