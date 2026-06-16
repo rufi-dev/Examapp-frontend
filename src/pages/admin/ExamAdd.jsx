@@ -13,6 +13,8 @@ import FormSection from "../../components/ui/FormSection";
 import ResultVisibility from "../../components/ui/ResultVisibility";
 import PasswordField from "../../components/ui/PasswordField";
 import MaxTryField from "../../components/ui/MaxTryField";
+import PriceField from "../../components/ui/PriceField";
+import VideoLinkField from "../../components/ui/VideoLinkField";
 import { toUtcIso } from "../../helper/datetime";
 
 const fileInputClass =
@@ -26,6 +28,8 @@ const ExamAdd = () => {
   const [pdf, setPdf] = useState(null);
   const [passwordEnabled, setPasswordEnabled] = useState(false);
   const [maxTryEnabled, setMaxTryEnabled] = useState(false);
+  const [priceEnabled, setPriceEnabled] = useState(false);
+  const [videoEnabled, setVideoEnabled] = useState(false);
 
   const navigate = useNavigate();
   const { classId } = useParams();
@@ -94,8 +98,8 @@ const ExamAdd = () => {
       const examData = new FormData();
       examData.append("name", name);
       examData.append("duration", duration);
-      examData.append("price", price);
-      examData.append("videoLink", videoLink);
+      examData.append("price", priceEnabled ? Number(price) || 0 : 0);
+      examData.append("videoLink", videoEnabled ? videoLink : "");
       examData.append("passingMarks", passingMarks);
       examData.append("totalMarks", totalMarks);
       examData.append("maxTry", maxTryEnabled ? Number(maxTry) || 0 : 0);
@@ -128,7 +132,7 @@ const ExamAdd = () => {
 
   return (
     <AccountLayout title="İmtahan əlavə et" subtitle="Yeni sınaq imtahanı yarat.">
-      <form onSubmit={addExamForm} className="max-w-3xl space-y-6">
+      <form onSubmit={addExamForm} className="mx-auto max-w-3xl space-y-6">
         <FormSection title="İmtahan məlumatı">
           <div className="space-y-5">
             <Field label="İmtahan adı" htmlFor="name">
@@ -144,12 +148,6 @@ const ExamAdd = () => {
             </Field>
             <Field label="PDF fayl" htmlFor="pdf" hint="İmtahan sualları (PDF)">
               <input type="file" id="pdf" name="pdf" accept="application/pdf" onChange={handlePdfChange} className={fileInputClass} />
-            </Field>
-            <Field label="Video həll linki" htmlFor="videoLink" hint="İxtiyari">
-              <input value={videoLink} onChange={handleInputChange} type="url" id="videoLink" name="videoLink" className={inputClass} placeholder="https://" />
-            </Field>
-            <Field label="Qiymət (AZN)" htmlFor="price" hint="0 = pulsuz">
-              <input value={price} onChange={handleInputChange} type="number" id="price" name="price" className={inputClass} />
             </Field>
           </div>
         </FormSection>
@@ -179,6 +177,20 @@ const ExamAdd = () => {
             </Field>
           </div>
         </FormSection>
+
+        <VideoLinkField
+          enabled={videoEnabled}
+          value={videoLink}
+          onToggle={setVideoEnabled}
+          onChange={handleInputChange}
+        />
+
+        <PriceField
+          enabled={priceEnabled}
+          value={price}
+          onToggle={setPriceEnabled}
+          onChange={handleInputChange}
+        />
 
         <MaxTryField
           enabled={maxTryEnabled}

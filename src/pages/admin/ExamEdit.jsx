@@ -13,6 +13,8 @@ import FormSection from "../../components/ui/FormSection";
 import ResultVisibility from "../../components/ui/ResultVisibility";
 import PasswordField from "../../components/ui/PasswordField";
 import MaxTryField from "../../components/ui/MaxTryField";
+import PriceField from "../../components/ui/PriceField";
+import VideoLinkField from "../../components/ui/VideoLinkField";
 import { toLocalInput, toUtcIso } from "../../helper/datetime";
 import { HiOutlinePhotograph } from "react-icons/hi";
 import { FiX } from "react-icons/fi";
@@ -28,6 +30,8 @@ const ExamEdit = () => {
   const [uploadingSolution, setUploadingSolution] = useState(false);
   const [passwordEnabled, setPasswordEnabled] = useState(false);
   const [maxTryEnabled, setMaxTryEnabled] = useState(false);
+  const [priceEnabled, setPriceEnabled] = useState(false);
+  const [videoEnabled, setVideoEnabled] = useState(false);
 
   useRedirectLoggedOutUser("/login");
   const { singleExam } = useSelector((state) => state.quiz);
@@ -102,6 +106,8 @@ const ExamEdit = () => {
       });
       setPasswordEnabled(!!singleExam.password);
       setMaxTryEnabled((singleExam.maxTry || 0) > 0);
+      setPriceEnabled((singleExam.price || 0) > 0);
+      setVideoEnabled(!!singleExam.videoLink);
     }
   }, [singleExam]);
 
@@ -171,8 +177,9 @@ const ExamEdit = () => {
       const examData = {
         name,
         duration,
-        price,
-        videoLink,
+        // Off = free / no video.
+        price: priceEnabled ? Number(price) || 0 : 0,
+        videoLink: videoEnabled ? videoLink : "",
         startDate: toUtcIso(startDate),
         endDate: toUtcIso(endDate),
         passingMarks,
@@ -208,7 +215,7 @@ const ExamEdit = () => {
 
   return (
     <AccountLayout title="İmtahanı redaktə et" subtitle="İmtahan məlumatlarını yenilə.">
-      <form onSubmit={editExamForm} className="max-w-3xl space-y-6">
+      <form onSubmit={editExamForm} className="mx-auto max-w-3xl space-y-6">
         <FormSection title="İmtahan məlumatı">
           <div className="space-y-5">
             <Field label="İmtahan adı" htmlFor="name">
@@ -216,12 +223,6 @@ const ExamEdit = () => {
             </Field>
             <Field label="PDF fayl" htmlFor="pdf" hint="Dəyişmək üçün yeni fayl seçin">
               <input type="file" id="pdf" name="pdf" accept="application/pdf" onChange={handlePdfChange} className={fileInputClass} />
-            </Field>
-            <Field label="Video həll linki" htmlFor="videoLink" hint="İxtiyari">
-              <input value={videoLink || ""} onChange={handleInputChange} type="url" id="videoLink" name="videoLink" className={inputClass} placeholder="https://" />
-            </Field>
-            <Field label="Qiymət (AZN)" htmlFor="price" hint="0 = pulsuz">
-              <input value={price} onChange={handleInputChange} type="number" id="price" name="price" className={inputClass} />
             </Field>
           </div>
         </FormSection>
@@ -251,6 +252,20 @@ const ExamEdit = () => {
             </Field>
           </div>
         </FormSection>
+
+        <VideoLinkField
+          enabled={videoEnabled}
+          value={videoLink}
+          onToggle={setVideoEnabled}
+          onChange={handleInputChange}
+        />
+
+        <PriceField
+          enabled={priceEnabled}
+          value={price}
+          onToggle={setPriceEnabled}
+          onChange={handleInputChange}
+        />
 
         <MaxTryField
           enabled={maxTryEnabled}
