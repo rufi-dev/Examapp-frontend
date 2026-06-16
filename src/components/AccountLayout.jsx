@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { RESET, logout, selectUser } from "../../redux/features/auth/authSlice";
 import { AdminTeacherLink } from "./protect/hiddenLink";
 import ThemeToggle from "./ui/ThemeToggle";
+import UserMenu from "./UserMenu";
 import {
   FiGrid,
   FiBarChart2,
@@ -177,7 +178,10 @@ export default function AccountLayout({ title, subtitle, actions, children }) {
               <span className="font-display text-lg font-bold tracking-tight text-text">İmtahan</span>
             </Link>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
+            <UserMenu user={user} onLogout={handleLogout} />
+          </div>
         </header>
 
         <main className="mx-auto max-w-screen-2xl px-4 py-8 sm:px-6 lg:px-10">
