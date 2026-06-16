@@ -102,7 +102,10 @@ const ExamAdd = () => {
       const addExamData = await dispatch(addExam({ examData, classId }));
 
       if (addExamData.type !== "quiz/addExam/rejected") {
-        navigate("/exam/" + classId);
+        // Jump straight into the question builder for the new exam so the
+        // teacher can add questions + correct answers right away.
+        const newExamId = addExamData.payload?.data?._id;
+        navigate(newExamId ? `/exam/${newExamId}/addQuestion` : "/exam/" + classId);
       }
     } catch (error) {
       toast.error(error.message);
