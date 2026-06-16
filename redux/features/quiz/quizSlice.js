@@ -513,6 +513,21 @@ export const getAttemptStatus = createAsyncThunk(
   }
 );
 
+export const getExamRank = createAsyncThunk(
+  "quiz/getExamRank",
+  async (examId, thunkAPI) => {
+    try {
+      return await quizService.getExamRank(examId);
+    } catch (error) {
+      const message =
+        (error.response && error.response.data && error.response.data.message) ||
+        error.message ||
+        error.toString();
+      return thunkAPI.rejectWithValue(message);
+    }
+  }
+);
+
 export const startExamAction = createAsyncThunk(
   "quiz/startExam",
   async ({ examId, setPdfData }, thunkAPI) => {

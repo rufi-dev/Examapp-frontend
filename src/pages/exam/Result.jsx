@@ -1,9 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import Loader from "../../components/Loader";
 import ResultTable from "../../components/ResultTable";
-import { RESET_QUIZ, getExam } from "../../../redux/features/quiz/quizSlice";
+import { RESET_QUIZ, getExam, getExamRank } from "../../../redux/features/quiz/quizSlice";
 import {
   RESET_RESULT,
   getResultsByUserByExam,
@@ -42,10 +42,15 @@ const Result = () => {
   const { examId } = useParams();
   const { resultByExam, isLoading } = useSelector((state) => state.result);
   const lastResult = resultByExam[resultByExam.length - 1];
+  const [rank, setRank] = useState(null);
 
   useEffect(() => {
     dispatch(getResultsByUserByExam(examId));
     dispatch(getExam(examId));
+    dispatch(getExamRank(examId))
+      .unwrap()
+      .then((r) => setRank(r))
+      .catch(() => setRank(null));
   }, [dispatch, examId]);
 
   if (isLoading || !lastResult) {
@@ -72,7 +77,7 @@ const Result = () => {
           </p>
         </div>
       ) : (
-        <div className="mb-10 grid gap-5 sm:grid-cols-3">
+        <div className="mb-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {canAnswers && (
             <div className="flex items-center gap-5 rounded-3xl border border-line bg-surface p-6 shadow-soft">
               <ScoreRing value={pct} />
@@ -89,6 +94,18 @@ const Result = () => {
               <p className="text-sm text-muted">Yığılan bal</p>
               <p className="font-display text-3xl font-extrabold text-primary">
                 {lastResult.earnPoints}
+              </p>
+            </div>
+          )}
+          {rank?.visible && rank?.participated && rank.total > 1 && (
+            <div className="flex flex-col justify-center rounded-3xl border border-line bg-surface p-6 shadow-soft">
+              <p className="text-sm text-muted">Sıra</p>
+              <p className="font-display text-3xl font-extrabold text-text">
+                {rank.rank}
+                <span className="text-lg font-bold text-muted"> / {rank.total}</span>
+              </p>
+              <p className="mt-0.5 text-xs text-muted">
+                İlk {Math.max(1, Math.round((rank.rank / rank.total) * 100))}% · Orta: {rank.average}
               </p>
             </div>
           )}

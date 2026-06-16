@@ -8,6 +8,8 @@ import Loader from "../../components/Loader";
 import AccountLayout from "../../components/AccountLayout";
 import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
+import ProgressChart from "../../components/analytics/ProgressChart";
+import { progressSeries } from "../../helper/analytics";
 
 const roleLabels = {
   admin: "Admin",
@@ -64,6 +66,14 @@ const UserDetails = () => {
 
   const owned = (examId) => userById?.exams?.some((m) => m._id === examId);
 
+  const uResults = userById?.results || [];
+  const uScored = uResults.filter((r) => r?.earnPoints != null).map((r) => r.earnPoints);
+  const uAvg = uScored.length
+    ? Math.round((uScored.reduce((a, b) => a + b, 0) / uScored.length) * 10) / 10
+    : 0;
+  const uBest = uScored.length ? Math.max(...uScored) : 0;
+  const uSeries = progressSeries(uResults);
+
   return (
     <AccountLayout title="İstifadəçi məlumatları">
       <div className="flex flex-col items-center gap-6 rounded-3xl border border-line bg-surface p-6 shadow-soft sm:flex-row sm:p-8">
@@ -89,6 +99,35 @@ const UserDetails = () => {
           {userById?.bio && <p className="mt-2 text-sm text-muted">{userById.bio}</p>}
         </div>
       </div>
+
+      {uResults.length > 0 && (
+        <div className="mt-6 grid gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-3 gap-3 lg:grid-cols-1">
+            <div className="rounded-2xl border border-line bg-surface p-4 shadow-soft">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted">Cəhd</p>
+              <p className="mt-1 font-display text-2xl font-bold text-text">{uResults.length}</p>
+            </div>
+            <div className="rounded-2xl border border-line bg-surface p-4 shadow-soft">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted">Orta bal</p>
+              <p className="mt-1 font-display text-2xl font-bold text-primary">{uAvg}</p>
+            </div>
+            <div className="rounded-2xl border border-line bg-surface p-4 shadow-soft">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted">Ən yüksək</p>
+              <p className="mt-1 font-display text-2xl font-bold text-success">{uBest}</p>
+            </div>
+          </div>
+          <div className="rounded-3xl border border-line bg-surface p-6 shadow-soft lg:col-span-2">
+            <h3 className="mb-4 font-display text-lg font-bold text-text">İrəliləyiş</h3>
+            {uSeries.length >= 2 ? (
+              <ProgressChart series={uSeries} />
+            ) : (
+              <p className="py-8 text-center text-sm text-muted">
+                İrəliləyiş qrafiki üçün ən az 2 nəticə lazımdır.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       <h3 className="mb-3 mt-8 font-display text-lg font-bold text-text">
         Əldə edilən imtahanlar

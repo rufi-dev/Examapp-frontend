@@ -8,6 +8,8 @@ import { getResultsByUser } from "../../redux/features/quiz/resultSlice";
 import AccountLayout from "../components/AccountLayout";
 import InfoBox from "../components/InfoBox";
 import Button from "../components/ui/Button";
+import ProgressChart from "../components/analytics/ProgressChart";
+import { progressSeries } from "../helper/analytics";
 import {
   FiAward,
   FiBarChart2,
@@ -40,6 +42,7 @@ const Overview = () => {
     : 0;
   const best = scored.length ? Math.max(...scored.map((r) => r.earnPoints)) : 0;
   const recent = [...results].slice(-5).reverse();
+  const series = progressSeries(results);
 
   const firstName = user?.name?.split(" ")[0] || "";
 
@@ -54,6 +57,13 @@ const Overview = () => {
         <InfoBox icon={<FiTrendingUp />} title="Orta bal" count={avg} tone="muted" />
         <InfoBox icon={<FiTarget />} title="Ən yüksək" count={best} tone="primary" />
       </div>
+
+      {series.length >= 2 && (
+        <div className="mt-6 rounded-3xl border border-line bg-surface p-6 shadow-soft">
+          <h2 className="mb-4 font-display text-lg font-bold text-text">İrəliləyişin</h2>
+          <ProgressChart series={series} />
+        </div>
+      )}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <div className="flex items-center justify-between gap-4 rounded-3xl border border-line bg-surface p-6 shadow-soft">
