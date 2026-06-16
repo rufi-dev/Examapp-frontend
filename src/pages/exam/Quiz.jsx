@@ -87,10 +87,22 @@ const Quiz = () => {
   // return. Browsers can't physically block minimizing, so this is the strictest
   // enforceable equivalent.
   const [isFs, setIsFs] = useState(false);
+  // Safety net: if fullscreen can't actually engage (iOS Safari, or a browser
+  // that claims support but no-ops), never trap the student behind the gate.
+  const [fsBypass, setFsBypass] = useState(false);
   const fsSupported = typeof document !== "undefined" && !!document.fullscreenEnabled;
   const enterFullscreen = () => {
     const el = document.documentElement;
-    if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+    if (el.requestFullscreen) {
+      el.requestFullscreen().catch(() => setFsBypass(true));
+      // Some browsers report support but silently no-op; if it didn't actually
+      // go fullscreen within a moment, let the student through anyway.
+      setTimeout(() => {
+        if (!document.fullscreenElement) setFsBypass(true);
+      }, 1200);
+    } else {
+      setFsBypass(true);
+    }
   };
 
   const deadline = attempt?.expiresAt ? new Date(attempt.expiresAt).getTime() : null;
@@ -407,7 +419,7 @@ const Quiz = () => {
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-bg">
       {/* Fullscreen lock: covers everything when anti-cheat is on but the exam
           isn't in fullscreen — so leaving fullscreen / minimizing hides it. */}
-      {attempt?.antiCheat && fsSupported && !isFs && (
+      {attempt?.antiCheat && fsSupported && !fsBypass && !isFs && (
         <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-bg/95 p-6 backdrop-blur">
           <div className="max-w-md text-center">
             <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-danger/12 text-danger">
