@@ -61,9 +61,9 @@ export const ExamDeadline = ({ children }) => {
   // Open: render the start button, plus a ticking "closes in" note if there's
   // an end time so the student feels the pressure of the window.
   return (
-    <div className="space-y-3">
+    <div>
       {end && (
-        <div className="inline-flex items-center gap-2 rounded-lg border border-line bg-surface2/60 px-3 py-1.5 text-sm font-medium text-muted">
+        <div className="mb-3 flex w-fit items-center gap-2 rounded-lg border border-line bg-surface2/60 px-3 py-1.5 text-sm font-medium text-muted">
           <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-success" />
           Bağlanmasına:{" "}
           <span className="font-semibold tabular-nums text-text">
