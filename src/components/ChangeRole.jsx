@@ -5,6 +5,10 @@ import { toast } from "react-toastify";
 import { getUsers, upgradeUser } from "../../redux/features/auth/authSlice";
 import { EMAIL_RESET, sendAutomatedEmail } from "../../redux/features/mail/emailSlice";
 
+// Master switch (mirrors the backend EMAIL_ENABLED). While off, the app does
+// not attempt to send any mail, so no email toasts/errors appear.
+const EMAIL_ENABLED = import.meta.env.VITE_EMAIL_ENABLED === "true";
+
 const ChangeRole = ({ _id, email }) => {
   const dispatch = useDispatch();
   const [userRole, setUserRole] = useState("");
@@ -25,9 +29,11 @@ const ChangeRole = ({ _id, email }) => {
 
     const updateUser = await dispatch(upgradeUser(userData));
     if (updateUser.type != "auth/upgradeUser/rejected") {
-      await dispatch(sendAutomatedEmail(emailData));
+      if (EMAIL_ENABLED) {
+        await dispatch(sendAutomatedEmail(emailData));
+        await dispatch(EMAIL_RESET());
+      }
       await dispatch(getUsers());
-      await dispatch(EMAIL_RESET());
     }
   };
 
