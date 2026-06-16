@@ -97,7 +97,7 @@ const Result = () => {
               </p>
             </div>
           )}
-          {rank?.visible && rank?.participated && rank.total > 1 && (
+          {rank?.visible && rank?.participated && (
             <div className="flex flex-col justify-center rounded-3xl border border-line bg-surface p-6 shadow-soft">
               <p className="text-sm text-muted">Sıra</p>
               <p className="font-display text-3xl font-extrabold text-text">
@@ -105,7 +105,9 @@ const Result = () => {
                 <span className="text-lg font-bold text-muted"> / {rank.total}</span>
               </p>
               <p className="mt-0.5 text-xs text-muted">
-                İlk {Math.max(1, Math.round((rank.rank / rank.total) * 100))}% · Orta: {rank.average}
+                {rank.total > 1
+                  ? `İlk ${Math.max(1, Math.round((rank.rank / rank.total) * 100))}% · Orta: ${rank.average}`
+                  : "Tək iştirakçı"}
               </p>
             </div>
           )}
