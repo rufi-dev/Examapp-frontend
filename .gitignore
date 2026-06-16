@@ -10,6 +10,9 @@ lerna-debug.log*
 node_modules
 *.local
 
+# Build output — Vercel builds from source, so the artifact shouldn't be tracked
+# (tracking it makes every local build show up as U/M git noise).
+dist
 # Temporary build-verify output dirs
 dist_*
 
