@@ -25,6 +25,9 @@ const navItems = [
   { to: "/tags", label: "Kateqoriyalar", icon: FiTag },
   { to: "/myExams", label: "İmtahanlarım", icon: FiAward },
   { to: "/myResults", label: "Nəticələrim", icon: FiBarChart2 },
+  // Visible to everyone; only admins/teachers get the add/delete controls
+  // (gated inside the page itself).
+  { to: "/achievements", label: "Nailiyyətlərimiz", icon: FiStar },
   { to: "/profile", label: "Profil", icon: FiUser },
   { to: "/changePassword", label: "Şifrə", icon: FiLock },
 ];
@@ -33,7 +36,6 @@ const navItems = [
 // admin nav doesn't repeat it — it only keeps user management here.
 const adminNav = [
   { to: "/users", label: "İstifadəçilər", icon: FiUsers },
-  { to: "/achievements", label: "Nailiyyətlərimiz", icon: FiStar },
 ];
 
 const sideLink = ({ isActive }) =>
