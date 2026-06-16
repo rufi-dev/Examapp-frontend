@@ -160,9 +160,14 @@ const Quiz = () => {
       dispatch(getPdfByExam({ examId }))
         .unwrap()
         .then((pdf) => {
+          // eslint-disable-next-line no-console
+          console.log("[PDF] getPdfByExam ->", pdf?.path);
           if (!cancelledRef.current) setPdfData(pdf?.path || null);
         })
-        .catch(() => {});
+        .catch((e) => {
+          // eslint-disable-next-line no-console
+          console.error("[PDF] getPdfByExam failed:", e);
+        });
     } catch (err) {
       if (cancelledRef.current) return;
       const reason = err?.reason;

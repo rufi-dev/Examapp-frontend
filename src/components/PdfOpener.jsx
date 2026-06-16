@@ -8,7 +8,7 @@ const PdfStatus = ({ children, spinner = false, error = false }) => (
   <div className="flex h-full min-h-[260px] w-full flex-col items-center justify-center gap-3 px-6 text-center">
     {spinner && <Spinner size={34} className="text-primary" />}
     {error && <FiAlertCircle className="text-3xl text-danger" />}
-    <p className={`text-sm font-medium ${error ? "text-danger" : "text-muted"}`}>{children}</p>
+    <div className={`text-sm font-medium ${error ? "text-danger" : "text-muted"}`}>{children}</div>
   </div>
 );
 
@@ -28,6 +28,7 @@ const RENDER_DPR = Math.min(2, (typeof window !== "undefined" && window.devicePi
 // then commits and re-renders crisp. Virtualized so any page count stays light.
 const PdfOpener = (props) => {
   const [numPages, setNumPages] = useState(0);
+  const [errInfo, setErrInfo] = useState(null);
   const [pageRatio, setPageRatio] = useState(1.414); // height / width (A4)
   const [zoom, setZoom] = useState(1); // committed -> pages render at this size
   const [live, setLive] = useState(1); // transient pinch scale (CSS only)
@@ -244,8 +245,31 @@ const PdfOpener = (props) => {
         <Document
           file={props.pdfFile}
           onLoadSuccess={onDocumentLoadSuccess}
+          onLoadError={(e) => {
+            // eslint-disable-next-line no-console
+            console.error("[PDF] load error:", e, "url:", props.pdfFile);
+            setErrInfo(e);
+          }}
+          onSourceError={(e) => {
+            // eslint-disable-next-line no-console
+            console.error("[PDF] source error:", e, "url:", props.pdfFile);
+            setErrInfo(e);
+          }}
           loading={<PdfStatus spinner>PDF yüklənir...</PdfStatus>}
-          error={<PdfStatus error>PDF yüklənmədi</PdfStatus>}
+          error={
+            <PdfStatus error>
+              PDF yüklənmədi
+              {errInfo && (
+                <span className="mt-2 block max-w-[280px] break-all text-[11px] font-normal text-muted">
+                  {errInfo.name ? `${errInfo.name}: ` : ""}
+                  {errInfo.message || String(errInfo)}
+                </span>
+              )}
+              <span className="mt-1 block max-w-[280px] break-all text-[10px] font-normal text-muted/70">
+                {String(props.pdfFile || "(boş)").slice(0, 160)}
+              </span>
+            </PdfStatus>
+          }
           noData={<PdfStatus spinner>PDF yüklənir...</PdfStatus>}
         >
           {numPages > 0 && contentW > 0 && (
