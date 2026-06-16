@@ -4,7 +4,7 @@ const Toggle = ({ checked, onChange, label }) => (
   <button
     type="button"
     onClick={() => onChange(!checked)}
-    className="flex w-full items-center justify-between gap-4 rounded-xl border border-line bg-surface p-3.5 text-left transition-colors hover:bg-surface2/50"
+    className="flex w-full items-center justify-between gap-4 rounded-xl border border-line bg-surface2/50 p-3.5 text-left transition-colors hover:bg-surface2"
   >
     <span className="text-sm font-semibold text-text">{label}</span>
     <span
@@ -22,10 +22,10 @@ const Toggle = ({ checked, onChange, label }) => (
 );
 
 const ResultVisibility = ({ showScore, showCorrectAnswers, revealAfterEnd, onChange }) => (
-  <div className="space-y-4 rounded-2xl border border-line bg-surface2/40 p-5 md:col-span-2">
+  <div className="space-y-4 rounded-2xl border border-line bg-surface p-5 shadow-soft sm:p-6">
     <div>
       <p className="font-display text-base font-bold text-text">Nəticə görünüşü</p>
-      <p className="mt-0.5 text-xs text-muted">Tələbə öz nəticəsində nəyi və nə vaxt görsün.</p>
+      <p className="mt-0.5 text-sm text-muted">Tələbə öz nəticəsində nəyi və nə vaxt görsün.</p>
     </div>
 
     <div className="space-y-2.5">
@@ -45,7 +45,7 @@ const ResultVisibility = ({ showScore, showCorrectAnswers, revealAfterEnd, onCha
         <p className="mb-2 text-sm font-semibold text-text">
           Düzgün cavablar nə vaxt göstərilsin?
         </p>
-        <div className="grid grid-cols-2 gap-1 rounded-xl border border-line bg-surface p-1">
+        <div className="grid grid-cols-2 gap-1 rounded-xl border border-line bg-surface2/50 p-1">
           <button
             type="button"
             onClick={() => onChange("revealAfterEnd", true)}

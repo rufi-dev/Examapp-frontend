@@ -9,8 +9,10 @@ import { useNavigate, useParams } from "react-router-dom";
 import Loader from "../../components/Loader";
 import Button from "../../components/ui/Button";
 import { Field, inputClass } from "../../components/ui/Field";
+import FormSection from "../../components/ui/FormSection";
 import ResultVisibility from "../../components/ui/ResultVisibility";
 import PasswordField from "../../components/ui/PasswordField";
+import MaxTryField from "../../components/ui/MaxTryField";
 import { toUtcIso } from "../../helper/datetime";
 
 const fileInputClass =
@@ -23,6 +25,7 @@ const ExamAdd = () => {
   const upload_preset = import.meta.env.VITE_UPLAD_PRESET;
   const [pdf, setPdf] = useState(null);
   const [passwordEnabled, setPasswordEnabled] = useState(false);
+  const [maxTryEnabled, setMaxTryEnabled] = useState(false);
 
   const navigate = useNavigate();
   const { classId } = useParams();
@@ -95,7 +98,7 @@ const ExamAdd = () => {
       examData.append("videoLink", videoLink);
       examData.append("passingMarks", passingMarks);
       examData.append("totalMarks", totalMarks);
-      examData.append("maxTry", maxTry);
+      examData.append("maxTry", maxTryEnabled ? Number(maxTry) || 0 : 0);
       examData.append("startDate", toUtcIso(startDate));
       examData.append("endDate", toUtcIso(endDate));
       examData.append("showScore", showScore);
@@ -121,143 +124,88 @@ const ExamAdd = () => {
     return <Loader />;
   }
 
+  const minuteHint = `≈ ${Math.round((Number(duration) || 0) / 60)} dəqiqə`;
+
   return (
     <AccountLayout title="İmtahan əlavə et" subtitle="Yeni sınaq imtahanı yarat.">
-      <form
-        onSubmit={addExamForm}
-        className="rounded-3xl border border-line bg-surface p-6 shadow-soft sm:p-8"
-      >
-        <div className="grid gap-6 md:grid-cols-2">
-          <Field label="PDF fayl" htmlFor="pdf" className="md:col-span-2">
-            <input
-              type="file"
-              id="pdf"
-              name="pdf"
-              accept="application/pdf"
-              onChange={handlePdfChange}
-              className={fileInputClass}
-            />
-          </Field>
+      <form onSubmit={addExamForm} className="max-w-3xl space-y-6">
+        <FormSection title="İmtahan məlumatı">
+          <div className="space-y-5">
+            <Field label="İmtahan adı" htmlFor="name">
+              <input
+                value={name}
+                onChange={handleInputChange}
+                type="text"
+                name="name"
+                id="name"
+                className={inputClass}
+                placeholder="Məsələn: Buraxılış sınağı #1"
+              />
+            </Field>
+            <Field label="PDF fayl" htmlFor="pdf" hint="İmtahan sualları (PDF)">
+              <input type="file" id="pdf" name="pdf" accept="application/pdf" onChange={handlePdfChange} className={fileInputClass} />
+            </Field>
+            <Field label="Video həll linki" htmlFor="videoLink" hint="İxtiyari">
+              <input value={videoLink} onChange={handleInputChange} type="url" id="videoLink" name="videoLink" className={inputClass} placeholder="https://" />
+            </Field>
+            <Field label="Qiymət (AZN)" htmlFor="price" hint="0 = pulsuz">
+              <input value={price} onChange={handleInputChange} type="number" id="price" name="price" className={inputClass} />
+            </Field>
+          </div>
+        </FormSection>
 
-          <Field label="İmtahan adı" htmlFor="name" className="md:col-span-2">
-            <input
-              value={name}
-              onChange={handleInputChange}
-              type="text"
-              name="name"
-              id="name"
-              className={inputClass}
-              placeholder="Məsələn: Buraxılış sınağı #1"
-            />
-          </Field>
+        <FormSection title="Vaxt və müddət">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field label="Müddət (saniyə)" htmlFor="duration" hint={minuteHint}>
+              <input value={duration} onChange={handleInputChange} type="number" id="duration" name="duration" className={inputClass} />
+            </Field>
+            <div className="hidden sm:block" />
+            <Field label="Başlanma tarixi" htmlFor="startDate">
+              <input value={startDate || ""} onChange={handleInputChange} type="datetime-local" id="startDate" name="startDate" className={inputClass} />
+            </Field>
+            <Field label="Bitmə tarixi" htmlFor="endDate">
+              <input value={endDate || ""} onChange={handleInputChange} type="datetime-local" id="endDate" name="endDate" className={inputClass} />
+            </Field>
+          </div>
+        </FormSection>
 
-          <Field label="Müddət (saniyə)" htmlFor="duration">
-            <input
-              value={duration}
-              onChange={handleInputChange}
-              type="number"
-              id="duration"
-              name="duration"
-              className={inputClass}
-            />
-          </Field>
+        <FormSection title="Qiymətləndirmə">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field label="Ümumi bal" htmlFor="totalMarks">
+              <input value={totalMarks} onChange={handleInputChange} type="number" id="totalMarks" name="totalMarks" className={inputClass} />
+            </Field>
+            <Field label="Keçid balı" htmlFor="passingMarks">
+              <input value={passingMarks} onChange={handleInputChange} type="number" name="passingMarks" id="passingMarks" className={inputClass} />
+            </Field>
+          </div>
+        </FormSection>
 
-          <Field label="Qiymət" htmlFor="price">
-            <input
-              value={price}
-              onChange={handleInputChange}
-              type="number"
-              id="price"
-              name="price"
-              className={inputClass}
-            />
-          </Field>
+        <MaxTryField
+          enabled={maxTryEnabled}
+          value={maxTry}
+          onToggle={setMaxTryEnabled}
+          onChange={handleInputChange}
+        />
 
-          <Field label="Video link" htmlFor="videoLink" className="md:col-span-2">
-            <input
-              value={videoLink}
-              onChange={handleInputChange}
-              type="url"
-              id="videoLink"
-              name="videoLink"
-              className={inputClass}
-              placeholder="https://"
-            />
-          </Field>
+        <PasswordField
+          enabled={passwordEnabled}
+          value={password}
+          onToggle={setPasswordEnabled}
+          onChange={handleInputChange}
+        />
 
-          <Field label="Başlanma tarixi" htmlFor="startDate">
-            <input
-              value={startDate || ""}
-              onChange={handleInputChange}
-              type="datetime-local"
-              id="startDate"
-              name="startDate"
-              className={inputClass}
-            />
-          </Field>
+        <ResultVisibility
+          showScore={showScore}
+          showCorrectAnswers={showCorrectAnswers}
+          revealAfterEnd={revealAfterEnd}
+          onChange={setField}
+        />
 
-          <Field label="Bitmə tarixi" htmlFor="endDate">
-            <input
-              value={endDate || ""}
-              onChange={handleInputChange}
-              type="datetime-local"
-              id="endDate"
-              name="endDate"
-              className={inputClass}
-            />
-          </Field>
-
-          <Field label="Ümumi bal" htmlFor="totalMarks">
-            <input
-              value={totalMarks}
-              onChange={handleInputChange}
-              type="number"
-              id="totalMarks"
-              name="totalMarks"
-              className={inputClass}
-            />
-          </Field>
-
-          <Field label="Keçid balı" htmlFor="passingMarks">
-            <input
-              value={passingMarks}
-              onChange={handleInputChange}
-              type="number"
-              name="passingMarks"
-              id="passingMarks"
-              className={inputClass}
-            />
-          </Field>
-
-          <Field label="Maksimum cəhd sayı" htmlFor="maxTry" hint="0 = limitsiz">
-            <input
-              value={maxTry}
-              onChange={handleInputChange}
-              type="number"
-              name="maxTry"
-              id="maxTry"
-              className={inputClass}
-            />
-          </Field>
-
-          <PasswordField
-            enabled={passwordEnabled}
-            value={password}
-            onToggle={setPasswordEnabled}
-            onChange={handleInputChange}
-          />
-
-          <ResultVisibility
-            showScore={showScore}
-            showCorrectAnswers={showCorrectAnswers}
-            revealAfterEnd={revealAfterEnd}
-            onChange={setField}
-          />
+        <div className="flex justify-end pb-2">
+          <Button type="submit" size="lg">
+            İmtahanı əlavə et
+          </Button>
         </div>
-
-        <Button type="submit" className="mt-8">
-          İmtahanı əlavə et
-        </Button>
       </form>
     </AccountLayout>
   );
