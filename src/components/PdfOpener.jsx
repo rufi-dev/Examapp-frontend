@@ -1,6 +1,16 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { Document, Page } from "react-pdf";
-import { FiZoomIn, FiZoomOut, FiMaximize } from "react-icons/fi";
+import { FiZoomIn, FiZoomOut, FiMaximize, FiAlertCircle } from "react-icons/fi";
+import Spinner from "./Spinner";
+
+// Centered status (spinner while loading, message on error) for the viewer.
+const PdfStatus = ({ children, spinner = false, error = false }) => (
+  <div className="flex h-full min-h-[260px] w-full flex-col items-center justify-center gap-3 px-6 text-center">
+    {spinner && <Spinner size={34} className="text-primary" />}
+    {error && <FiAlertCircle className="text-3xl text-danger" />}
+    <p className={`text-sm font-medium ${error ? "text-danger" : "text-muted"}`}>{children}</p>
+  </div>
+);
 
 const GAP = 16; // space between pages
 const MIN_ZOOM = 1;
@@ -194,20 +204,22 @@ const PdfOpener = (props) => {
 
   return (
     <div className="relative h-full w-full">
-      <div className="absolute right-3 top-3 z-10 flex items-center gap-0.5 rounded-xl border border-line bg-surface/90 p-1 shadow-soft backdrop-blur">
-        <button type="button" onClick={() => zoomTo(zoom - 0.25)} disabled={zoom <= MIN_ZOOM} className={btn} aria-label="Kiçilt">
-          <FiZoomOut />
-        </button>
-        <span className="w-11 text-center text-xs font-semibold tabular-nums text-muted">
-          {Math.round(zoom * 100)}%
-        </span>
-        <button type="button" onClick={() => zoomTo(zoom + 0.25)} disabled={zoom >= MAX_ZOOM} className={btn} aria-label="Böyüt">
-          <FiZoomIn />
-        </button>
-        <button type="button" onClick={reset} className={btn} aria-label="Sıfırla">
-          <FiMaximize />
-        </button>
-      </div>
+      {numPages > 0 && (
+        <div className="absolute right-3 top-3 z-10 flex items-center gap-0.5 rounded-xl border border-line bg-surface/90 p-1 shadow-soft backdrop-blur">
+          <button type="button" onClick={() => zoomTo(zoom - 0.25)} disabled={zoom <= MIN_ZOOM} className={btn} aria-label="Kiçilt">
+            <FiZoomOut />
+          </button>
+          <span className="w-11 text-center text-xs font-semibold tabular-nums text-muted">
+            {Math.round(zoom * 100)}%
+          </span>
+          <button type="button" onClick={() => zoomTo(zoom + 0.25)} disabled={zoom >= MAX_ZOOM} className={btn} aria-label="Böyüt">
+            <FiZoomIn />
+          </button>
+          <button type="button" onClick={reset} className={btn} aria-label="Sıfırla">
+            <FiMaximize />
+          </button>
+        </div>
+      )}
 
       <div
         ref={containerRef}
@@ -218,9 +230,9 @@ const PdfOpener = (props) => {
         <Document
           file={props.pdfFile}
           onLoadSuccess={onDocumentLoadSuccess}
-          loading={<div className="py-12 text-center text-sm text-muted">PDF yüklənir...</div>}
-          error={<div className="py-12 text-center text-sm text-muted">PDF yüklənmədi</div>}
-          noData={<div className="py-12 text-center text-sm text-muted">PDF yoxdur</div>}
+          loading={<PdfStatus spinner>PDF yüklənir...</PdfStatus>}
+          error={<PdfStatus error>PDF yüklənmədi</PdfStatus>}
+          noData={<PdfStatus spinner>PDF yüklənir...</PdfStatus>}
         >
           {numPages > 0 && contentW > 0 && (
             <div style={{ width: pageWidth * live, height: colHeight * live }}>
@@ -243,10 +255,10 @@ const PdfOpener = (props) => {
                         renderAnnotationLayer={false}
                         width={pageWidth}
                         devicePixelRatio={RENDER_DPR}
-                        loading={<div style={{ height: slotHeight }} className="bg-surface2/30" />}
+                        loading={<div style={{ height: slotHeight }} className="animate-pulse bg-surface2/40" />}
                       />
                     ) : (
-                      <div style={{ height: slotHeight }} className="bg-surface2/30" />
+                      <div style={{ height: slotHeight }} className="animate-pulse bg-surface2/40" />
                     )}
                   </div>
                 ))}

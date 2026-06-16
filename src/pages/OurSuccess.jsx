@@ -14,7 +14,6 @@ import { AiFillDelete, AiOutlineMinus, AiOutlinePlus } from "react-icons/ai";
 import { TbZoomReset } from "react-icons/tb";
 import { FiPlus } from "react-icons/fi";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
-import Container from "../components/ui/Container";
 import Button from "../components/ui/Button";
 import Loader from "../components/Loader";
 
@@ -25,7 +24,7 @@ const getImageHeight = (size) => {
   return "600px";
 };
 
-const OurSuccess = () => {
+const OurSuccess = ({ embedded = false }) => {
   const dispatch = useDispatch();
   const { isLoading, achivements } = useSelector((state) => state.achivement);
   const [open, setOpen] = useState(null);
@@ -57,28 +56,42 @@ const OurSuccess = () => {
     return <Loader />;
   }
 
+  const Wrapper = embedded ? "div" : "section";
   return (
-    <section className="py-12">
-      <Container>
-        <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <span className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
-              Uğurlarımız
-            </span>
-            <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-text sm:text-4xl">
-              Nailiyyətlərimiz
-            </h1>
-            <p className="mt-2 text-muted">Tələbələrimizin qazandığı uğurlar.</p>
-          </div>
+    <Wrapper className={embedded ? "w-full" : "py-12"}>
+      <div className={embedded ? "w-full" : "mx-auto w-full max-w-[1200px] px-5 sm:px-8"}>
+        {embedded ? (
+          // In the dashboard the AccountLayout supplies the title, so only the
+          // admin "add" control shows here.
           <AdminTeacherLink>
-            <Button onClick={() => setIsOpen(true)} variant="secondary" size="sm">
-              <FiPlus /> Nailiyyət əlavə et
-            </Button>
-            <AchivementModal modalIsOpen={modalIsOpen} closeModal={() => setIsOpen(false)} />
+            <div className="mb-6 flex justify-end">
+              <Button onClick={() => setIsOpen(true)} variant="secondary" size="sm">
+                <FiPlus /> Nailiyyət əlavə et
+              </Button>
+              <AchivementModal modalIsOpen={modalIsOpen} closeModal={() => setIsOpen(false)} />
+            </div>
           </AdminTeacherLink>
-        </div>
+        ) : (
+          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
+                Uğurlarımız
+              </span>
+              <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-text sm:text-4xl">
+                Nailiyyətlərimiz
+              </h1>
+              <p className="mt-2 text-muted">Tələbələrimizin qazandığı uğurlar.</p>
+            </div>
+            <AdminTeacherLink>
+              <Button onClick={() => setIsOpen(true)} variant="secondary" size="sm">
+                <FiPlus /> Nailiyyət əlavə et
+              </Button>
+              <AchivementModal modalIsOpen={modalIsOpen} closeModal={() => setIsOpen(false)} />
+            </AdminTeacherLink>
+          </div>
+        )}
 
-        {achivements && (
+        {achivements && achivements.length > 0 ? (
           <ResponsiveMasonry columnsCountBreakPoints={{ 350: 1, 750: 2, 900: 3 }}>
             <Masonry gutter="14px">
               {achivements.map((achivement, index) => (
@@ -165,9 +178,13 @@ const OurSuccess = () => {
               ))}
             </Masonry>
           </ResponsiveMasonry>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-line bg-surface p-16 text-center text-muted">
+            Hələlik nailiyyət yoxdur.
+          </div>
         )}
-      </Container>
-    </section>
+      </div>
+    </Wrapper>
   );
 };
 

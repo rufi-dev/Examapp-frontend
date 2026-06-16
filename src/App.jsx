@@ -169,8 +169,8 @@ function App() {
               <Route
                 path="/achievements"
                 element={
-                  <AccountLayout>
-                    <OurSuccess />
+                  <AccountLayout title="Nailiyyətlərimiz" subtitle="Tələbələrimizin qazandığı uğurlar.">
+                    <OurSuccess embedded />
                   </AccountLayout>
                 }
               />

@@ -88,67 +88,61 @@ const ExamInstructions = () => {
   ];
 
   return (
-    <AccountLayout>
-      <div className="mx-auto max-w-3xl">
-          <div className="rounded-3xl border border-line bg-surface p-8 shadow-soft sm:p-10">
-            <span className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
-              İmtahan
-            </span>
-            <h1 className="mt-2 font-display text-3xl font-bold text-text sm:text-4xl">
-              {singleExam.name}
-            </h1>
-
-            <div className="mt-8 grid gap-4 sm:grid-cols-2">
-              {meta.map((m) => {
-                const Icon = m.icon;
-                return (
-                  <div
-                    key={m.label}
-                    className="flex items-center gap-3 rounded-2xl border border-line bg-surface2/40 p-4"
-                  >
-                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
-                      <Icon className="text-[19px]" />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted">
-                        {m.label}
-                      </p>
-                      <p className="truncate font-semibold text-text">{m.value}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-8">
-              <h2 className="flex items-center gap-2 font-display text-lg font-bold text-text">
-                <FiInfo className="text-primary" /> Qaydalar
-              </h2>
-              <ul className="mt-3 flex flex-col gap-2.5">
-                {rules.map((r, i) => (
-                  <li key={i} className="flex gap-2.5 leading-relaxed text-muted">
-                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                    {r}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="mt-9">
-              {canStart ? (
-                <ExamDeadline>
-                  <Button onClick={startExam} size="lg" className="w-full sm:w-auto">
-                    <FiPlay /> İmtahanı başlat
-                    {triesLeft != null ? ` (${triesLeft} cəhd qalıb)` : ""}
-                  </Button>
-                </ExamDeadline>
-              ) : (
-                <div className="rounded-xl border border-line bg-surface2 px-4 py-3 text-center font-medium text-muted">
-                  Maksimum cəhd sayına çatmısınız
+    <AccountLayout
+      title={singleExam.name}
+      subtitle="İmtahana başlamazdan əvvəl təlimatları nəzərdən keçirin."
+    >
+      <div className="max-w-5xl">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {meta.map((m) => {
+            const Icon = m.icon;
+            return (
+              <div
+                key={m.label}
+                className="flex items-center gap-3.5 rounded-2xl border border-line bg-surface p-5 shadow-soft"
+              >
+                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
+                  <Icon className="text-[20px]" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted">
+                    {m.label}
+                  </p>
+                  <p className="truncate font-semibold text-text">{m.value}</p>
                 </div>
-              )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-10">
+          <h2 className="flex items-center gap-2 font-display text-lg font-bold text-text">
+            <FiInfo className="text-primary" /> Qaydalar
+          </h2>
+          <ul className="mt-4 flex max-w-2xl flex-col gap-3">
+            {rules.map((r, i) => (
+              <li key={i} className="flex gap-3 leading-relaxed text-muted">
+                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                {r}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="mt-10">
+          {canStart ? (
+            <ExamDeadline>
+              <Button onClick={startExam} size="lg" className="w-full sm:w-auto">
+                <FiPlay /> İmtahanı başlat
+                {triesLeft != null ? ` (${triesLeft} cəhd qalıb)` : ""}
+              </Button>
+            </ExamDeadline>
+          ) : (
+            <div className="max-w-md rounded-xl border border-line bg-surface2 px-4 py-3 text-center font-medium text-muted">
+              Maksimum cəhd sayına çatmısınız
             </div>
-          </div>
+          )}
+        </div>
       </div>
 
       <ConfirmDialog
