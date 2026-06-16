@@ -61,9 +61,27 @@ const ExamInstructions = () => {
     setConfirmStart(true);
   };
 
-  const beginExam = () => {
+  // Anti-cheat exams launch in a separate, chromeless window (no tab strip),
+  // which is stricter than a same-tab navigation. Falls back to the same tab if
+  // the popup is blocked.
+  const launchExam = () => {
     setConfirmStart(false);
-    navigate(`/exam/${singleExam?._id}/start`);
+    const url = `/exam/${singleExam._id}/start`;
+    if (singleExam?.antiCheat) {
+      const w = window.open(
+        url,
+        "examWindow",
+        `popup=yes,toolbar=no,menubar=no,location=no,status=no,width=${window.screen.availWidth},height=${window.screen.availHeight},left=0,top=0`
+      );
+      if (w) {
+        w.focus();
+        toast.info("İmtahan ayrıca pəncərədə açıldı.");
+      } else {
+        navigate(url); // popup blocked
+      }
+    } else {
+      navigate(url);
+    }
   };
 
   const meta = [
@@ -101,7 +119,7 @@ const ExamInstructions = () => {
   }
   if (singleExam.antiCheat) {
     rules.push(
-      "Anti-cheat aktivdir: imtahan tam ekranda açılır, tab keçidi və pəncərədən çıxma qeydə alınır."
+      "Anti-cheat aktivdir: imtahan ayrıca pəncərədə və tam ekranda açılır; tab/pəncərə dəyişmə və ya pəncərəni kiçiltmə qeydə alınır."
     );
   }
 
@@ -154,11 +172,7 @@ const ExamInstructions = () => {
                 <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-warning" />
                 İmtahanınız davam edir — qaldığınız yerdən davam edin.
               </div>
-              <Button
-                onClick={() => navigate(`/exam/${singleExam._id}/start`)}
-                size="lg"
-                className="w-full"
-              >
+              <Button onClick={launchExam} size="lg" className="w-full">
                 <FiPlay /> İmtahanı davam et
               </Button>
             </div>
@@ -180,7 +194,7 @@ const ExamInstructions = () => {
       <ConfirmDialog
         open={confirmStart}
         onClose={() => setConfirmStart(false)}
-        onConfirm={beginExam}
+        onConfirm={launchExam}
         title="İmtahana başlamaq üzrəsiniz"
         confirmLabel="Başla"
         cancelLabel="Geri"

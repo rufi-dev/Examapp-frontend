@@ -3,7 +3,7 @@ import { useDispatch } from "react-redux";
 import { startAttempt, getPdfByExam } from "../../../redux/features/quiz/quizSlice";
 import { addResult } from "../../../redux/features/quiz/resultSlice";
 import { useNavigate, useParams } from "react-router-dom";
-import { FiClock, FiCheckCircle, FiLock, FiEye } from "react-icons/fi";
+import { FiClock, FiCheckCircle, FiLock, FiEye, FiMaximize } from "react-icons/fi";
 import { toast } from "react-toastify";
 import PdfOpener from "../../components/PdfOpener";
 import QuestionType from "../../components/QuestionType";
@@ -80,6 +80,17 @@ const Quiz = () => {
       const el = document.getElementById(`q-${i}`);
       if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
     });
+  };
+
+  // Fullscreen lock (anti-cheat): the questions are gated until the student is
+  // in fullscreen; leaving it (or minimizing) hides everything until they
+  // return. Browsers can't physically block minimizing, so this is the strictest
+  // enforceable equivalent.
+  const [isFs, setIsFs] = useState(false);
+  const fsSupported = typeof document !== "undefined" && !!document.fullscreenEnabled;
+  const enterFullscreen = () => {
+    const el = document.documentElement;
+    if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
   };
 
   const deadline = attempt?.expiresAt ? new Date(attempt.expiresAt).getTime() : null;
@@ -288,33 +299,28 @@ const Quiz = () => {
         e.preventDefault();
       }
     };
-    // Fullscreen needs a user gesture — engage it on the first interaction.
-    const goFullscreen = () => {
-      const el = document.documentElement;
-      if (el.requestFullscreen && !document.fullscreenElement) {
-        el.requestFullscreen().catch(() => {});
-      }
-      window.removeEventListener("pointerdown", goFullscreen);
-    };
+    // Track fullscreen so the gate overlay can force the student back in.
+    const onFs = () => setIsFs(!!document.fullscreenElement);
+    setIsFs(!!document.fullscreenElement);
 
     document.addEventListener("visibilitychange", onVisibility);
+    document.addEventListener("fullscreenchange", onFs);
     document.addEventListener("contextmenu", block);
     document.addEventListener("copy", block);
     document.addEventListener("cut", block);
     document.addEventListener("paste", block);
     document.addEventListener("keydown", onKey);
-    window.addEventListener("pointerdown", goFullscreen);
     const prevSelect = document.body.style.userSelect;
     document.body.style.userSelect = "none";
 
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
+      document.removeEventListener("fullscreenchange", onFs);
       document.removeEventListener("contextmenu", block);
       document.removeEventListener("copy", block);
       document.removeEventListener("cut", block);
       document.removeEventListener("paste", block);
       document.removeEventListener("keydown", onKey);
-      window.removeEventListener("pointerdown", goFullscreen);
       document.body.style.userSelect = prevSelect;
       if (document.fullscreenElement && document.exitFullscreen) {
         document.exitFullscreen().catch(() => {});
@@ -399,6 +405,27 @@ const Quiz = () => {
 
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-bg">
+      {/* Fullscreen lock: covers everything when anti-cheat is on but the exam
+          isn't in fullscreen — so leaving fullscreen / minimizing hides it. */}
+      {attempt?.antiCheat && fsSupported && !isFs && (
+        <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-bg/95 p-6 backdrop-blur">
+          <div className="max-w-md text-center">
+            <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-danger/12 text-danger">
+              <FiMaximize className="text-3xl" />
+            </div>
+            <h2 className="font-display text-xl font-bold text-text">Tam ekran tələb olunur</h2>
+            <p className="mt-2 leading-relaxed text-muted">
+              Bu imtahan yalnız tam ekranda keçirilir. Davam etmək üçün düyməni basın.
+              Tam ekrandan çıxsanız və ya pəncərəni kiçiltsəniz, suallar gizlədilir və pozuntu
+              qeydə alınır.
+            </p>
+            <Button onClick={enterFullscreen} size="lg" className="mt-6">
+              <FiMaximize /> Tam ekrana keç
+            </Button>
+          </div>
+        </div>
+      )}
+
       <header className="flex shrink-0 flex-col gap-3 border-b border-line bg-surface px-4 py-3 sm:px-6">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
