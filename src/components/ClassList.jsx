@@ -2,6 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { LuGraduationCap } from "react-icons/lu";
 import { FiArrowUpRight } from "react-icons/fi";
+import { MdOutlineModeEditOutline } from "react-icons/md";
 import { AiFillDelete } from "react-icons/ai";
 import { useDispatch, useSelector } from "react-redux";
 import { getClassesByTag, deleteClass } from "../../redux/features/quiz/quizSlice";
@@ -71,14 +72,23 @@ const ClassList = () => {
             style={{ animationDelay: `${Math.min(index * 70, 420)}ms` }}
           >
             <AdminTeacherLink>
-              <button
-                type="button"
-                onClick={() => setConfirmClass(_class)}
-                className="absolute right-3 top-3 z-10 grid h-8 w-8 place-items-center rounded-lg border border-line bg-surface text-muted transition-colors hover:border-danger/40 hover:text-danger"
-                aria-label="Sil"
-              >
-                <AiFillDelete />
-              </button>
+              <div className="absolute right-3 top-3 z-10 flex gap-1">
+                <Link
+                  to={`/class/edit/${_class._id}`}
+                  className="grid h-8 w-8 place-items-center rounded-lg border border-line bg-surface text-muted transition-colors hover:text-primary"
+                  aria-label="Düzəliş et"
+                >
+                  <MdOutlineModeEditOutline />
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setConfirmClass(_class)}
+                  className="grid h-8 w-8 place-items-center rounded-lg border border-line bg-surface text-muted transition-colors hover:border-danger/40 hover:text-danger"
+                  aria-label="Sil"
+                >
+                  <AiFillDelete />
+                </button>
+              </div>
             </AdminTeacherLink>
             <Link
               to={`/exam/${_class._id}`}

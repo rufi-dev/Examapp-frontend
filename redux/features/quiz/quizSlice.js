@@ -245,6 +245,36 @@ export const deleteTag = createAsyncThunk(
   }
 );
 
+export const getClass = createAsyncThunk(
+  "quiz/getClass",
+  async (classId, thunkAPI) => {
+    try {
+      return await quizService.getClass(classId);
+    } catch (error) {
+      const message =
+        (error.response && error.response.data && error.response.data.message) ||
+        error.message ||
+        error.toString();
+      return thunkAPI.rejectWithValue(message);
+    }
+  }
+);
+
+export const editClass = createAsyncThunk(
+  "quiz/editClass",
+  async ({ classId, classData }, thunkAPI) => {
+    try {
+      return await quizService.editClass(classId, classData);
+    } catch (error) {
+      const message =
+        (error.response && error.response.data && error.response.data.message) ||
+        error.message ||
+        error.toString();
+      return thunkAPI.rejectWithValue(message);
+    }
+  }
+);
+
 //Add Question
 export const addQuestion = createAsyncThunk(
   "quiz/addQuestion",
@@ -733,6 +763,39 @@ const quizSlice = createSlice({
         toast.success(action.payload);
       })
       .addCase(editTag.rejected, (state, action) => {
+        state.isLoading = false;
+        state.isError = true;
+        state.message = action.payload;
+        toast.error(action.payload);
+      })
+
+      //Get Class
+      .addCase(getClass.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(getClass.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isSuccess = true;
+        state.singleClass = action.payload;
+      })
+      .addCase(getClass.rejected, (state, action) => {
+        state.isLoading = false;
+        state.isError = true;
+        state.message = action.payload;
+        toast.error(action.payload);
+      })
+
+      //Edit Class
+      .addCase(editClass.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(editClass.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isSuccess = true;
+        state.isError = false;
+        toast.success(action.payload);
+      })
+      .addCase(editClass.rejected, (state, action) => {
         state.isLoading = false;
         state.isError = true;
         state.message = action.payload;

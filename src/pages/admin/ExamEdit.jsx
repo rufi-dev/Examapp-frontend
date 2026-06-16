@@ -7,9 +7,12 @@ import { getTags, getExam, editExam } from "../../../redux/features/quiz/quizSli
 import { toast } from "react-toastify";
 import { useNavigate, useParams } from "react-router-dom";
 import Button from "../../components/ui/Button";
+import Spinner from "../../components/Spinner";
 import { Field, inputClass } from "../../components/ui/Field";
 import ResultVisibility from "../../components/ui/ResultVisibility";
 import { toLocalInput, toUtcIso } from "../../helper/datetime";
+import { HiOutlinePhotograph } from "react-icons/hi";
+import { FiX } from "react-icons/fi";
 
 const fileInputClass =
   "block w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-text file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:font-semibold file:text-primary-fg hover:file:bg-primary-hover";
@@ -19,6 +22,7 @@ const ExamEdit = () => {
   const cloud_name = import.meta.env.VITE_CLOUD_NAME;
   const upload_preset = import.meta.env.VITE_UPLAD_PRESET;
   const [pdf, setPdf] = useState(null);
+  const [uploadingSolution, setUploadingSolution] = useState(false);
 
   useRedirectLoggedOutUser("/login");
   const { singleExam } = useSelector((state) => state.quiz);
@@ -44,6 +48,7 @@ const ExamEdit = () => {
     showScore: true,
     showCorrectAnswers: false,
     revealAfterEnd: false,
+    solutionPhotos: [],
   };
   const [examForm, setExamForm] = useState(initialState);
   const {
@@ -60,6 +65,7 @@ const ExamEdit = () => {
     showScore,
     showCorrectAnswers,
     revealAfterEnd,
+    solutionPhotos,
   } = examForm;
 
   const handleInputChange = (e) => {
@@ -84,9 +90,59 @@ const ExamEdit = () => {
         showScore: singleExam.showScore ?? true,
         showCorrectAnswers: singleExam.showCorrectAnswers ?? false,
         revealAfterEnd: singleExam.revealAfterEnd ?? false,
+        solutionPhotos: singleExam.solutionPhotos || [],
       });
     }
   }, [singleExam]);
+
+  // Upload one image to Cloudinary, return its hosted URL.
+  const uploadToCloudinary = async (file) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("cloud_name", cloud_name);
+    fd.append("upload_preset", upload_preset);
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloud_name}/image/upload`,
+      { method: "post", body: fd }
+    );
+    const data = await res.json();
+    return (data.secure_url || data.url)?.toString();
+  };
+
+  const handleSolutionUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = ""; // let the same file be picked again later
+    if (!files.length) return;
+    if (!cloud_name || !upload_preset) {
+      return toast.error("Şəkil yükləmə konfiqurasiya olunmayıb (Cloudinary)");
+    }
+    const valid = files.filter((f) =>
+      ["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(f.type)
+    );
+    if (!valid.length) return toast.error("Yalnız şəkil faylı yükləyin");
+    setUploadingSolution(true);
+    try {
+      const urls = [];
+      for (const f of valid) {
+        const url = await uploadToCloudinary(f);
+        if (url) urls.push(url);
+      }
+      setExamForm((prev) => ({
+        ...prev,
+        solutionPhotos: [...(prev.solutionPhotos || []), ...urls],
+      }));
+    } catch {
+      toast.error("Şəkil yüklənmədi");
+    } finally {
+      setUploadingSolution(false);
+    }
+  };
+
+  const removeSolutionPhoto = (idx) =>
+    setExamForm((prev) => ({
+      ...prev,
+      solutionPhotos: (prev.solutionPhotos || []).filter((_, i) => i !== idx),
+    }));
 
   const editExamForm = async (e) => {
     e.preventDefault();
@@ -115,6 +171,7 @@ const ExamEdit = () => {
         showScore,
         showCorrectAnswers,
         revealAfterEnd,
+        solutionPhotos,
         // Only send a path when a new PDF was uploaded (so the old file is
         // replaced/deleted, and untouched edits keep the existing PDF).
         pdfPath: pdfUrl,
@@ -185,6 +242,56 @@ const ExamEdit = () => {
             revealAfterEnd={revealAfterEnd}
             onChange={setField}
           />
+
+          <div className="md:col-span-2">
+            <Field
+              label="Həll (yazı işi) şəkilləri"
+              hint="Bir dəfə əlavə et — bütün şagirdlər nəticə səhifəsində görür"
+            >
+              <div className="rounded-2xl border border-dashed border-line p-4">
+                {solutionPhotos?.length > 0 && (
+                  <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {solutionPhotos.map((src, i) => (
+                      <div
+                        key={i}
+                        className="group relative overflow-hidden rounded-xl border border-line"
+                      >
+                        <img src={src} alt="" className="h-32 w-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeSolutionPhoto(i)}
+                          className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-lg bg-black/55 text-white transition-colors hover:bg-danger"
+                          aria-label="Sil"
+                        >
+                          <FiX />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <label
+                  htmlFor="solutionInput"
+                  className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-line bg-surface2/40 px-4 py-3 text-sm font-semibold text-text transition-colors hover:border-primary/50"
+                >
+                  {uploadingSolution ? (
+                    <Spinner size={18} />
+                  ) : (
+                    <>
+                      <HiOutlinePhotograph className="text-lg" /> Şəkil əlavə et
+                    </>
+                  )}
+                </label>
+                <input
+                  id="solutionInput"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={handleSolutionUpload}
+                />
+              </div>
+            </Field>
+          </div>
         </div>
         <Button type="submit" className="mt-8">
           Yadda saxla

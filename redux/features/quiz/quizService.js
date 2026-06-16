@@ -83,6 +83,18 @@ const deleteClass = async (classId) => {
     return response.data.message
 }
 
+//Get a single class
+const getClass = async (classId) => {
+    const response = await axios.get(API_URL + "getClass/" + classId)
+    return response.data
+}
+
+//Edit Class (level)
+const editClass = async (classId, classData) => {
+    const response = await axios.patch(API_URL + "editClass/" + classId, classData)
+    return response.data.message
+}
+
 //Delete Tag (cascades to its classes + exams)
 const deleteTag = async (tagId) => {
     const response = await axios.delete(API_URL + "deleteTag/" + tagId)
@@ -198,6 +210,8 @@ const quizService = {
     deleteExam,
     deleteClass,
     deleteTag,
+    getClass,
+    editClass,
     addQuestion,
     editTag,
     getQuestionByExam,

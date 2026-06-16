@@ -43,6 +43,7 @@ import Spinner from "./components/Spinner";
 import Modal from "react-modal";
 import { pdfjs } from "react-pdf";
 import ClassAdd from "./pages/admin/ClassAdd";
+import ClassEdit from "./pages/admin/ClassEdit";
 import Classes from "./pages/Classes";
 import { disableReactDevTools } from "@fvilers/disable-react-devtools";
 import ResultsByExam from "./pages/exam/ResultsByExam";
@@ -159,6 +160,7 @@ function App() {
               <Route path="/user/:id/details" element={<UserDetails />} />
               <Route path="/tagAdd" element={<TagAdd />} />
               <Route path="/classAdd/:tagId" element={<ClassAdd />} />
+              <Route path="/class/edit/:classId" element={<ClassEdit />} />
               <Route path="/examAdd/:classId" element={<ExamAdd />} />
               <Route path="/exam/edit/:examId" element={<ExamEdit />} />
               <Route path="/tag/edit/:tagId" element={<TagEdit />} />

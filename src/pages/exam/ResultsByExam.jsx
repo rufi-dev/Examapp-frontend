@@ -29,7 +29,7 @@ const ResultsByExam = () => {
       actions={
         <PDFDownloadLink
           document={<PDFTemplate results={resultsByExam} />}
-          fileName="exam_results.pdf"
+          fileName="imtahan-neticeleri.pdf"
         >
           {({ loading }) => (
             <span className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-line bg-surface px-4 text-sm font-semibold text-text transition-colors hover:bg-surface2">
