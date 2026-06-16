@@ -19,6 +19,7 @@ const ExamInstructions = () => {
   const [endDateString, setEndDateString] = useState(null);
   const [confirmStart, setConfirmStart] = useState(false);
   const [resumeActive, setResumeActive] = useState(false);
+  const [usage, setUsage] = useState(null); // server-truth { used, maxTry }
   const { singleExam, isLoading } = useSelector((state) => state.quiz);
   const { resultByExam } = useSelector((state) => state.result);
   const { user } = useSelector((state) => state.auth);
@@ -32,7 +33,10 @@ const ExamInstructions = () => {
     // Server-truth: is an attempt already in progress? If so, offer Resume.
     dispatch(getAttemptStatus(examId))
       .unwrap()
-      .then((s) => setResumeActive(!!s?.active))
+      .then((s) => {
+        setResumeActive(!!s?.active);
+        setUsage({ used: s?.used ?? 0, maxTry: s?.maxTry ?? 0 });
+      })
       .catch(() => setResumeActive(false));
   }, [dispatch, examId]);
 
@@ -46,8 +50,11 @@ const ExamInstructions = () => {
   }
 
   const duration = singleExam.duration || 0;
-  const maxTry = singleExam.maxTry || 0;
-  const attempts = resultByExam?.length || 0;
+  const maxTry = usage?.maxTry ?? (singleExam.maxTry || 0);
+  // Server-truth used-try count (started attempts OR results, whichever is
+  // higher) so we never offer a start the backend will reject. Falls back to the
+  // results count until attemptStatus resolves.
+  const attempts = usage ? usage.used : resultByExam?.length || 0;
   const triesLeft = maxTry > 0 ? Math.max(0, maxTry - attempts) : null;
   const canStart = maxTry === 0 || attempts < maxTry;
 

@@ -120,8 +120,11 @@ const QuestionType = ({
 
         const correctAnswer = answers[i]?.answer || null;
         const userAnswer = selectedAnswers[i]?.answer || null;
+        // Trim like the server scorer so the ✓/✕ mark matches the score.
         const isCorrect =
-          isReview && correctAnswer && userAnswer ? correctAnswer === userAnswer : null;
+          isReview && correctAnswer && userAnswer
+            ? String(correctAnswer).trim() === String(userAnswer).trim()
+            : null;
         return (
           <div key={i} id={`q-${i}`} className="scroll-mt-4">
             <div className="mb-2 flex items-center justify-between gap-2">

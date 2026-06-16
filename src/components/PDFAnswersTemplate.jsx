@@ -29,10 +29,11 @@ const UserGrid = ({ result }) => {
   const selected = result?.selectedAnswers || [];
   const n = Math.max(correct.length, selected.length);
   const idxs = Array.from({ length: n }, (_, i) => i);
+  // Trim like the server scorer so the PDF marks match the score.
   const isCorrect = (i) => {
-    const s = selected[i]?.answer;
-    const c = correct[i]?.answer;
-    return s != null && s !== "" && c != null && String(s) === String(c);
+    const s = String(selected[i]?.answer ?? "").trim();
+    const c = String(correct[i]?.answer ?? "").trim();
+    return s !== "" && c !== "" && s === c;
   };
 
   return (
