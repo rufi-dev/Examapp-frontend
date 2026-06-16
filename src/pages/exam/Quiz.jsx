@@ -115,6 +115,11 @@ const Quiz = () => {
   // A second/extended display gates the exam (questions hidden) rather than
   // instantly counting a violation — the student can disconnect to continue.
   const [secondScreen, setSecondScreen] = useState(false);
+  // Violations only count once the exam is truly ACTIVE (past every gate). A
+  // fresh settle window after (re)entering absorbs the fullscreen / monitor-
+  // disconnect transition events so they aren't mistaken for cheating.
+  const examActiveRef = useRef(false);
+  const activeSinceRef = useRef(0);
   const fsSupported = typeof document !== "undefined" && !!document.fullscreenEnabled;
   const enterFullscreen = () => {
     const el = document.documentElement;
@@ -401,7 +406,6 @@ const Quiz = () => {
   // whenever not in fullscreen.
   useEffect(() => {
     if (access !== "allowed" || !attempt?.antiCheat) return;
-    const startedAt = Date.now();
     let blurTimer = null;
 
     // Reconcile the UI to an authoritative count and act on termination.
@@ -419,16 +423,16 @@ const Quiz = () => {
       }
     };
 
-    const registerViolation = (reason, force = false) => {
+    const registerViolation = (reason) => {
       if (submittingRef.current || terminatedRef.current) return;
-      if (!force) {
-        if (Date.now() - startedAt < 3000) return; // startup grace (login dialogs)
-        const now = Date.now();
-        if (now - lastVioRef.current < 1200) return; // de-dupe rapid events
-        lastVioRef.current = now;
-      } else {
-        lastVioRef.current = Date.now();
-      }
+      // Don't count while a gate is showing (exam not truly started yet)...
+      if (!examActiveRef.current) return;
+      // ...nor during the settle window right after (re)entering the exam, which
+      // absorbs the fullscreen / monitor-disconnect transition events.
+      if (Date.now() - activeSinceRef.current < 2000) return;
+      const now = Date.now();
+      if (now - lastVioRef.current < 1200) return; // de-dupe rapid events
+      lastVioRef.current = now;
       // Optimistic badge bump for instant feedback; the server count then wins.
       const optimistic = violationsRef.current + 1;
       violationsRef.current = optimistic;
@@ -518,6 +522,20 @@ const Quiz = () => {
     const id = setInterval(check, 1500);
     return () => clearInterval(id);
   }, [access, attempt?.antiCheat]);
+
+  // The exam is "active" (leaving counts as a violation) only once the student is
+  // past EVERY gate: in fullscreen (or fullscreen unsupported/bypassed) and with
+  // no second screen. While any gate is showing, transient focus/visibility
+  // churn (entering fullscreen, disconnecting a monitor) must not be penalised.
+  useEffect(() => {
+    const active = attempt?.antiCheat
+      ? (isFs || fsBypass || !fsSupported) && !secondScreen
+      : true;
+    if (active && !examActiveRef.current) {
+      activeSinceRef.current = Date.now(); // just (re)entered -> fresh settle window
+    }
+    examActiveRef.current = active;
+  }, [attempt?.antiCheat, isFs, fsBypass, fsSupported, secondScreen]);
 
   const handleAnswerChange = (e, index, type) => {
     const value = e.target.value;
