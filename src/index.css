@@ -54,6 +54,15 @@
        when page height changes between/within route transitions. */
     scrollbar-gutter: stable;
     overflow-y: scroll;
+    /* Kill the translucent blue/grey box mobile webkit paints over any tapped
+       element (buttons, links, cards). */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* A tap or mouse click should not leave a persistent focus outline; only
+     keyboard navigation (:focus-visible) shows the accessible ring. */
+  :focus:not(:focus-visible) {
+    outline: none;
   }
 
   body {
