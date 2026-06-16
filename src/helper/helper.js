@@ -37,11 +37,9 @@ export function earnPoints_Number(result, correctAnswers) {
   answersList.forEach((correctAnswer, index) => {
     if (!correctAnswer) return;
     const selected = result[index];
-    const isCorrect =
-      selected != null &&
-      selected.answer != null &&
-      selected.answer !== "" &&
-      selected.answer === correctAnswer.answer;
+    // Mirror the server scorer: trim, whitespace-only counts as blank.
+    const sa = String(selected?.answer ?? "").trim();
+    const isCorrect = sa !== "" && sa === String(correctAnswer.answer ?? "").trim();
 
     if (isCorrect) {
       earnedPoints += points[index] || 0;

@@ -69,14 +69,15 @@ const QuestionType = ({
         }))
       : countBased();
 
+  const norm = (v) => String(v ?? "").trim();
   const optionClass = (i, option) => {
-    const isCorrectOpt = answers[i]?.answer === option;
-    const userAns = selectedAnswers[i]?.answer;
+    const isCorrectOpt = norm(answers[i]?.answer) === norm(option);
+    const userAns = norm(selectedAnswers[i]?.answer);
     if (isReview) {
       // Solid fills so the correct answer (green) and the student's wrong pick
       // (red) read at a glance, not just a faint tint.
       if (isCorrectOpt) return "border-success bg-success text-white";
-      if (option === userAns) return "border-danger bg-danger text-white";
+      if (norm(option) === userAns) return "border-danger bg-danger text-white";
       return "border-line bg-surface text-muted";
     }
     if (isCorrectOpt) return "border-primary bg-primary text-primary-fg";

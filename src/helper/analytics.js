@@ -67,15 +67,17 @@ export function itemAnalysis(results) {
     const selected = r.selectedAnswers || [];
     for (let i = 0; i < n; i++) {
       const it = items[i];
-      const ca = correct[i]?.answer;
-      const sa = selected[i]?.answer;
-      if (ca != null && ca !== "") {
-        it.answer = ca;
+      const caRaw = correct[i]?.answer;
+      // Mirror the server scorer: trim, and treat whitespace-only as blank.
+      const ca = String(caRaw ?? "").trim();
+      const sa = String(selected[i]?.answer ?? "").trim();
+      if (ca !== "") {
+        it.answer = caRaw;
         it.type = correct[i]?.type;
       }
       it.total += 1;
-      if (sa == null || sa === "") it.blank += 1;
-      else if (ca != null && String(sa) === String(ca)) it.correct += 1;
+      if (sa === "") it.blank += 1;
+      else if (ca !== "" && sa === ca) it.correct += 1;
       else it.wrong += 1;
     }
   });

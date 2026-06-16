@@ -42,11 +42,12 @@ const tally = (result) => {
   let right = 0;
   let wrong = 0;
   let blank = 0;
+  // Mirror the server scorer: trim, and treat whitespace-only as blank.
   for (let i = 0; i < n; i++) {
-    const sa = selected[i]?.answer;
-    const ca = correct[i]?.answer;
-    if (!sa && sa !== 0) blank++;
-    else if (hasKey && ca != null && String(sa) === String(ca)) right++;
+    const sa = String(selected[i]?.answer ?? "").trim();
+    const ca = String(correct[i]?.answer ?? "").trim();
+    if (sa === "") blank++;
+    else if (hasKey && ca !== "" && sa === ca) right++;
     else wrong++;
   }
   return { right, wrong, blank, total: n, hasKey };
