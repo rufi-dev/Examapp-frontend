@@ -61,7 +61,7 @@ const NotificationBell = () => {
       </button>
 
       {open && (
-        <div className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] animate-scale-in overflow-hidden rounded-2xl border border-line bg-surface shadow-lift">
+        <div className="fixed inset-x-3 top-16 z-50 w-auto animate-scale-in overflow-hidden rounded-2xl border border-line bg-surface shadow-lift sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-80">
           <div className="flex items-center justify-between border-b border-line px-4 py-3">
             <span className="font-display text-sm font-bold text-text">Bildirişlər</span>
             <AdminTeacherLink>

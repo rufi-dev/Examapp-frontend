@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { FiUser, FiLock, FiLogOut, FiChevronDown } from "react-icons/fi";
+import { FiUser, FiLock, FiLogOut, FiChevronDown, FiSun, FiMoon } from "react-icons/fi";
+import { useTheme } from "./ui/ThemeToggle";
 
 // Header avatar with a dropdown (profile / password / logout).
 const UserMenu = ({ user, onLogout }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const { isDark, toggle } = useTheme();
 
   useEffect(() => {
     const onDoc = (e) => {
@@ -59,6 +61,28 @@ const UserMenu = ({ user, onLogout }) => {
             <Link to="/changePassword" onClick={() => setOpen(false)} className={`${item} text-text hover:bg-surface2`}>
               <FiLock /> Şifrə
             </Link>
+            <button
+              type="button"
+              onClick={toggle}
+              className={`${item} justify-between text-text hover:bg-surface2`}
+            >
+              <span className="flex items-center gap-2.5">
+                {isDark ? <FiSun /> : <FiMoon />}
+                {isDark ? "İşıqlı tema" : "Qaranlıq tema"}
+              </span>
+              <span
+                className={`relative h-5 w-9 rounded-full transition-colors ${
+                  isDark ? "bg-primary" : "bg-surface2 border border-line"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${
+                    isDark ? "left-[18px]" : "left-0.5"
+                  }`}
+                />
+              </span>
+            </button>
+            <div className="my-1 border-t border-line" />
             <button
               type="button"
               onClick={() => {

@@ -3,7 +3,6 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { RESET, logout, selectUser } from "../../redux/features/auth/authSlice";
 import { AdminTeacherLink } from "./protect/hiddenLink";
-import ThemeToggle from "./ui/ThemeToggle";
 import UserMenu from "./UserMenu";
 import NotificationBell from "./NotificationBell";
 import {
@@ -62,6 +61,22 @@ export default function AccountLayout({ title, subtitle, actions, children }) {
   };
 
   const close = () => setOpen(false);
+
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 6
+      ? "Gecəniz xeyir"
+      : hour < 12
+      ? "Sabahınız xeyir"
+      : hour < 18
+      ? "Günortanız xeyir"
+      : "Axşamınız xeyir";
+  const firstName = user?.name?.split(" ")[0] || "";
+  const today = new Date().toLocaleDateString("az-AZ", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
 
   const SideItem = ({ to, label, icon: Icon, end }) => (
     <NavLink to={to} end={end} onClick={close} className={sideLink}>
@@ -180,10 +195,17 @@ export default function AccountLayout({ title, subtitle, actions, children }) {
               </span>
               <span className="font-display text-lg font-bold tracking-tight text-text">İmtahan</span>
             </Link>
+            {/* Desktop: the left of the header is otherwise empty — show a
+                personal time-based greeting + today's date. */}
+            <div className="hidden lg:block">
+              <p className="font-display text-base font-bold leading-tight text-text">
+                {greeting}{firstName ? `, ${firstName}` : ""} 👋
+              </p>
+              <p className="text-xs capitalize text-muted">{today}</p>
+            </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <NotificationBell />
-            <ThemeToggle />
             <UserMenu user={user} onLogout={handleLogout} />
           </div>
         </header>
