@@ -235,16 +235,20 @@ const Quiz = () => {
   };
 
   // Anti-cheat: when the exam enables it, lock the page down and log leaving.
-  // Tab switch / window blur / leaving fullscreen each count as a violation
-  // (debounced); copy/paste/right-click/selection are blocked; after the limit
-  // the exam auto-submits. Violation count is sent to the server on submit.
+  // A violation is counted ONLY when the tab is actually hidden (switched away
+  // or minimized) via the Page Visibility API — this is the reliable signal.
+  // We deliberately do NOT use window "blur" or fullscreen-exit, because
+  // browser dialogs (password manager, autofill), OS notifications, devtools,
+  // etc. fire those without the user ever leaving the exam, which caused false
+  // auto-submits. copy/paste/right-click/selection/shortcuts are still blocked,
+  // and fullscreen is requested as a soft deterrent (exiting is not penalised).
   useEffect(() => {
     if (access !== "allowed" || !attempt?.antiCheat) return;
 
     const registerViolation = () => {
       if (submittingRef.current) return;
       const now = Date.now();
-      if (now - lastVioRef.current < 1200) return; // de-dupe blur+visibility pair
+      if (now - lastVioRef.current < 1200) return; // de-dupe rapid events
       lastVioRef.current = now;
       violationsRef.current += 1;
       const v = violationsRef.current;
@@ -253,16 +257,12 @@ const Quiz = () => {
         toast.error("Çoxlu pozuntu aşkarlandı — imtahan təqdim olunur.");
         submitAnswerSheet();
       } else {
-        toast.warn(`Diqqət! Səhifədən çıxmaq qadağandır (${v}/${ANTICHEAT_LIMIT}).`);
+        toast.warn(`Diqqət! Başqa tab/pəncərəyə keçmək qadağandır (${v}/${ANTICHEAT_LIMIT}).`);
       }
     };
 
     const onVisibility = () => {
       if (document.visibilityState === "hidden") registerViolation();
-    };
-    const onBlur = () => registerViolation();
-    const onFsChange = () => {
-      if (!document.fullscreenElement) registerViolation();
     };
     const block = (e) => e.preventDefault();
     const onKey = (e) => {
@@ -281,8 +281,6 @@ const Quiz = () => {
     };
 
     document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("blur", onBlur);
-    document.addEventListener("fullscreenchange", onFsChange);
     document.addEventListener("contextmenu", block);
     document.addEventListener("copy", block);
     document.addEventListener("cut", block);
@@ -294,8 +292,6 @@ const Quiz = () => {
 
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("blur", onBlur);
-      document.removeEventListener("fullscreenchange", onFsChange);
       document.removeEventListener("contextmenu", block);
       document.removeEventListener("copy", block);
       document.removeEventListener("cut", block);
