@@ -5,6 +5,7 @@ import { RESET, logout, selectUser } from "../../redux/features/auth/authSlice";
 import { AdminTeacherLink } from "./protect/hiddenLink";
 import ThemeToggle from "./ui/ThemeToggle";
 import UserMenu from "./UserMenu";
+import NotificationBell from "./NotificationBell";
 import {
   FiGrid,
   FiBarChart2,
@@ -15,6 +16,7 @@ import {
   FiTag,
   FiStar,
   FiPieChart,
+  FiBell,
   FiLogOut,
   FiMenu,
   FiX,
@@ -39,6 +41,7 @@ const navItems = [
 const adminNav = [
   { to: "/users", label: "İstifadəçilər", icon: FiUsers },
   { to: "/examResults", label: "Nəticələr", icon: FiPieChart },
+  { to: "/notifications", label: "Bildirişlər", icon: FiBell },
 ];
 
 const sideLink = ({ isActive }) =>
@@ -179,6 +182,7 @@ export default function AccountLayout({ title, subtitle, actions, children }) {
             </Link>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
+            <NotificationBell />
             <ThemeToggle />
             <UserMenu user={user} onLogout={handleLogout} />
           </div>

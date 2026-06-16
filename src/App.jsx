@@ -45,6 +45,7 @@ import { pdfjs } from "react-pdf";
 import ClassAdd from "./pages/admin/ClassAdd";
 import ClassEdit from "./pages/admin/ClassEdit";
 import ExamResults from "./pages/admin/ExamResults";
+import Notifications from "./pages/admin/Notifications";
 import AccountLayout from "./components/AccountLayout";
 import Classes from "./pages/Classes";
 import { disableReactDevTools } from "@fvilers/disable-react-devtools";
@@ -166,6 +167,7 @@ function App() {
               <Route path="/changePassword" element={<ChangePassword />} />
               <Route path="/users" element={<UserList />} />
               <Route path="/examResults" element={<ExamResults />} />
+              <Route path="/notifications" element={<Notifications />} />
               {/* Achievements manager inside the dashboard shell (the public
                   /ourSuccess page above stays for visitors). */}
               <Route
