@@ -3,31 +3,37 @@ export function attempts_Number(result) {
 }
 
 // Point distribution for an exam, by question position:
-//   - the first 18 questions share 55 points equally
-//   - the remaining questions share 45 points equally
-//   => total is always 100 for exams with 19+ questions.
-// For 18 or fewer questions, the full 100 is split equally across them.
+//   - the first 18 questions share 55 points
+//   - the remaining questions share 45 points
+//   => total is ALWAYS exactly 100 for exams with 19+ questions.
+// For 18 or fewer questions, the full 100 is split across them.
 export const FIRST_GROUP_SIZE = 18;
 export const FIRST_GROUP_POINTS = 55;
 export const SECOND_GROUP_POINTS = 45;
 
+// Split `total` points across `n` questions as 2-decimal values that sum to
+// EXACTLY `total`. The leftover cents are handed out one-by-one (largest
+// remainder) instead of repeating a rounded share, so e.g. 55 over 18 is
+// 3.06 × 10 + 3.05 × 8 = 55.00 — never 3.06 × 18 = 55.08 that pushes the
+// grand total past 100.
+function distribute(total, n) {
+  if (n <= 0) return [];
+  const cents = Math.round(total * 100);
+  const base = Math.floor(cents / n);
+  const rem = cents - base * n; // this many questions get one extra cent
+  return Array.from({ length: n }, (_, i) => (base + (i < rem ? 1 : 0)) / 100);
+}
+
 export function questionPoints(count) {
   const n = Number(count) || 0;
   if (n <= 0) return [];
-
   const aCount = Math.min(FIRST_GROUP_SIZE, n);
   const bCount = n - aCount;
-  const points = new Array(n);
-
-  if (bCount === 0) {
-    const each = 100 / aCount;
-    for (let i = 0; i < n; i++) points[i] = each;
-  } else {
-    const eachA = FIRST_GROUP_POINTS / aCount; // e.g. 55/18
-    const eachB = SECOND_GROUP_POINTS / bCount; // e.g. 45/7
-    for (let i = 0; i < n; i++) points[i] = i < aCount ? eachA : eachB;
-  }
-  return points;
+  if (bCount === 0) return distribute(100, n);
+  return [
+    ...distribute(FIRST_GROUP_POINTS, aCount),
+    ...distribute(SECOND_GROUP_POINTS, bCount),
+  ];
 }
 
 // Score an answer sheet against the exam's correct answers.
