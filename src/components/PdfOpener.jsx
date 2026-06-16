@@ -259,18 +259,44 @@ const PdfOpener = (props) => {
                 {Array.from({ length: numPages }, (_, i) => i + 1).map((page) => (
                   <div
                     key={page}
-                    className="overflow-hidden rounded-lg border border-line bg-white"
-                    style={{ width: pageWidth, minHeight: slotHeight, marginBottom: GAP }}
+                    className="relative overflow-hidden rounded-lg border border-line bg-white"
+                    style={{ width: pageWidth, height: slotHeight, marginBottom: GAP }}
                   >
                     {visible.has(page) ? (
-                      <Page
-                        pageNumber={page}
-                        renderTextLayer={false}
-                        renderAnnotationLayer={false}
-                        width={pageWidth}
-                        devicePixelRatio={renderDpr}
-                        loading={<div style={{ height: slotHeight }} className="bg-white" />}
-                      />
+                      <>
+                        {/* Persistent low-res copy, rendered once at base width and
+                            CSS-scaled to the current zoom. It never re-renders when
+                            zooming, so it stays on screen and the crisp layer above
+                            can re-rasterize without a white flash. */}
+                        <div
+                          className="absolute inset-0"
+                          style={{
+                            transformOrigin: "top left",
+                            transform: `scale(${pageWidth / contentW})`,
+                          }}
+                        >
+                          <Page
+                            pageNumber={page}
+                            renderTextLayer={false}
+                            renderAnnotationLayer={false}
+                            width={contentW}
+                            devicePixelRatio={1}
+                            loading={<div style={{ height: slotHeight }} className="bg-white" />}
+                          />
+                        </div>
+                        {/* Crisp layer at the exact zoom; transparent while it
+                            re-renders so the copy below shows through (no flash). */}
+                        <div className="absolute inset-0">
+                          <Page
+                            pageNumber={page}
+                            renderTextLayer={false}
+                            renderAnnotationLayer={false}
+                            width={pageWidth}
+                            devicePixelRatio={renderDpr}
+                            loading={<div style={{ height: slotHeight }} />}
+                          />
+                        </div>
+                      </>
                     ) : (
                       <div style={{ height: slotHeight }} className="animate-pulse bg-surface2/40" />
                     )}
