@@ -15,6 +15,9 @@ const PdfStatus = ({ children, spinner = false, error = false }) => (
 const GAP = 16; // space between pages
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 4;
+// Browsers cap canvas size (~4096px per side on mobile Safari/Chrome); going
+// over renders a BLANK white page. Stay safely under it.
+const MAX_CANVAS_DIM = 3800;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 // Supersample a bit for crisp text, but cap so high zoom doesn't blow up memory.
 const RENDER_DPR = Math.min(2, (typeof window !== "undefined" && window.devicePixelRatio) || 1);
@@ -77,6 +80,17 @@ const PdfOpener = (props) => {
   const pageWidth = contentW ? Math.round(contentW * zoom) : 0; // committed render width
   const slotHeight = pageWidth ? Math.round(pageWidth * pageRatio) : 400;
   const colHeight = numPages ? numPages * (slotHeight + GAP) : 0;
+
+  // Scale the device-pixel-ratio down only when the page would exceed the max
+  // canvas size — keeps normal zoom crisp, prevents blank pages at high zoom.
+  const renderDpr = Math.max(
+    0.8,
+    Math.min(
+      RENDER_DPR,
+      MAX_CANVAS_DIM / Math.max(1, pageWidth),
+      MAX_CANVAS_DIM / Math.max(1, pageWidth * pageRatio)
+    )
+  );
 
   const recompute = useCallback(() => {
     const el = containerRef.current;
@@ -254,8 +268,8 @@ const PdfOpener = (props) => {
                         renderTextLayer={false}
                         renderAnnotationLayer={false}
                         width={pageWidth}
-                        devicePixelRatio={RENDER_DPR}
-                        loading={<div style={{ height: slotHeight }} className="animate-pulse bg-surface2/40" />}
+                        devicePixelRatio={renderDpr}
+                        loading={<div style={{ height: slotHeight }} className="bg-white" />}
                       />
                     ) : (
                       <div style={{ height: slotHeight }} className="animate-pulse bg-surface2/40" />
