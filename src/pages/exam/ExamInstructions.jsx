@@ -137,15 +137,15 @@ const ExamInstructions = () => {
 
         <div className="mt-10">
           {resumeActive ? (
-            <div>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2 text-sm font-medium text-text">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-warning" />
+            <div className="max-w-md space-y-4">
+              <div className="flex items-center gap-2.5 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm font-medium text-text">
+                <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-warning" />
                 İmtahanınız davam edir — qaldığınız yerdən davam edin.
               </div>
               <Button
                 onClick={() => navigate(`/exam/${singleExam._id}/start`)}
                 size="lg"
-                className="w-full sm:w-auto"
+                className="w-full"
               >
                 <FiPlay /> İmtahanı davam et
               </Button>
