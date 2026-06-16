@@ -280,18 +280,21 @@ const Quiz = () => {
   };
 
   // Anti-cheat: when the exam enables it, lock the page down and log leaving.
-  // A violation is counted ONLY when the tab is actually hidden (switched away
-  // or minimized) via the Page Visibility API — this is the reliable signal.
-  // We deliberately do NOT use window "blur" or fullscreen-exit, because
-  // browser dialogs (password manager, autofill), OS notifications, devtools,
-  // etc. fire those without the user ever leaving the exam, which caused false
-  // auto-submits. copy/paste/right-click/selection/shortcuts are still blocked,
-  // and fullscreen is requested as a soft deterrent (exiting is not penalised).
+  // A violation is counted when the page is hidden (minimize / tab switch) OR
+  // the window loses focus to another window/app. To dodge the false positives
+  // that browser dialogs (password manager, autofill) cause, a focus loss is
+  // only counted if focus hasn't returned after a short delay, and a startup
+  // grace ignores dialogs that pop right after login. copy/paste/right-click/
+  // selection/shortcuts are blocked; the fullscreen gate hides the content
+  // whenever not in fullscreen.
   useEffect(() => {
     if (access !== "allowed" || !attempt?.antiCheat) return;
+    const startedAt = Date.now();
+    let blurTimer = null;
 
     const registerViolation = () => {
       if (submittingRef.current) return;
+      if (Date.now() - startedAt < 3000) return; // startup grace (login dialogs)
       const now = Date.now();
       if (now - lastVioRef.current < 1200) return; // de-dupe rapid events
       lastVioRef.current = now;
@@ -303,13 +306,30 @@ const Quiz = () => {
         toast.error("Çoxlu pozuntu aşkarlandı — imtahan dayandırılır.");
         submitAnswerSheet();
       } else {
-        toast.warn(`Diqqət! Başqa tab/pəncərəyə keçmək qadağandır (${v}/${ANTICHEAT_LIMIT}).`);
+        toast.warn(`Diqqət! İmtahandan çıxmaq qadağandır (${v}/${ANTICHEAT_LIMIT}).`);
       }
     };
 
     const onVisibility = () => {
       if (document.visibilityState === "hidden") registerViolation();
     };
+    // Window lost focus (another window/app came forward). Confirm after a beat
+    // so a transient dialog that returns focus quickly isn't penalised.
+    const onBlur = () => {
+      if (blurTimer) return;
+      blurTimer = setTimeout(() => {
+        blurTimer = null;
+        if (!document.hasFocus()) registerViolation();
+      }, 700);
+    };
+    const onFocus = () => {
+      if (blurTimer) {
+        clearTimeout(blurTimer);
+        blurTimer = null;
+      }
+    };
+    const onFs = () => setIsFs(!!document.fullscreenElement);
+    setIsFs(!!document.fullscreenElement);
     const block = (e) => e.preventDefault();
     const onKey = (e) => {
       const k = (e.key || "").toLowerCase();
@@ -317,11 +337,10 @@ const Quiz = () => {
         e.preventDefault();
       }
     };
-    // Track fullscreen so the gate overlay can force the student back in.
-    const onFs = () => setIsFs(!!document.fullscreenElement);
-    setIsFs(!!document.fullscreenElement);
 
     document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("blur", onBlur);
+    window.addEventListener("focus", onFocus);
     document.addEventListener("fullscreenchange", onFs);
     document.addEventListener("contextmenu", block);
     document.addEventListener("copy", block);
@@ -343,7 +362,10 @@ const Quiz = () => {
     }
 
     return () => {
+      if (blurTimer) clearTimeout(blurTimer);
       document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("focus", onFocus);
       document.removeEventListener("fullscreenchange", onFs);
       document.removeEventListener("contextmenu", block);
       document.removeEventListener("copy", block);
