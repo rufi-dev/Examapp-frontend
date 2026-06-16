@@ -6,7 +6,6 @@ import { AdminTeacherLink } from "./protect/hiddenLink";
 import ThemeToggle from "./ui/ThemeToggle";
 import {
   FiGrid,
-  FiBookOpen,
   FiBarChart2,
   FiAward,
   FiUser,
@@ -20,16 +19,19 @@ import {
 
 const navItems = [
   { to: "/dashboard", label: "İcmal", icon: FiGrid, end: true },
-  { to: "/tags", label: "İmtahanlar", icon: FiBookOpen },
+  // /tags shows the category list (category -> class -> exam), so the label
+  // matches the page (titled "Kateqoriyalar"), not "İmtahanlar".
+  { to: "/tags", label: "Kateqoriyalar", icon: FiTag },
   { to: "/myExams", label: "İmtahanlarım", icon: FiAward },
   { to: "/myResults", label: "Nəticələrim", icon: FiBarChart2 },
   { to: "/profile", label: "Profil", icon: FiUser },
   { to: "/changePassword", label: "Şifrə", icon: FiLock },
 ];
 
+// "Add category" already lives as a button on the Kateqoriyalar page, so the
+// admin nav doesn't repeat it — it only keeps user management here.
 const adminNav = [
   { to: "/users", label: "İstifadəçilər", icon: FiUsers },
-  { to: "/tagAdd", label: "Kateqoriyalar", icon: FiTag },
 ];
 
 const sideLink = ({ isActive }) =>
