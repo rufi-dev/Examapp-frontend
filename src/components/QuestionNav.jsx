@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { FiGrid, FiX } from "react-icons/fi";
 
 // SAT/IELTS-style question navigator. A compact header button shows progress
@@ -96,4 +96,4 @@ const QuestionNav = ({ total = 0, answers = [], marked = [], onJump }) => {
   );
 };
 
-export default QuestionNav;
+export default memo(QuestionNav);

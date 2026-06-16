@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { FiFlag } from "react-icons/fi";
 
 const LABELS = { Cm: "Qapalı sual", Co: "Açıq sual", Cma: "Uyğunluq", Cd: "Ətraflı yazı" };
@@ -153,4 +154,6 @@ const QuestionType = ({
   );
 };
 
-export default QuestionType;
+// Memoized: the exam runner re-renders every second (timer), but the question
+// sheet only needs to re-render when answers/marked/handlers change.
+export default memo(QuestionType);

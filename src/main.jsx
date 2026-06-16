@@ -4,8 +4,6 @@ import App from './App.jsx'
 import './index.css'
 import { Provider } from "react-redux"
 import { store } from '../redux/store.js'
-import * as serviceWorkerRegistration from './serviceWorkerRegistration';
-
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <Provider store={store}>
@@ -13,8 +11,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </Provider>
 )
 
-// If you want your app to work offline and load faster, you can change
-// unregister() to register() below. Note this comes with some pitfalls.
-// Learn more about service workers: https://cra.link/PWA
-serviceWorkerRegistration.unregister();
+// The service worker is registered by vite-plugin-pwa (registerType: autoUpdate).
+// The old CRA unregister() call was removed — it was tearing that SW down on
+// every load (register→unregister churn) and disabling the PWA's offline cache.
 

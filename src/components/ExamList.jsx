@@ -83,7 +83,10 @@ const ExamList = ({ classId }) => {
   const { user } = useSelector((state) => state.auth);
   const navigate = useNavigate();
   const [loadedOnce, setLoadedOnce] = useState(false);
-  const now = useServerNow(); // one ticking clock shared by all cards
+  // The card pills show coarse units ("starts in 2 days", "closes in 45 min"),
+  // so a 30s tick is plenty — a 1s tick would re-reconcile the whole grid 60x/min
+  // for zero visible change.
+  const now = useServerNow(30000); // shared, low-frequency clock for all cards
 
 
 

@@ -517,7 +517,8 @@ export const getAttemptStatus = createAsyncThunk(
   "quiz/getAttemptStatus",
   async (examId, thunkAPI) => {
     try {
-      return await quizService.getAttemptStatus(examId);
+      // The details page (only caller of this thunk) needs used/maxTry.
+      return await quizService.getAttemptStatus(examId, true);
     } catch (error) {
       const message =
         (error.response && error.response.data && error.response.data.message) ||

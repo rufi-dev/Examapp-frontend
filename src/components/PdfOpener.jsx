@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, memo } from "react";
 import { Document, Page } from "react-pdf";
 import { FiZoomIn, FiZoomOut, FiMaximize, FiAlertCircle } from "react-icons/fi";
 import Spinner from "./Spinner";
@@ -335,4 +335,6 @@ const PdfOpener = (props) => {
   );
 };
 
-export default PdfOpener;
+// Memoized: the heaviest component in the exam (canvas rendering). pdfFile is
+// stable, so it must not re-rasterize just because the parent's 1s timer ticked.
+export default memo(PdfOpener);

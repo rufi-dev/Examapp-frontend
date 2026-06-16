@@ -151,8 +151,12 @@ const startAttempt = async (examId, password) => {
 
 //Is there an exam in progress for this user (resume available)? Also used to
 //poll the shared attempt's live state (violations/terminated) across devices.
-export const getAttemptStatus = async (examId) => {
-    const response = await axios.get(API_URL + "exam/" + examId + "/attemptStatus")
+export const getAttemptStatus = async (examId, counts) => {
+    // counts=1 also returns used/maxTry (extra DB counts) — only the details
+    // page needs it; the in-exam 8s poll omits it to stay cheap.
+    const response = await axios.get(
+        API_URL + "exam/" + examId + "/attemptStatus" + (counts ? "?counts=1" : "")
+    )
     return response.data
 }
 

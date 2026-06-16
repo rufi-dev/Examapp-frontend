@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useDispatch } from "react-redux";
 import { startAttempt, getPdfByExam } from "../../../redux/features/quiz/quizSlice";
 import { reportViolation, getAttemptStatus } from "../../../redux/features/quiz/quizService";
@@ -90,19 +90,24 @@ const Quiz = () => {
 
   // "Mark for review" flags + jump-to-question (navigator grid).
   const [marked, setMarked] = useState([]);
-  const toggleMark = (i) =>
-    setMarked((prev) => {
-      const next = [...prev];
-      next[i] = !next[i];
-      return next;
-    });
-  const jumpToQuestion = (i) => {
+  // useCallback so these stay reference-stable across the 1s timer ticks, which
+  // lets the memoized QuestionType / QuestionNav skip re-rendering each second.
+  const toggleMark = useCallback(
+    (i) =>
+      setMarked((prev) => {
+        const next = [...prev];
+        next[i] = !next[i];
+        return next;
+      }),
+    []
+  );
+  const jumpToQuestion = useCallback((i) => {
     setMobileView("answers"); // on mobile, make the answer sheet visible first
     requestAnimationFrame(() => {
       const el = document.getElementById(`q-${i}`);
       if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
     });
-  };
+  }, []);
 
   // Fullscreen lock (anti-cheat): the questions are gated until the student is
   // in fullscreen; leaving it (or minimizing) hides everything until they
@@ -136,7 +141,9 @@ const Quiz = () => {
   };
 
   const deadline = attempt?.expiresAt ? new Date(attempt.expiresAt).getTime() : null;
-  const questions = attempt?.questions || [];
+  // Stable reference so the memoized question sheet doesn't reconcile every
+  // time the 1s timer ticks (only when the attempt actually changes).
+  const questions = useMemo(() => attempt?.questions || [], [attempt]);
   const totalCount = questions.length || answers.length;
 
   // Start (or resume) the attempt. The server gates access (verification,
@@ -537,14 +544,14 @@ const Quiz = () => {
     examActiveRef.current = active;
   }, [attempt?.antiCheat, isFs, fsBypass, fsSupported, secondScreen]);
 
-  const handleAnswerChange = (e, index, type) => {
+  const handleAnswerChange = useCallback((e, index, type) => {
     const value = e.target.value;
     setAnswers((prev) => {
       const updated = [...prev];
       updated[index] = { ...updated[index], answer: value, type };
       return updated;
     });
-  };
+  }, []);
 
   const remaining = () => {
     if (timeLeft === null) return "--:--";
