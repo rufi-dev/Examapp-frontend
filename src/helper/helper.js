@@ -2,38 +2,25 @@ export function attempts_Number(result) {
   return result.filter((r) => r !== -1).length;
 }
 
-// Point distribution for an exam, by question position:
-//   - the first 18 questions share 55 points
-//   - the remaining questions share 45 points
-//   => total is ALWAYS exactly 100 for exams with 19+ questions.
-// For 18 or fewer questions, the full 100 is split across them.
+// Point distribution for an exam, by question position. The last group's
+// per-question value is rounded to 2 decimals (45/7 -> 6.43) and the first 18
+// questions split whatever remains, so every question within a group is worth
+// the same and the grand total is exactly 100:
+//   (100 - 6.43*7)/18 = 3.055 each  ->  3.055*18 + 6.43*7 = 100.
+// For 18 or fewer questions, the full 100 is split equally.
 export const FIRST_GROUP_SIZE = 18;
 export const FIRST_GROUP_POINTS = 55;
 export const SECOND_GROUP_POINTS = 45;
-
-// Split `total` points across `n` questions as 2-decimal values that sum to
-// EXACTLY `total`. The leftover cents are handed out one-by-one (largest
-// remainder) instead of repeating a rounded share, so e.g. 55 over 18 is
-// 3.06 × 10 + 3.05 × 8 = 55.00 — never 3.06 × 18 = 55.08 that pushes the
-// grand total past 100.
-function distribute(total, n) {
-  if (n <= 0) return [];
-  const cents = Math.round(total * 100);
-  const base = Math.floor(cents / n);
-  const rem = cents - base * n; // this many questions get one extra cent
-  return Array.from({ length: n }, (_, i) => (base + (i < rem ? 1 : 0)) / 100);
-}
 
 export function questionPoints(count) {
   const n = Number(count) || 0;
   if (n <= 0) return [];
   const aCount = Math.min(FIRST_GROUP_SIZE, n);
   const bCount = n - aCount;
-  if (bCount === 0) return distribute(100, n);
-  return [
-    ...distribute(FIRST_GROUP_POINTS, aCount),
-    ...distribute(SECOND_GROUP_POINTS, bCount),
-  ];
+  if (bCount === 0) return Array.from({ length: n }, () => 100 / n);
+  const secondEach = Math.round((SECOND_GROUP_POINTS / bCount) * 100) / 100; // 6.43
+  const firstEach = (100 - secondEach * bCount) / aCount; // 3.055
+  return Array.from({ length: n }, (_, i) => (i < aCount ? firstEach : secondEach));
 }
 
 // Score an answer sheet against the exam's correct answers.

@@ -231,7 +231,7 @@ const QuestionAdd = () => {
                           Sual {i + 1}
                         </span>
                         <span className="rounded-full border border-line bg-surface px-2 py-0.5 text-xs font-semibold text-muted">
-                          {(points[i] || 0).toFixed(2)} bal
+                          {Number((points[i] || 0).toFixed(3))} bal
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
