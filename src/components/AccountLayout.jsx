@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { RESET, logout, selectUser } from "../../redux/features/auth/authSlice";
 import { AdminTeacherLink } from "./protect/hiddenLink";
@@ -19,6 +19,7 @@ import {
   FiLogOut,
   FiMenu,
   FiX,
+  FiChevronRight,
 } from "react-icons/fi";
 
 const navItems = [
@@ -43,6 +44,23 @@ const adminNav = [
   { to: "/notifications", label: "Bildirişlər", icon: FiBell },
 ];
 
+// Parent crumbs (with links) for nested routes; the current page itself is
+// appended from the `title` prop. Leaf pages get just İcmal / {title}.
+const sectionParents = (path) => {
+  if (/^\/exam\/[^/]+\/result$/.test(path)) return [{ label: "Nəticələrim", to: "/myResults" }];
+  if (/^\/exam\/[^/]+\/resultsByExam$/.test(path)) return [{ label: "Nəticələr", to: "/examResults" }];
+  if (/^\/user\/[^/]+\/details$/.test(path)) return [{ label: "İstifadəçilər", to: "/users" }];
+  if (
+    /^\/(classAdd|class|examAdd|exams|tagAdd)\b/.test(path) ||
+    /^\/class\/edit\//.test(path) ||
+    /^\/exam\/edit\//.test(path) ||
+    /^\/exam\/[^/]+$/.test(path) ||
+    /^\/tag\/edit\//.test(path)
+  )
+    return [{ label: "Kateqoriyalar", to: "/tags" }];
+  return [];
+};
+
 const sideLink = ({ isActive }) =>
   `flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-colors ${
     isActive ? "bg-primary/12 text-primary" : "text-muted hover:bg-surface2 hover:text-text"
@@ -62,21 +80,20 @@ export default function AccountLayout({ title, subtitle, actions, children }) {
 
   const close = () => setOpen(false);
 
-  const hour = new Date().getHours();
-  const greeting =
-    hour < 6
-      ? "Gecəniz xeyir"
-      : hour < 12
-      ? "Sabahınız xeyir"
-      : hour < 18
-      ? "Günortanız xeyir"
-      : "Axşamınız xeyir";
-  const firstName = user?.name?.split(" ")[0] || "";
-  const today = new Date().toLocaleDateString("az-AZ", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
+  const { pathname } = useLocation();
+  // Location breadcrumb: İcmal (root) → section parents → current page.
+  const rawCrumbs =
+    pathname === "/dashboard"
+      ? [{ label: "İcmal", current: true }]
+      : [
+          { label: "İcmal", to: "/dashboard" },
+          ...sectionParents(pathname),
+          { label: title || "Səhifə", current: true },
+        ];
+  // Drop a current crumb that just repeats its parent (e.g. /tags).
+  const crumbs = rawCrumbs.filter(
+    (c, i) => !(i > 0 && c.label === rawCrumbs[i - 1].label)
+  );
 
   const SideItem = ({ to, label, icon: Icon, end }) => (
     <NavLink to={to} end={end} onClick={close} className={sideLink}>
@@ -195,14 +212,36 @@ export default function AccountLayout({ title, subtitle, actions, children }) {
               </span>
               <span className="font-display text-lg font-bold tracking-tight text-text">İmtahan</span>
             </Link>
-            {/* Desktop: the left of the header is otherwise empty — show a
-                personal time-based greeting + today's date. */}
-            <div className="hidden lg:block">
-              <p className="font-display text-base font-bold leading-tight text-text">
-                {greeting}{firstName ? `, ${firstName}` : ""} 👋
-              </p>
-              <p className="text-xs capitalize text-muted">{today}</p>
-            </div>
+            {/* Desktop: pressable location breadcrumb (the left is otherwise
+                empty here — logo/menu are mobile-only). */}
+            <nav
+              aria-label="Naviqasiya"
+              className="hidden min-w-0 max-w-[42vw] items-center gap-1.5 text-sm lg:flex"
+            >
+              {crumbs.map((c, i) => (
+                <span key={i} className="flex min-w-0 items-center gap-1.5">
+                  {i > 0 && (
+                    <FiChevronRight className="shrink-0 text-[14px] text-muted/60" />
+                  )}
+                  {c.current || !c.to ? (
+                    <span
+                      aria-current="page"
+                      className="truncate font-semibold text-text"
+                      title={c.label}
+                    >
+                      {c.label}
+                    </span>
+                  ) : (
+                    <Link
+                      to={c.to}
+                      className="shrink-0 text-muted transition-colors hover:text-text"
+                    >
+                      {c.label}
+                    </Link>
+                  )}
+                </span>
+              ))}
+            </nav>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <NotificationBell />
