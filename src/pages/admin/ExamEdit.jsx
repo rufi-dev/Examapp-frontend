@@ -101,7 +101,13 @@ const ExamEdit = () => {
           { method: "post", body: pdfForm }
         );
         const pdfData = await response.json();
-        pdfUrl = pdfData.secure_url?.toString();
+        if (!response.ok || !pdfData.secure_url) {
+          return toast.error(
+            pdfData?.error?.message ||
+              "PDF yüklənmədi — fayl çox böyük ola bilər (Cloudinary limiti ~10MB)."
+          );
+        }
+        pdfUrl = pdfData.secure_url.toString();
       }
       const examData = {
         name,
