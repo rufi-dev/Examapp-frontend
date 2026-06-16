@@ -3,34 +3,37 @@ import { Document, Page } from "react-pdf";
 import { FiZoomIn, FiZoomOut, FiMaximize } from "react-icons/fi";
 
 const GAP = 16; // space between pages
-const PAD = 8; // padding around the column
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 4;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+// Supersample a bit for crisp text, but cap so high zoom doesn't blow up memory.
+const RENDER_DPR = Math.min(2, (typeof window !== "undefined" && window.devicePixelRatio) || 1);
 
-// Normal scrollable PDF viewer: scroll to read; pinch (mobile) / buttons /
-// Ctrl+wheel (desktop) to zoom — zooming keeps the focal point under your
-// fingers/cursor. Only the pages near the view render (virtualized), at high
-// density so they stay sharp.
+// Scrollable PDF viewer. Pages are rendered at their ACTUAL display size (like a
+// real PDF viewer) so text stays sharp at 100% and at every zoom — no CSS
+// upscaling of a fixed render. Pinch uses a transient transform for smoothness,
+// then commits and re-renders crisp. Virtualized so any page count stays light.
 const PdfOpener = (props) => {
   const [numPages, setNumPages] = useState(0);
   const [pageRatio, setPageRatio] = useState(1.414); // height / width (A4)
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(1); // committed -> pages render at this size
+  const [live, setLive] = useState(1); // transient pinch scale (CSS only)
   const [visible, setVisible] = useState(new Set([1, 2, 3]));
   const visibleRef = useRef(new Set([1, 2, 3]));
   const containerRef = useRef(null);
   const [width, setWidth] = useState(0);
   const zoomRef = useRef(1);
   zoomRef.current = zoom;
-  const pinch = useRef({ active: false });
+  const liveRef = useRef(1);
+  liveRef.current = live;
   const pendingScroll = useRef(null);
   const rafRef = useRef(0);
+  const pinch = useRef({ active: false });
 
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    // Ignore 0-width (panel hidden via display:none on tab switch) so the PDF
-    // stays rendered and keeps its scroll position when shown again.
+    // Ignore 0-width (panel hidden on a tab switch) to keep scroll position.
     const update = () => {
       const w = el.clientWidth;
       if (w > 0) setWidth(w);
@@ -61,23 +64,22 @@ const PdfOpener = (props) => {
   };
 
   const contentW = width || 0;
-  const pageWidth = contentW ? contentW - 2 * PAD : 0;
+  const pageWidth = contentW ? Math.round(contentW * zoom) : 0; // committed render width
   const slotHeight = pageWidth ? Math.round(pageWidth * pageRatio) : 400;
-  const colHeight = numPages ? 2 * PAD + numPages * (slotHeight + GAP) : 0;
+  const colHeight = numPages ? numPages * (slotHeight + GAP) : 0;
 
-  // Which pages are near the viewport (-> render), from the native scroll pos.
   const recompute = useCallback(() => {
     const el = containerRef.current;
     if (!el || !numPages || !slotHeight) return;
-    const z = zoomRef.current || 1;
+    const L = liveRef.current || 1;
     const ch = el.clientHeight || 1;
     const st = el.scrollTop || 0;
-    const buffer = ch * 1.5; // render well beyond the view to avoid flicker
-    const top = st / z - buffer;
-    const bottom = (st + ch) / z + buffer;
+    const buffer = ch * 1.5;
+    const top = st / L - buffer;
+    const bottom = (st + ch) / L + buffer;
     const next = new Set();
     for (let p = 1; p <= numPages; p++) {
-      const pTop = PAD + (p - 1) * (slotHeight + GAP);
+      const pTop = (p - 1) * (slotHeight + GAP);
       if (pTop + slotHeight >= top && pTop <= bottom) next.add(p);
     }
     const cur = visibleRef.current;
@@ -93,7 +95,6 @@ const PdfOpener = (props) => {
     recompute();
   }, [recompute, width, pageRatio, zoom]);
 
-  // Keep the focal point fixed after a zoom (applied once the wrapper resized).
   useLayoutEffect(() => {
     const el = containerRef.current;
     if (el && pendingScroll.current) {
@@ -101,22 +102,7 @@ const PdfOpener = (props) => {
       el.scrollTop = pendingScroll.current.top;
       pendingScroll.current = null;
     }
-  }, [zoom]);
-
-  // Zoom toward a screen point (sx, sy) relative to the container.
-  const zoomTo = useCallback((target, sx, sy) => {
-    const el = containerRef.current;
-    if (!el) return;
-    const z0 = zoomRef.current;
-    const z1 = clamp(target, MIN_ZOOM, MAX_ZOOM);
-    if (z1 === z0) return;
-    const fx = sx != null ? sx : el.clientWidth / 2;
-    const fy = sy != null ? sy : el.clientHeight / 2;
-    const baseX = (el.scrollLeft + fx) / z0;
-    const baseY = (el.scrollTop + fy) / z0;
-    pendingScroll.current = { left: baseX * z1 - fx, top: baseY * z1 - fy };
-    setZoom(z1);
-  }, []);
+  }, [zoom, live]);
 
   const onScroll = () => {
     if (rafRef.current) return;
@@ -126,14 +112,24 @@ const PdfOpener = (props) => {
     });
   };
 
+  // Commit zoom toward a screen point (re-renders crisp).
+  const zoomTo = useCallback((target, sx, sy) => {
+    const el = containerRef.current;
+    if (!el) return;
+    const z0 = zoomRef.current;
+    const z1 = clamp(target, MIN_ZOOM, MAX_ZOOM);
+    if (z1 === z0) return;
+    const fx = sx != null ? sx : el.clientWidth / 2;
+    const fy = sy != null ? sy : el.clientHeight / 2;
+    const r = z1 / z0;
+    pendingScroll.current = { left: (el.scrollLeft + fx) * r - fx, top: (el.scrollTop + fy) * r - fy };
+    setZoom(z1);
+  }, []);
+
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
-    const mid = (t, rect) => ({
-      x: (t[0].clientX + t[1].clientX) / 2 - rect.left,
-      y: (t[0].clientY + t[1].clientY) / 2 - rect.top,
-    });
     const onWheel = (e) => {
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
@@ -144,36 +140,37 @@ const PdfOpener = (props) => {
     const onTS = (e) => {
       if (e.touches.length === 2) {
         const rect = el.getBoundingClientRect();
-        const m = mid(e.touches, rect);
-        const z0 = zoomRef.current;
         pinch.current = {
           active: true,
           dist0: dist(e.touches) || 1,
-          zoom0: z0,
-          baseX: (el.scrollLeft + m.x) / z0,
-          baseY: (el.scrollTop + m.y) / z0,
-          mx: m.x,
-          my: m.y,
+          mx: (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left,
+          my: (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top,
+          sl: el.scrollLeft,
+          st: el.scrollTop,
         };
       }
     };
     const onTM = (e) => {
-      if (pinch.current.active && e.touches.length === 2) {
+      const p = pinch.current;
+      if (p.active && e.touches.length === 2) {
         e.preventDefault();
-        const z1 = clamp(
-          pinch.current.zoom0 * (dist(e.touches) / pinch.current.dist0),
-          MIN_ZOOM,
-          MAX_ZOOM
-        );
-        pendingScroll.current = {
-          left: pinch.current.baseX * z1 - pinch.current.mx,
-          top: pinch.current.baseY * z1 - pinch.current.my,
-        };
-        setZoom(z1);
+        const z0 = zoomRef.current;
+        const L = clamp(dist(e.touches) / p.dist0, MIN_ZOOM / z0, MAX_ZOOM / z0);
+        pendingScroll.current = { left: (p.sl + p.mx) * L - p.mx, top: (p.st + p.my) * L - p.my };
+        setLive(L);
       }
     };
     const onTE = (e) => {
-      if (e.touches.length < 2) pinch.current.active = false;
+      const p = pinch.current;
+      if (p.active && e.touches.length < 2) {
+        p.active = false;
+        const z0 = zoomRef.current;
+        const L = liveRef.current;
+        const newZoom = clamp(z0 * L, MIN_ZOOM, MAX_ZOOM);
+        pendingScroll.current = { left: (p.sl + p.mx) * L - p.mx, top: (p.st + p.my) * L - p.my };
+        setLive(1);
+        setZoom(newZoom);
+      }
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     el.addEventListener("touchstart", onTS, { passive: false });
@@ -216,7 +213,7 @@ const PdfOpener = (props) => {
         ref={containerRef}
         onScroll={onScroll}
         style={{ touchAction: "pan-x pan-y" }}
-        className="scrollbar-thin h-full w-full overflow-auto"
+        className="scrollbar-thin h-full w-full overflow-auto p-1"
       >
         <Document
           file={props.pdfFile}
@@ -226,19 +223,17 @@ const PdfOpener = (props) => {
           noData={<div className="py-12 text-center text-sm text-muted">PDF yoxdur</div>}
         >
           {numPages > 0 && contentW > 0 && (
-            <div style={{ width: contentW * zoom, height: colHeight * zoom }}>
+            <div style={{ width: pageWidth * live, height: colHeight * live }}>
               <div
                 style={{
-                  width: contentW,
-                  padding: PAD,
-                  transform: `scale(${zoom})`,
-                  transformOrigin: "top left",
+                  width: pageWidth,
+                  ...(live !== 1 ? { transform: `scale(${live})`, transformOrigin: "top left" } : {}),
                 }}
               >
                 {Array.from({ length: numPages }, (_, i) => i + 1).map((page) => (
                   <div
                     key={page}
-                    className="mx-auto overflow-hidden rounded-xl border border-line bg-white"
+                    className="overflow-hidden rounded-lg border border-line bg-white"
                     style={{ width: pageWidth, minHeight: slotHeight, marginBottom: GAP }}
                   >
                     {visible.has(page) ? (
@@ -247,7 +242,7 @@ const PdfOpener = (props) => {
                         renderTextLayer={false}
                         renderAnnotationLayer={false}
                         width={pageWidth}
-                        devicePixelRatio={3}
+                        devicePixelRatio={RENDER_DPR}
                         loading={<div style={{ height: slotHeight }} className="bg-surface2/30" />}
                       />
                     ) : (

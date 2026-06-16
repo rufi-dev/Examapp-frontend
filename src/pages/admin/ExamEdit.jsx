@@ -115,7 +115,9 @@ const ExamEdit = () => {
         showScore,
         showCorrectAnswers,
         revealAfterEnd,
-        pdfPath: pdfUrl || singleExam.pdf?.path,
+        // Only send a path when a new PDF was uploaded (so the old file is
+        // replaced/deleted, and untouched edits keep the existing PDF).
+        pdfPath: pdfUrl,
       };
       if (name && duration && pdfPath && passingMarks && totalMarks) {
         const editExamData = await dispatch(editExam({ examData, examId }));
