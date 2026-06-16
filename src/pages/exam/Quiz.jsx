@@ -3,7 +3,7 @@ import { useDispatch } from "react-redux";
 import { startAttempt, getPdfByExam } from "../../../redux/features/quiz/quizSlice";
 import { addResult } from "../../../redux/features/quiz/resultSlice";
 import { useNavigate, useParams } from "react-router-dom";
-import { FiClock, FiCheckCircle, FiLock, FiShield } from "react-icons/fi";
+import { FiClock, FiCheckCircle, FiLock, FiEye } from "react-icons/fi";
 import { toast } from "react-toastify";
 import PdfOpener from "../../components/PdfOpener";
 import QuestionType from "../../components/QuestionType";
@@ -400,12 +400,28 @@ const Quiz = () => {
           <div className="flex shrink-0 items-center gap-3">
             {attempt?.antiCheat && (
               <span
-                className={`hidden items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold sm:inline-flex ${
-                  violations > 0 ? "bg-danger/12 text-danger" : "bg-warning/12 text-warning"
+                className={`inline-flex items-center gap-1.5 rounded-lg border-2 px-2.5 py-1 text-sm font-extrabold uppercase tracking-wide ${
+                  violations > 0
+                    ? "animate-pulse border-danger bg-danger text-white shadow-lift"
+                    : "border-danger/60 bg-danger/15 text-danger"
                 }`}
-                title="Anti-cheat aktivdir"
+                title="Anti-cheat aktivdir — başqa tab/pəncərəyə keçmək qadağandır. Pozuntu müəllimə bildirilir."
               >
-                <FiShield /> {violations}/{ANTICHEAT_LIMIT}
+                <span className="relative flex h-2.5 w-2.5">
+                  <span
+                    className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${
+                      violations > 0 ? "bg-white" : "bg-danger"
+                    }`}
+                  />
+                  <span
+                    className={`relative inline-flex h-2.5 w-2.5 rounded-full ${
+                      violations > 0 ? "bg-white" : "bg-danger"
+                    }`}
+                  />
+                </span>
+                <FiEye className="text-2xl" />
+                <span className="hidden md:inline">İzlənilir</span>
+                {violations}/{ANTICHEAT_LIMIT}
               </span>
             )}
             <span className="text-sm font-medium text-muted">
