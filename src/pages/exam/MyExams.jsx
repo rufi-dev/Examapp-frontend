@@ -20,11 +20,12 @@ const MyExams = () => {
   const searchParams = new URLSearchParams(location.search);
   const token = searchParams.get("token");
   const examId = searchParams.get("examId");
+  const sessionId = searchParams.get("session_id");
   const success = searchParams.get("success");
 
   useEffect(() => {
     if (token && success) {
-      dispatch(addExamToUser({ examId, token }));
+      dispatch(addExamToUser({ examId, token, sessionId }));
     }
     dispatch(getExamsByUser());
     // eslint-disable-next-line react-hooks/exhaustive-deps

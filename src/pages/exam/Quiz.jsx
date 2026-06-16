@@ -19,6 +19,7 @@ const DENY = {
   not_started: { msg: "İmtahan hələ başlamayıb", to: (id) => `/exam/details/${id}` },
   finished: { msg: "İmtahan artıq bitib", to: (id) => `/exam/details/${id}` },
   no_questions: { msg: "Bu imtahana suallar əlavə edilməyib", to: (id) => `/exam/details/${id}` },
+  not_owned: { msg: "Bu imtahanı əldə etməlisiniz", to: (id) => `/exam/details/${id}` },
   max_tries: { msg: "Maksimum cəhd sayına çatmısınız", to: (id) => `/exam/${id}/result` },
 };
 
@@ -306,6 +307,7 @@ const Quiz = () => {
             selectedAnswers,
             violations: violationsRef.current,
             terminated: terminatedRef.current,
+            attemptId: attempt?.attemptId,
           },
         })
       ).unwrap();
@@ -431,7 +433,7 @@ const Quiz = () => {
       persistVio(optimistic);
       // The SERVER increments + enforces the limit, so editing JS/storage or
       // reloading can never lower the real tally.
-      reportViolation(examId, reason)
+      reportViolation(examId, reason, attempt?.attemptId)
         .then((res) =>
           applyCount(
             typeof res?.violations === "number" ? res.violations : optimistic,

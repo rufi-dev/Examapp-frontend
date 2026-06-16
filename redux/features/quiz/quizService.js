@@ -18,10 +18,10 @@ const getExamsByClass = async (id) => {
     return response.data
 }
 
-// Report one anti-cheat violation; the server increments + enforces the limit
-// and returns the authoritative { violations, terminated, limit }.
-export const reportViolation = async (examId, reason) => {
-    const response = await axios.post(`${API_URL}exam/${examId}/violation`, { reason })
+// Report one anti-cheat violation against a specific attempt; the server
+// increments + enforces the limit and returns { violations, terminated, limit }.
+export const reportViolation = async (examId, reason, attemptId) => {
+    const response = await axios.post(`${API_URL}exam/${examId}/violation`, { reason, attemptId })
     return response.data
 }
 
@@ -175,8 +175,11 @@ const getResultsByUserByExam = async (examId) => {
 }
 
 //Add Exam to User
-const addExamToUser = async (examId, token) => {
-    const url = API_URL + "addExamToUser/" + examId + (token ? "?token=" + token : "")
+const addExamToUser = async (examId, token, sessionId) => {
+    const params = []
+    if (token) params.push("token=" + encodeURIComponent(token))
+    if (sessionId) params.push("session_id=" + encodeURIComponent(sessionId))
+    const url = API_URL + "addExamToUser/" + examId + (params.length ? "?" + params.join("&") : "")
     const response = await axios.post(url)
     return response.data
 }
