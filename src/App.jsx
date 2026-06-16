@@ -44,6 +44,7 @@ import Modal from "react-modal";
 import { pdfjs } from "react-pdf";
 import ClassAdd from "./pages/admin/ClassAdd";
 import ClassEdit from "./pages/admin/ClassEdit";
+import AccountLayout from "./components/AccountLayout";
 import Classes from "./pages/Classes";
 import { disableReactDevTools } from "@fvilers/disable-react-devtools";
 import ResultsByExam from "./pages/exam/ResultsByExam";
@@ -163,6 +164,16 @@ function App() {
               <Route path="/profile" element={<Profile />} />
               <Route path="/changePassword" element={<ChangePassword />} />
               <Route path="/users" element={<UserList />} />
+              {/* Achievements manager inside the dashboard shell (the public
+                  /ourSuccess page above stays for visitors). */}
+              <Route
+                path="/achievements"
+                element={
+                  <AccountLayout>
+                    <OurSuccess />
+                  </AccountLayout>
+                }
+              />
               <Route path="/myResults" element={<MyResults />} />
               <Route path="/myExams" element={<MyExams />} />
               <Route path="/user/:id/details" element={<UserDetails />} />
