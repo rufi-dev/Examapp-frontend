@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { FiGrid, FiX } from "react-icons/fi";
 
-// SAT/IELTS-style question navigator: a floating button opens a grid of every
-// question coloured by status (answered / blank / marked); tap a number to jump.
+// SAT/IELTS-style question navigator. A compact header button shows progress
+// and opens a grid of every question coloured by status (answered / blank /
+// marked); tap a number to jump.
 const QuestionNav = ({ total = 0, answers = [], marked = [], onJump }) => {
   const [open, setOpen] = useState(false);
   if (!total) return null;
@@ -15,10 +16,13 @@ const QuestionNav = ({ total = 0, answers = [], marked = [], onJump }) => {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="absolute bottom-20 right-4 z-20 inline-flex items-center gap-2 rounded-full border border-line bg-surface px-4 py-2.5 text-sm font-bold text-text shadow-lift transition-colors hover:border-primary/40"
+        className="inline-flex items-center gap-2 rounded-xl border border-line bg-surface px-3 py-1.5 text-sm font-bold text-text transition-colors hover:border-primary/40"
+        title="Suallar xəritəsi"
       >
         <FiGrid className="text-base text-primary" />
-        {answered}/{total}
+        <span className="tabular-nums">
+          {answered}/{total}
+        </span>
         {markedCount > 0 && (
           <span className="grid h-5 min-w-5 place-items-center rounded-full bg-warning px-1 text-xs text-white">
             {markedCount}
@@ -28,7 +32,7 @@ const QuestionNav = ({ total = 0, answers = [], marked = [], onJump }) => {
 
       {open && (
         <div
-          className="absolute inset-0 z-30 flex items-end justify-center bg-black/45 p-3 backdrop-blur-sm sm:items-center"
+          className="fixed inset-0 z-[1200] flex items-end justify-center bg-black/45 p-3 backdrop-blur-sm sm:items-center"
           onClick={() => setOpen(false)}
         >
           <div

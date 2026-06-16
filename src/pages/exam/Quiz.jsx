@@ -75,8 +75,11 @@ const Quiz = () => {
       return next;
     });
   const jumpToQuestion = (i) => {
-    const el = document.getElementById(`q-${i}`);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    setMobileView("answers"); // on mobile, make the answer sheet visible first
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`q-${i}`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   };
 
   const deadline = attempt?.expiresAt ? new Date(attempt.expiresAt).getTime() : null;
@@ -438,9 +441,12 @@ const Quiz = () => {
                 {violations}/{ANTICHEAT_LIMIT}
               </span>
             )}
-            <span className="text-sm font-medium text-muted">
-              Cavablandı: <span className="text-text">{answeredCount}</span> / {totalCount}
-            </span>
+            <QuestionNav
+              total={totalCount}
+              answers={answers}
+              marked={marked}
+              onJump={jumpToQuestion}
+            />
           </div>
         </div>
 
@@ -500,15 +506,6 @@ const Quiz = () => {
               </div>
             )}
           </div>
-
-          {pdfData && (
-            <QuestionNav
-              total={totalCount}
-              answers={answers}
-              marked={marked}
-              onJump={jumpToQuestion}
-            />
-          )}
 
           <div className="shrink-0 border-t border-line p-3 sm:p-4">
             <Button
