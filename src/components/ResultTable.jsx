@@ -13,7 +13,7 @@ const ResultTable = ({ results }) => {
         <thead>
           <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
             <th className="px-6 py-4 font-semibold">Ad Soyad</th>
-            <th className="px-6 py-4 font-semibold">Cəhd</th>
+            <th className="px-6 py-4 font-semibold">Cavablanan</th>
             <th className="px-6 py-4 font-semibold">Yığılan bal</th>
           </tr>
         </thead>

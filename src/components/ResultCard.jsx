@@ -7,10 +7,12 @@ const ResultCard = ({ result }) => {
   // (no correct/wrong marking, which would otherwise be misleading).
   const hasCorrect = correctAnswers.length > 0;
 
+  // Trim like the server scorer so per-cell marks match the score / summary.
+  const norm = (v) => String(v ?? "").trim();
   const isCorrect = (i) =>
     !!selectedAnswers[i]?.answer &&
     !!correctAnswers[i]?.answer &&
-    selectedAnswers[i].answer === correctAnswers[i].answer;
+    norm(selectedAnswers[i].answer) === norm(correctAnswers[i].answer);
 
   const rowLabel =
     "sticky left-0 z-10 bg-surface px-4 py-3 text-left font-semibold text-text whitespace-nowrap border-r border-line";

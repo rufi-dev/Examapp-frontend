@@ -62,10 +62,15 @@ const Result = () => {
   const canScore = lastResult.earnPoints != null;
   const canAnswers = correctAnswers.length > 0;
   const total = correctAnswers.length;
+  const norm = (v) => String(v ?? "").trim();
   const correct = correctAnswers.filter(
-    (a, i) => a?.answer && selectedAnswers[i]?.answer === a.answer
+    (a, i) => a?.answer && norm(selectedAnswers[i]?.answer) === norm(a.answer)
   ).length;
-  const pct = total ? Math.round((correct / total) * 100) : 0;
+  // The ring shows the actual SCORE (earnPoints is out of 100, after weighting
+  // and negative marking) so the visual can never disagree with the bal shown.
+  const scorePct = canScore
+    ? Math.max(0, Math.min(100, Math.round(lastResult.earnPoints)))
+    : 0;
 
   return (
     <AccountLayout title="İmtahan nəticələri" subtitle="Son cəhdinin nəticəsi və təhlili.">
@@ -95,22 +100,22 @@ const Result = () => {
         </div>
       ) : (
         <div className="mb-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {canAnswers && (
+          {canScore && (
             <div className="flex items-center gap-5 rounded-3xl border border-line bg-surface p-6 shadow-soft">
-              <ScoreRing value={pct} />
+              <ScoreRing value={scorePct} />
               <div>
-                <p className="text-sm text-muted">Düzgün cavablar</p>
-                <p className="font-display text-2xl font-bold text-text">
-                  {correct} / {total}
+                <p className="text-sm text-muted">Nəticə (bal)</p>
+                <p className="font-display text-3xl font-extrabold text-primary">
+                  {lastResult.earnPoints}
                 </p>
               </div>
             </div>
           )}
-          {canScore && (
+          {canAnswers && (
             <div className="flex flex-col justify-center rounded-3xl border border-line bg-surface p-6 shadow-soft">
-              <p className="text-sm text-muted">Yığılan bal</p>
-              <p className="font-display text-3xl font-extrabold text-primary">
-                {lastResult.earnPoints}
+              <p className="text-sm text-muted">Düzgün cavablar</p>
+              <p className="font-display text-2xl font-bold text-text">
+                {correct} / {total}
               </p>
             </div>
           )}
