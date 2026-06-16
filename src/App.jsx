@@ -52,6 +52,7 @@ import { disableReactDevTools } from "@fvilers/disable-react-devtools";
 import ResultsByExam from "./pages/exam/ResultsByExam";
 import { useCookies } from "react-cookie";
 import CookieConsent from "./components/CookieConsent";
+import InstallPrompt from "./components/InstallPrompt";
 
 axios.defaults.withCredentials = true;
 
@@ -64,6 +65,7 @@ const Wrapper = ({ children }) => {
     <div className="relative">
       {children}
       {!cookies.cookie_consent && <CookieConsent />}
+      <InstallPrompt />
     </div>
   );
 };
