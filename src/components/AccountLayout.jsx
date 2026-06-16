@@ -13,6 +13,7 @@ import {
   FiUsers,
   FiTag,
   FiStar,
+  FiPieChart,
   FiLogOut,
   FiMenu,
   FiX,
@@ -36,6 +37,7 @@ const navItems = [
 // admin nav doesn't repeat it — it only keeps user management here.
 const adminNav = [
   { to: "/users", label: "İstifadəçilər", icon: FiUsers },
+  { to: "/examResults", label: "Nəticələr", icon: FiPieChart },
 ];
 
 const sideLink = ({ isActive }) =>
