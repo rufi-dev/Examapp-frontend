@@ -7,6 +7,7 @@ import { FiClock, FiCheckCircle, FiLock, FiEye } from "react-icons/fi";
 import { toast } from "react-toastify";
 import PdfOpener from "../../components/PdfOpener";
 import QuestionType from "../../components/QuestionType";
+import QuestionNav from "../../components/QuestionNav";
 import Spinner from "../../components/Spinner";
 import Button from "../../components/ui/Button";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
@@ -64,6 +65,19 @@ const Quiz = () => {
   const [violations, setViolations] = useState(0);
   const violationsRef = useRef(0);
   const lastVioRef = useRef(0);
+
+  // "Mark for review" flags + jump-to-question (navigator grid).
+  const [marked, setMarked] = useState([]);
+  const toggleMark = (i) =>
+    setMarked((prev) => {
+      const next = [...prev];
+      next[i] = !next[i];
+      return next;
+    });
+  const jumpToQuestion = (i) => {
+    const el = document.getElementById(`q-${i}`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const deadline = attempt?.expiresAt ? new Date(attempt.expiresAt).getTime() : null;
   const questions = attempt?.questions || [];
@@ -467,7 +481,7 @@ const Quiz = () => {
         </div>
 
         <div
-          className={`min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft lg:flex ${
+          className={`relative min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft lg:flex ${
             mobileView === "answers" ? "flex" : "hidden"
           }`}
         >
@@ -477,6 +491,8 @@ const Quiz = () => {
                 answers={answers}
                 questions={questions}
                 handleAnswerChange={handleAnswerChange}
+                marked={marked}
+                onToggleMark={toggleMark}
               />
             ) : (
               <div className="flex h-full items-center justify-center">
@@ -484,6 +500,15 @@ const Quiz = () => {
               </div>
             )}
           </div>
+
+          {pdfData && (
+            <QuestionNav
+              total={totalCount}
+              answers={answers}
+              marked={marked}
+              onJump={jumpToQuestion}
+            />
+          )}
 
           <div className="shrink-0 border-t border-line p-3 sm:p-4">
             <Button

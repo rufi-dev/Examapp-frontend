@@ -1,3 +1,5 @@
+import { FiFlag } from "react-icons/fi";
+
 const LABELS = { Cm: "Qapalı sual", Co: "Açıq sual", Cma: "Uyğunluq", Cd: "Ətraflı yazı" };
 const DEFAULT_OPTIONS = ["a", "b", "c", "d", "e"];
 
@@ -8,9 +10,29 @@ const QuestionType = ({
   review,
   questions,
   handleAnswerChange,
+  marked = [],
+  onToggleMark,
 }) => {
   const selectedAnswers = review?.selectedAnswers || [];
   const isReview = selectedAnswers.length > 0;
+
+  // "Mark for review" flag — only during the exam (when onToggleMark is given).
+  const markBtn = (i) =>
+    !isReview && onToggleMark ? (
+      <button
+        type="button"
+        onClick={() => onToggleMark(i)}
+        aria-label="Yoxlama üçün işarələ"
+        className={`inline-flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-xs font-semibold transition-colors ${
+          marked[i]
+            ? "border-warning bg-warning/15 text-warning"
+            : "border-line text-muted hover:text-text"
+        }`}
+      >
+        <FiFlag className={marked[i] ? "fill-current" : ""} />
+        {marked[i] ? "İşarələnib" : "İşarələ"}
+      </button>
+    ) : null;
 
   const countBased = () => {
     const defs = [];
@@ -67,10 +89,13 @@ const QuestionType = ({
       {defs.map((def, i) => {
         if (def.type === "Cm") {
           return (
-            <div key={i}>
-              <p className="mb-2.5 text-[15px] font-semibold text-text">
-                {LABELS.Cm} {i + 1}
-              </p>
+            <div key={i} id={`q-${i}`} className="scroll-mt-4">
+              <div className="mb-2.5 flex items-center justify-between gap-2">
+                <p className="text-[15px] font-semibold text-text">
+                  {LABELS.Cm} {i + 1}
+                </p>
+                {markBtn(i)}
+              </div>
               <div className="flex flex-wrap gap-3">
                 {(def.options || DEFAULT_OPTIONS).map((option) => (
                   <button
@@ -96,14 +121,17 @@ const QuestionType = ({
         const isCorrect =
           isReview && correctAnswer && userAnswer ? correctAnswer === userAnswer : null;
         return (
-          <div key={i}>
-            <p className="mb-2 flex flex-wrap items-center gap-2 text-sm font-medium text-text">
-              {LABELS[def.type] || "Sual"} {i + 1}
-              {isCorrect === true && <span className="text-success">✓</span>}
-              {isCorrect === false && (
-                <span className="text-danger">✕ Doğru: {correctAnswer}</span>
-              )}
-            </p>
+          <div key={i} id={`q-${i}`} className="scroll-mt-4">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-text">
+                {LABELS[def.type] || "Sual"} {i + 1}
+                {isCorrect === true && <span className="text-success">✓</span>}
+                {isCorrect === false && (
+                  <span className="text-danger">✕ Doğru: {correctAnswer}</span>
+                )}
+              </p>
+              {markBtn(i)}
+            </div>
             <textarea
               rows={def.type === "Co" ? 4 : 6}
               readOnly={isReview}
