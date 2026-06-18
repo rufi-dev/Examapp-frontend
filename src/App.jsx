@@ -23,6 +23,17 @@ import InstallPrompt from "./components/InstallPrompt";
 
 axios.defaults.withCredentials = true;
 
+// The frontend (Vercel) and API (Hetzner) are on different domains, so the auth
+// cookie is a third-party cookie that Safari/iOS and privacy browsers drop —
+// which is why most phones couldn't stay logged in. We send the JWT (saved at
+// login) in an Authorization header instead, which works on every device. The
+// cookie stays as a fallback where it still works.
+axios.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
 const Home = lazy(() => import("./pages/Home"));
 const Login = lazy(() => import("./pages/auth/Login"));
 const Register = lazy(() => import("./pages/auth/Register"));

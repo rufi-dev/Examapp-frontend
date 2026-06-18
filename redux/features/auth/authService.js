@@ -8,21 +8,29 @@ const axiosInstance = axios.create({
     withCredentials: true
 });
 
+// Save the JWT so the axios interceptor can send it as a Bearer header (the
+// cross-domain cookie is unreliable on Safari/iOS).
+const saveToken = (data) => {
+    if (data && data.token) localStorage.setItem("token", data.token)
+    return data
+}
+
 // Register User
 const register = async (userData) => {
     const response = await axiosInstance.post(API_URL + "register", userData)
-    return response.data
+    return saveToken(response.data)
 }
 
 // Login User
 const login = async (userData) => {
     const response = await axiosInstance.post(API_URL + "login", userData)
-    return response.data
+    return saveToken(response.data)
 }
 
 // Logout User
 const logout = async () => {
     const response = await axios.get(API_URL + "logout")
+    localStorage.removeItem("token")
     return response.data.message
 }
 
@@ -101,13 +109,13 @@ const sendLoginCode = async (email) => {
 // Login With Code
 const loginWithCode = async (code, email) => {
     const response = await axios.post(API_URL + "loginWithCode/" + email, code)
-    return response.data
+    return saveToken(response.data)
 }
 
 // Login With Google
 const loginWithGoogle = async (userToken) => {
     const response = await axios.post(API_URL + "google/callback", userToken)
-    return response.data
+    return saveToken(response.data)
 }
 
 // Get User By Id
