@@ -214,7 +214,14 @@ const ExamList = ({ classId }) => {
                   <ExamAction to={`/exam/${exam._id}/resultsByExam`} label="Nəticələr">
                     <FiBarChart2 className="text-[17px]" />
                   </ExamAction>
-                  <ExamAction to={`/exam/${exam._id}/addQuestion`} label="Sual əlavə et">
+                  <ExamAction
+                    to={
+                      exam.mode === "structured"
+                        ? `/exam/${exam._id}/build`
+                        : `/exam/${exam._id}/addQuestion`
+                    }
+                    label="Sual əlavə et"
+                  >
                     <AiOutlinePlus className="text-[17px]" />
                   </ExamAction>
                   <ExamAction to={`/exam/edit/${exam._id}`} label="Redaktə et">

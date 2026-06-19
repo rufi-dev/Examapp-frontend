@@ -11,6 +11,7 @@ import {
 import ResultCard from "../../components/ResultCard";
 import AccountLayout from "../../components/AccountLayout";
 import Button from "../../components/ui/Button";
+import { isSelectionCorrect } from "../../helper/helper";
 import { FiRotateCcw, FiList, FiAlertTriangle } from "react-icons/fi";
 
 const ScoreRing = ({ value = 0 }) => {
@@ -62,9 +63,10 @@ const Result = () => {
   const canScore = lastResult.earnPoints != null;
   const canAnswers = correctAnswers.length > 0;
   const total = correctAnswers.length;
-  const norm = (v) => String(v ?? "").trim();
-  const correct = correctAnswers.filter(
-    (a, i) => a?.answer && norm(selectedAnswers[i]?.answer) === norm(a.answer)
+  // Correct-count mirrors the server scorer for every type (Cm/Cs/Cma/open) via
+  // the shared helper, so this tally agrees with the score ring and the analysis.
+  const correct = correctAnswers.filter((a, i) =>
+    isSelectionCorrect(a?.answer, selectedAnswers[i]?.answer, a?.type)
   ).length;
   // The ring shows the actual SCORE (earnPoints is out of 100, after weighting
   // and negative marking) so the visual can never disagree with the bal shown.

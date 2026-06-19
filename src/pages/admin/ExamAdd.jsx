@@ -17,6 +17,7 @@ import PriceField from "../../components/ui/PriceField";
 import VideoLinkField from "../../components/ui/VideoLinkField";
 import NegativeMarkingField from "../../components/ui/NegativeMarkingField";
 import AntiCheatField from "../../components/ui/AntiCheatField";
+import StructuredGradingFields from "../../components/ui/StructuredGradingFields";
 import { toUtcIso } from "../../helper/datetime";
 
 const fileInputClass =
@@ -28,12 +29,17 @@ const ExamAdd = () => {
   const cloud_name = import.meta.env.VITE_CLOUD_NAME;
   const upload_preset = import.meta.env.VITE_UPLAD_PRESET;
   const [pdf, setPdf] = useState(null);
+  // "pdf" = upload a question PDF (legacy). "structured" = write native
+  // questions in the in-app builder after the exam is created.
+  const [source, setSource] = useState("pdf");
   const [passwordEnabled, setPasswordEnabled] = useState(false);
   const [maxTryEnabled, setMaxTryEnabled] = useState(false);
   const [priceEnabled, setPriceEnabled] = useState(false);
   const [videoEnabled, setVideoEnabled] = useState(false);
   const [negEnabled, setNegEnabled] = useState(false);
   const [antiEnabled, setAntiEnabled] = useState(false);
+  const [shuffleEnabled, setShuffleEnabled] = useState(false);
+  const [partialEnabled, setPartialEnabled] = useState(false);
 
   const navigate = useNavigate();
   const { classId } = useParams();
@@ -89,10 +95,15 @@ const ExamAdd = () => {
 
   const addExamForm = async (e) => {
     e.preventDefault();
+    const isStructured = source === "structured";
     let pdfUrl;
 
     try {
-      if (pdf !== null && pdf.type === "application/pdf") {
+      if (!isStructured) {
+        // PDF mode: a PDF is required.
+        if (!pdf || pdf.type !== "application/pdf") {
+          return toast.error("Zəhmət olmasa PDF fayl seçin");
+        }
         const pdfForm = new FormData();
         pdfForm.append("file", pdf);
         const upRes = await axios.post(
@@ -121,15 +132,20 @@ const ExamAdd = () => {
       examData.append("wrongPerPenalty", wrongPerPenalty);
       examData.append("correctPerPenalty", correctPerPenalty);
       examData.append("antiCheat", antiEnabled);
-      examData.append("pdf", pdfUrl);
+      examData.append("mode", isStructured ? "structured" : "pdf");
+      examData.append("shuffleOptions", isStructured && shuffleEnabled);
+      examData.append("partialCredit", isStructured && partialEnabled);
+      if (!isStructured) examData.append("pdf", pdfUrl);
 
       const addExamData = await dispatch(addExam({ examData, classId }));
 
       if (addExamData.type !== "quiz/addExam/rejected") {
         // Jump straight into the question builder for the new exam so the
-        // teacher can add questions + correct answers right away.
+        // teacher can add questions + correct answers right away. Structured
+        // exams go to the native builder; PDF exams to the answer-key builder.
         const newExamId = addExamData.payload?.data?._id;
-        navigate(newExamId ? `/exam/${newExamId}/addQuestion` : "/exam/" + classId);
+        if (!newExamId) return navigate("/exam/" + classId);
+        navigate(isStructured ? `/exam/${newExamId}/build` : `/exam/${newExamId}/addQuestion`);
       }
     } catch (error) {
       toast.error(error.message);
@@ -160,9 +176,39 @@ const ExamAdd = () => {
                   placeholder="Məsələn: Buraxılış sınağı #1"
                 />
               </Field>
-              <Field label="PDF fayl" htmlFor="pdf" required hint="İmtahan sualları (PDF)">
-                <input type="file" id="pdf" name="pdf" accept="application/pdf" onChange={handlePdfChange} className={fileInputClass} />
+
+              <Field label="Sual mənbəyi" hint={source === "pdf" ? "Hazır PDF faylı yüklə" : "Sualları tətbiqdə özün yaz"}>
+                <div className="inline-flex w-full rounded-xl border border-line bg-surface p-1">
+                  <button
+                    type="button"
+                    onClick={() => setSource("pdf")}
+                    className={`flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                      source === "pdf" ? "bg-primary text-primary-fg shadow-sm" : "text-muted hover:text-text"
+                    }`}
+                  >
+                    PDF yüklə
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSource("structured")}
+                    className={`flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                      source === "structured" ? "bg-primary text-primary-fg shadow-sm" : "text-muted hover:text-text"
+                    }`}
+                  >
+                    Sualları özüm yazım
+                  </button>
+                </div>
               </Field>
+
+              {source === "pdf" ? (
+                <Field label="PDF fayl" htmlFor="pdf" required hint="İmtahan sualları (PDF)">
+                  <input type="file" id="pdf" name="pdf" accept="application/pdf" onChange={handlePdfChange} className={fileInputClass} />
+                </Field>
+              ) : (
+                <p className="rounded-xl border border-dashed border-line bg-surface px-4 py-3 text-sm text-muted">
+                  İmtahanı yaratdıqdan sonra sualları əlavə etmək üçün avtomatik olaraq sual qurğusuna yönləndiriləcəksiniz.
+                </p>
+              )}
             </div>
           </FormSection>
 
@@ -208,6 +254,14 @@ const ExamAdd = () => {
             onChange={handleInputChange}
           />
           <AntiCheatField enabled={antiEnabled} onToggle={setAntiEnabled} />
+          {source === "structured" && (
+            <StructuredGradingFields
+              shuffle={shuffleEnabled}
+              partial={partialEnabled}
+              onShuffle={setShuffleEnabled}
+              onPartial={setPartialEnabled}
+            />
+          )}
           <ResultVisibility
             showScore={showScore}
             showCorrectAnswers={showCorrectAnswers}

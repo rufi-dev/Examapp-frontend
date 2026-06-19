@@ -26,7 +26,21 @@ const Review = () => {
   }, [dispatch, resultId]);
 
   useEffect(() => {
-    if (review && review.correctAnswers) {
+    if (!review) return;
+    const isStructured = review?.examId?.mode === "structured";
+    const examQuestions = review?.examId?.questions?.correctAnswers;
+    if (isStructured && Array.isArray(examQuestions)) {
+      // Structured correct value, by type: choice index/indices for Cm/Cs, the
+      // correct right text in left order for matching, the answer string for open.
+      setAnswers(
+        examQuestions.map((q) => {
+          let answer = q.answer;
+          if (Array.isArray(q.correct)) answer = q.correct;
+          else if (q.type === "Cma" && Array.isArray(q.pairs)) answer = q.pairs.map((p) => p.right);
+          return { type: q.type || "", answer };
+        })
+      );
+    } else if (review.correctAnswers) {
       setAnswers(review.correctAnswers.map((a) => ({ answer: a.answer, type: a.type || "" })));
     }
   }, [review]);
@@ -35,8 +49,11 @@ const Review = () => {
     const fetchData = async () => {
       if (review && review.examId && review.examId._id) {
         await dispatch(getExamTagandClass(review.examId._id));
-        const getPdfAction = await dispatch(getPdfByExam({ examId: review.examId._id }));
-        setPdfData(getPdfAction.payload?.path || null);
+        // Structured exams have no PDF — skip the fetch (and its 404).
+        if (review.examId.mode !== "structured") {
+          const getPdfAction = await dispatch(getPdfByExam({ examId: review.examId._id }));
+          setPdfData(getPdfAction.payload?.path || null);
+        }
       }
     };
     fetchData();
@@ -68,6 +85,25 @@ const Review = () => {
   const vis = review?.visibility;
   const canSeeScore = !vis || vis.canSeeScore;
   const hasAnswers = review?.correctAnswers?.length > 0;
+  const structured = review?.examId?.mode === "structured";
+  const examQuestions = review?.examId?.questions?.correctAnswers;
+  // What the analysis renders: structured exams carry their display content
+  // (text/choices) on the revealed exam questions; PDF exams just need type +
+  // letter options from the stored result.
+  const questionDefs =
+    structured && Array.isArray(examQuestions)
+      ? examQuestions.map((q) => ({
+          type: q.type,
+          options: q.options,
+          text: q.text,
+          image: q.image,
+          images: q.images,
+          latex: q.latex,
+          choices: q.choices,
+          pairs: q.pairs, // matching: full pairs (revealed) for the review rendering
+          explanation: q.explanation, // teacher note, revealed only with answers
+        }))
+      : (review?.correctAnswers || []).map((q) => ({ type: q.type, options: q.options }));
   const solutionPhotos = [
     ...(review?.examId?.solutionPhotos || []),
     ...(review?.photos || []),
@@ -109,38 +145,43 @@ const Review = () => {
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-1 rounded-xl border border-line bg-surface2/50 p-1 lg:hidden">
-          <button type="button" onClick={() => setMobileView("pdf")} className={tabClass(mobileView === "pdf")}>
-            Suallar (PDF)
-          </button>
-          <button type="button" onClick={() => setMobileView("answers")} className={tabClass(mobileView === "answers")}>
-            Cavablar
-          </button>
-        </div>
+        {!structured && (
+          <div className="grid grid-cols-2 gap-1 rounded-xl border border-line bg-surface2/50 p-1 lg:hidden">
+            <button type="button" onClick={() => setMobileView("pdf")} className={tabClass(mobileView === "pdf")}>
+              Suallar (PDF)
+            </button>
+            <button type="button" onClick={() => setMobileView("answers")} className={tabClass(mobileView === "answers")}>
+              Cavablar
+            </button>
+          </div>
+        )}
       </header>
 
       <div className="flex min-h-0 flex-1 gap-4 p-3 sm:p-4 lg:p-6">
-        {/* PDF panel */}
-        <div
-          className={`min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft lg:flex ${
-            mobileView === "pdf" ? "flex" : "hidden"
-          }`}
-        >
-          <div className="hidden border-b border-line px-5 py-3 text-sm font-semibold text-muted lg:block">
-            İmtahan sualları (PDF)
+        {/* PDF panel (PDF exams only) */}
+        {!structured && (
+          <div
+            className={`min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft lg:flex ${
+              mobileView === "pdf" ? "flex" : "hidden"
+            }`}
+          >
+            <div className="hidden border-b border-line px-5 py-3 text-sm font-semibold text-muted lg:block">
+              İmtahan sualları (PDF)
+            </div>
+            <div className="min-h-0 flex-1">
+              <PdfOpener pdfFile={pdfData} />
+            </div>
           </div>
-          <div className="min-h-0 flex-1">
-            <PdfOpener pdfFile={pdfData} />
-          </div>
-        </div>
+        )}
 
         {/* Answers / analysis panel */}
         <div
           className={`min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft lg:flex ${
-            mobileView === "answers" ? "flex" : "hidden"
+            structured || mobileView === "answers" ? "flex" : "hidden"
           }`}
         >
           <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+            <div className={structured ? "mx-auto w-full max-w-2xl" : ""}>
             {review?._id && (
               <div className="mb-6">
                 <h2 className="mb-2 text-sm font-semibold text-muted">Ümumi nəticə</h2>
@@ -154,10 +195,7 @@ const Review = () => {
                 singleTag={singleTag}
                 singleClass={singleClass}
                 review={review}
-                questions={review.correctAnswers.map((q) => ({
-                  type: q.type,
-                  options: q.options,
-                }))}
+                questions={questionDefs}
                 handleAnswerChange={() => {}}
               />
             ) : (
@@ -183,6 +221,7 @@ const Review = () => {
                 </div>
               </div>
             )}
+            </div>
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { useState, memo } from "react";
 import { FiGrid, FiX } from "react-icons/fi";
+import { hasAnswer } from "../helper/helper";
 
 // SAT/IELTS-style question navigator. A compact header button shows progress
 // and opens a grid of every question coloured by status (answered / blank /
@@ -8,7 +9,7 @@ const QuestionNav = ({ total = 0, answers = [], marked = [], onJump }) => {
   const [open, setOpen] = useState(false);
   if (!total) return null;
 
-  const answered = answers.slice(0, total).filter((a) => a && a.answer).length;
+  const answered = answers.slice(0, total).filter(hasAnswer).length;
   const markedCount = marked.slice(0, total).filter(Boolean).length;
 
   return (
@@ -53,7 +54,7 @@ const QuestionNav = ({ total = 0, answers = [], marked = [], onJump }) => {
 
             <div className="grid grid-cols-6 gap-2 sm:grid-cols-8">
               {Array.from({ length: total }, (_, i) => {
-                const a = !!answers[i]?.answer;
+                const a = hasAnswer(answers[i]);
                 const m = !!marked[i];
                 return (
                   <button

@@ -55,6 +55,7 @@ const ClassAdd = lazy(() => import("./pages/admin/ClassAdd"));
 const ClassEdit = lazy(() => import("./pages/admin/ClassEdit"));
 const ExamEdit = lazy(() => import("./pages/admin/ExamEdit"));
 const QuestionAdd = lazy(() => import("./pages/admin/QuestionAdd"));
+const StructuredBuilder = lazy(() => import("./pages/admin/StructuredBuilder"));
 const TagEdit = lazy(() => import("./pages/admin/TagEdit"));
 const UserDetails = lazy(() => import("./pages/admin/UserDetails"));
 const ExamResults = lazy(() => import("./pages/admin/ExamResults"));
@@ -214,6 +215,7 @@ function App() {
 
               {/* Full-width focus pages (PDF builder / review / exam runner) */}
               <Route path="/exam/:examId/addQuestion" element={<QuestionAdd />} />
+              <Route path="/exam/:examId/build" element={<StructuredBuilder />} />
               <Route path="/result/:resultId/review" element={<Review />} />
               <Route path="/exam/:examId/start" element={<Quiz />} />
             </Route>

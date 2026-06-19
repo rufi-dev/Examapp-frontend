@@ -19,6 +19,8 @@
     "blurhash": "^2.0.5",
     "framer-motion": "^10.16.0",
     "js-cookie": "^3.0.5",
+    "katex": "^0.17.0",
+    "mathlive": "^0.110.0",
     "react": "^18.2.0",
     "react-blurhash": "^0.3.0",
     "react-confirm-alert": "^3.0.6",

@@ -12,6 +12,7 @@ import QuestionNav from "../../components/QuestionNav";
 import Spinner from "../../components/Spinner";
 import Button from "../../components/ui/Button";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
+import { hasAnswer } from "../../helper/helper";
 
 // Maps server denial reasons to a message + where to send the user.
 const DENY = {
@@ -141,6 +142,9 @@ const Quiz = () => {
   };
 
   const deadline = attempt?.expiresAt ? new Date(attempt.expiresAt).getTime() : null;
+  // Structured (native) exam: questions are rendered in-app, there is no PDF
+  // panel and no PDF-readiness gate.
+  const structured = attempt?.mode === "structured";
   // Stable reference so the memoized question sheet doesn't reconcile every
   // time the 1s timer ticks (only when the attempt actually changes).
   const questions = useMemo(() => attempt?.questions || [], [attempt]);
@@ -173,17 +177,20 @@ const Quiz = () => {
         setTimeout(() => submitAnswerSheet(), 0);
         return;
       }
-      dispatch(getPdfByExam({ examId }))
-        .unwrap()
-        .then((pdf) => {
-          // eslint-disable-next-line no-console
-          console.log("[PDF] getPdfByExam ->", pdf?.path);
-          if (!cancelledRef.current) setPdfData(pdf?.path || null);
-        })
-        .catch((e) => {
-          // eslint-disable-next-line no-console
-          console.error("[PDF] getPdfByExam failed:", e);
-        });
+      // Structured exams have no PDF — skip the fetch (and its 404).
+      if (data.mode !== "structured") {
+        dispatch(getPdfByExam({ examId }))
+          .unwrap()
+          .then((pdf) => {
+            // eslint-disable-next-line no-console
+            console.log("[PDF] getPdfByExam ->", pdf?.path);
+            if (!cancelledRef.current) setPdfData(pdf?.path || null);
+          })
+          .catch((e) => {
+            // eslint-disable-next-line no-console
+            console.error("[PDF] getPdfByExam failed:", e);
+          });
+      }
     } catch (err) {
       if (cancelledRef.current) return;
       const reason = err?.reason;
@@ -561,10 +568,10 @@ const Quiz = () => {
   };
 
   const aboutToEnd = timeLeft !== null && timeLeft <= 30;
-  const answeredCount = answers.slice(0, totalCount).filter((a) => a && a.answer).length;
+  const answeredCount = answers.slice(0, totalCount).filter(hasAnswer).length;
   const unansweredNums = answers
     .slice(0, totalCount)
-    .map((a, i) => (a && a.answer ? null : i + 1))
+    .map((a, i) => (hasAnswer(a) ? null : i + 1))
     .filter((n) => n != null);
 
   // Password-protected exam: prompt before anything loads.
@@ -709,56 +716,64 @@ const Quiz = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-1 rounded-xl border border-line bg-surface2/50 p-1 lg:hidden">
-          <button
-            type="button"
-            onClick={() => setMobileView("pdf")}
-            className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
-              mobileView === "pdf" ? "bg-primary text-primary-fg shadow-soft" : "text-muted"
-            }`}
-          >
-            Suallar (PDF)
-          </button>
-          <button
-            type="button"
-            onClick={() => setMobileView("answers")}
-            className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
-              mobileView === "answers" ? "bg-primary text-primary-fg shadow-soft" : "text-muted"
-            }`}
-          >
-            Cavablar
-          </button>
-        </div>
+        {!structured && (
+          <div className="grid grid-cols-2 gap-1 rounded-xl border border-line bg-surface2/50 p-1 lg:hidden">
+            <button
+              type="button"
+              onClick={() => setMobileView("pdf")}
+              className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+                mobileView === "pdf" ? "bg-primary text-primary-fg shadow-soft" : "text-muted"
+              }`}
+            >
+              Suallar (PDF)
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileView("answers")}
+              className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+                mobileView === "answers" ? "bg-primary text-primary-fg shadow-soft" : "text-muted"
+              }`}
+            >
+              Cavablar
+            </button>
+          </div>
+        )}
       </header>
 
       <div className="flex min-h-0 flex-1 gap-4 p-3 sm:p-4 lg:p-6">
-        <div
-          className={`min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft lg:flex ${
-            mobileView === "pdf" ? "flex" : "hidden"
-          }`}
-        >
-          <div className="hidden border-b border-line px-5 py-3 text-sm font-semibold text-muted lg:block">
-            İmtahan sualları (PDF)
+        {!structured && (
+          <div
+            className={`min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft lg:flex ${
+              mobileView === "pdf" ? "flex" : "hidden"
+            }`}
+          >
+            <div className="hidden border-b border-line px-5 py-3 text-sm font-semibold text-muted lg:block">
+              İmtahan sualları (PDF)
+            </div>
+            <div className="min-h-0 flex-1">
+              <PdfOpener pdfFile={pdfData} />
+            </div>
           </div>
-          <div className="min-h-0 flex-1">
-            <PdfOpener pdfFile={pdfData} />
-          </div>
-        </div>
+        )}
 
         <div
           className={`relative min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft lg:flex ${
-            mobileView === "answers" ? "flex" : "hidden"
+            structured || mobileView === "answers" ? "flex" : "hidden"
           }`}
         >
           <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
-            {pdfData ? (
-              <QuestionType
-                answers={answers}
-                questions={questions}
-                handleAnswerChange={handleAnswerChange}
-                marked={marked}
-                onToggleMark={toggleMark}
-              />
+            {/* Structured exams render immediately (no PDF gate); PDF exams wait
+                for the PDF so the question sheet aligns with what's visible. */}
+            {structured || pdfData ? (
+              <div className={structured ? "mx-auto w-full max-w-2xl" : ""}>
+                <QuestionType
+                  answers={answers}
+                  questions={questions}
+                  handleAnswerChange={handleAnswerChange}
+                  marked={marked}
+                  onToggleMark={toggleMark}
+                />
+              </div>
             ) : (
               <div className="flex h-full items-center justify-center">
                 <Spinner size={36} className="text-primary" />

@@ -37,6 +37,11 @@ export default defineConfig({
         // index.html. The API lives on another origin, so the SW never touches
         // it (the denylist is just a safety net).
         globPatterns: ['**/*.{js,css,html,svg,png,ico,webp,woff2}'],
+        // Don't precache the heavy ADMIN-ONLY chunks onto every student's device:
+        // the structured-question builder bundles MathLive (~800KB) and the
+        // results PDF export bundles @react-pdf (~1.3MB). Staff load them on
+        // demand over the network instead; students never download them.
+        globIgnores: ['**/StructuredBuilder-*.js', '**/ResultsPdfExport-*.js'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api/],
         cleanupOutdatedCaches: true,

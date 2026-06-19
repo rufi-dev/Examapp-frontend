@@ -17,6 +17,7 @@ import PriceField from "../../components/ui/PriceField";
 import VideoLinkField from "../../components/ui/VideoLinkField";
 import NegativeMarkingField from "../../components/ui/NegativeMarkingField";
 import AntiCheatField from "../../components/ui/AntiCheatField";
+import StructuredGradingFields from "../../components/ui/StructuredGradingFields";
 import { toLocalInput, toUtcIso } from "../../helper/datetime";
 import { HiOutlinePhotograph } from "react-icons/hi";
 import { FiX, FiFileText } from "react-icons/fi";
@@ -36,9 +37,12 @@ const ExamEdit = () => {
   const [videoEnabled, setVideoEnabled] = useState(false);
   const [negEnabled, setNegEnabled] = useState(false);
   const [antiEnabled, setAntiEnabled] = useState(false);
+  const [shuffleEnabled, setShuffleEnabled] = useState(false);
+  const [partialEnabled, setPartialEnabled] = useState(false);
 
   useRedirectLoggedOutUser("/login");
   const { singleExam } = useSelector((state) => state.quiz);
+  const isStructured = singleExam?.mode === "structured";
   const navigate = useNavigate();
   const { examId } = useParams();
 
@@ -120,6 +124,8 @@ const ExamEdit = () => {
       setVideoEnabled(!!singleExam.videoLink);
       setNegEnabled(!!singleExam.negativeMarking);
       setAntiEnabled(!!singleExam.antiCheat);
+      setShuffleEnabled(!!singleExam.shuffleOptions);
+      setPartialEnabled(!!singleExam.partialCredit);
     }
   }, [singleExam]);
 
@@ -208,11 +214,15 @@ const ExamEdit = () => {
         wrongPerPenalty,
         correctPerPenalty,
         antiCheat: antiEnabled,
+        partialCredit: partialEnabled,
+        shuffleOptions: shuffleEnabled,
         // Only send a path when a new PDF was uploaded (so the old file is
         // replaced/deleted, and untouched edits keep the existing PDF).
         pdfPath: pdfUrl,
       };
-      if (name && duration && pdfPath && passingMarks && totalMarks) {
+      // Structured exams have no PDF, so don't require one to save.
+      const ready = name && duration && passingMarks && totalMarks && (isStructured || pdfPath);
+      if (ready) {
         const editExamData = await dispatch(editExam({ examData, examId }));
         if (editExamData.type != "quiz/editExam/rejected") {
           navigate(-1);
@@ -242,30 +252,43 @@ const ExamEdit = () => {
               <Field label="İmtahan adı" htmlFor="name" required>
                 <input value={name} onChange={handleInputChange} type="text" name="name" id="name" className={inputClass} />
               </Field>
-              <Field label="PDF fayl" htmlFor="pdf" hint="Dəyişmək üçün yeni fayl seçin">
-                <input type="file" id="pdf" name="pdf" accept="application/pdf" onChange={handlePdfChange} className={fileInputClass} />
-                {/* A file input can't be pre-filled by the browser, so show
-                    what's already attached (or the freshly picked file). */}
-                {pdf ? (
-                  <p className="mt-2 text-xs text-muted">
-                    Yeni fayl: <span className="font-semibold text-text">{pdf.name}</span>
-                  </p>
-                ) : pdfPath ? (
-                  <p className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted">
-                    <FiFileText className="shrink-0 text-primary" /> Cari PDF:
-                    <a
-                      href={pdfPath}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-semibold text-primary hover:underline"
-                    >
-                      {decodeURIComponent(pdfPath.split("/").pop().split("?")[0])}
-                    </a>
-                  </p>
-                ) : (
-                  <p className="mt-2 text-xs text-warning">PDF seçilməyib</p>
-                )}
-              </Field>
+              {isStructured ? (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-surface2/40 px-3.5 py-3 text-sm">
+                  <span className="font-medium text-text">Variantlı (manual) imtahan</span>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/exam/${examId}/build`)}
+                    className="font-semibold text-primary hover:underline"
+                  >
+                    Sualları redaktə et →
+                  </button>
+                </div>
+              ) : (
+                <Field label="PDF fayl" htmlFor="pdf" hint="Dəyişmək üçün yeni fayl seçin">
+                  <input type="file" id="pdf" name="pdf" accept="application/pdf" onChange={handlePdfChange} className={fileInputClass} />
+                  {/* A file input can't be pre-filled by the browser, so show
+                      what's already attached (or the freshly picked file). */}
+                  {pdf ? (
+                    <p className="mt-2 text-xs text-muted">
+                      Yeni fayl: <span className="font-semibold text-text">{pdf.name}</span>
+                    </p>
+                  ) : pdfPath ? (
+                    <p className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+                      <FiFileText className="shrink-0 text-primary" /> Cari PDF:
+                      <a
+                        href={pdfPath}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-semibold text-primary hover:underline"
+                      >
+                        {decodeURIComponent(pdfPath.split("/").pop().split("?")[0])}
+                      </a>
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-xs text-warning">PDF seçilməyib</p>
+                  )}
+                </Field>
+              )}
             </div>
           </FormSection>
 
@@ -349,6 +372,14 @@ const ExamEdit = () => {
             onChange={handleInputChange}
           />
           <AntiCheatField enabled={antiEnabled} onToggle={setAntiEnabled} />
+          {isStructured && (
+            <StructuredGradingFields
+              shuffle={shuffleEnabled}
+              partial={partialEnabled}
+              onShuffle={setShuffleEnabled}
+              onPartial={setPartialEnabled}
+            />
+          )}
           <ResultVisibility
             showScore={showScore}
             showCorrectAnswers={showCorrectAnswers}

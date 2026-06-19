@@ -1,6 +1,11 @@
 // Pure analytics helpers — computed on the client from results already fetched.
+import { hasAnswer, isSelectionCorrect } from "./helper";
 
 const num = (v) => (v == null ? null : Number(v));
+
+// A correct answer key is present (non-blank). Handles index/text arrays (empty
+// array = no key) and strings.
+const hasKey = (v) => v != null && v !== "" && !(Array.isArray(v) && v.length === 0);
 
 // Class-level stats for an exam from its results.
 export function examStats(results, passingMarks) {
@@ -68,16 +73,19 @@ export function itemAnalysis(results) {
     for (let i = 0; i < n; i++) {
       const it = items[i];
       const caRaw = correct[i]?.answer;
-      // Mirror the server scorer: trim, and treat whitespace-only as blank.
-      const ca = String(caRaw ?? "").trim();
-      const sa = String(selected[i]?.answer ?? "").trim();
-      if (ca !== "") {
+      const type = correct[i]?.type;
+      const sv = selected[i]?.answer;
+      const keyed = hasKey(caRaw);
+      if (keyed) {
         it.answer = caRaw;
-        it.type = correct[i]?.type;
+        it.type = type;
       }
       it.total += 1;
-      if (sa === "") it.blank += 1;
-      else if (ca !== "" && sa === ca) it.correct += 1;
+      // Shape-aware: an unanswered map/array/index-0/string all classify
+      // correctly (a Cma map stringified to "[object Object]" used to count as
+      // a non-blank wrong answer here).
+      if (!hasAnswer({ answer: sv })) it.blank += 1;
+      else if (keyed && isSelectionCorrect(caRaw, sv, type)) it.correct += 1;
       else it.wrong += 1;
     }
   });
