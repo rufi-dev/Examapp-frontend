@@ -5,14 +5,24 @@ import { Document, Page, pdfjs } from "react-pdf";
 // can fail to resolve in the dev server for lazily-loaded chunks, which surfaces
 // as "PDF yüklənmədi" on localhost.
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.js?url";
-import { FiX, FiCrop, FiChevronLeft, FiChevronRight, FiUploadCloud } from "react-icons/fi";
+import {
+  FiX,
+  FiCrop,
+  FiChevronLeft,
+  FiChevronRight,
+  FiUploadCloud,
+  FiZoomIn,
+  FiZoomOut,
+} from "react-icons/fi";
 import { toast } from "react-toastify";
 import Spinner from "./Spinner";
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-const PAGE_W = 640; // CSS render width of the page in the cropper
+const PAGE_W = 640; // base CSS render width of the page (zoom multiplies it)
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 4;
 
 // Crop a figure out of a PDF page — entirely in the browser, so it costs NO AI
 // tokens. The teacher drags a box over a figure; we copy that region out of the
@@ -25,8 +35,18 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
   const [loadErr, setLoadErr] = useState(null);
+  const [zoom, setZoom] = useState(1);
   const wrapRef = useRef(null);
   const drag = useRef(null);
+
+  const renderW = Math.round(PAGE_W * zoom);
+  // Changing zoom resizes the page, so the old selection box no longer lines up
+  // — clear it. The crop itself stays sharp because it reads the canvas's real
+  // device pixels, which grow with zoom (a bigger, higher-resolution crop).
+  const changeZoom = (z) => {
+    setZoom(clamp(z, MIN_ZOOM, MAX_ZOOM));
+    setSel(null);
+  };
 
   const pos = (e) => {
     const r = wrapRef.current.getBoundingClientRect();
@@ -115,6 +135,29 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 rounded-xl border border-line bg-surface px-1 py-0.5">
+            <button
+              type="button"
+              onClick={() => changeZoom(zoom - 0.5)}
+              disabled={zoom <= MIN_ZOOM}
+              className="grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors hover:bg-surface2 hover:text-text disabled:opacity-30"
+              aria-label="Kiçilt"
+            >
+              <FiZoomOut />
+            </button>
+            <span className="w-11 text-center text-xs font-semibold tabular-nums text-muted">
+              {Math.round(zoom * 100)}%
+            </span>
+            <button
+              type="button"
+              onClick={() => changeZoom(zoom + 0.5)}
+              disabled={zoom >= MAX_ZOOM}
+              className="grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors hover:bg-surface2 hover:text-text disabled:opacity-30"
+              aria-label="Böyüt"
+            >
+              <FiZoomIn />
+            </button>
+          </div>
           {numPages > 1 && (
             <div className="flex items-center gap-1 rounded-xl border border-line bg-surface px-1 py-0.5">
               <button
@@ -181,7 +224,7 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
             </label>
           </div>
         ) : (
-          <div className="mx-auto" style={{ width: PAGE_W }}>
+          <div className="mx-auto" style={{ width: renderW }}>
             <Document
               file={src}
               onLoadSuccess={(pdf) => {
@@ -221,11 +264,11 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
                 onPointerMove={onMove}
                 onPointerUp={onUp}
                 className="relative cursor-crosshair select-none rounded-lg border border-line bg-white shadow-soft"
-                style={{ width: PAGE_W, touchAction: "none" }}
+                style={{ width: renderW, touchAction: "none" }}
               >
                 <Page
                   pageNumber={page}
-                  width={PAGE_W}
+                  width={renderW}
                   renderTextLayer={false}
                   renderAnnotationLayer={false}
                   onRenderSuccess={() => setReady(true)}
