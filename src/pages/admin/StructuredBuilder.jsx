@@ -28,6 +28,11 @@ import { questionPoints } from "../../helper/helper";
 
 const norm = (v) => String(v ?? "").trim();
 
+// Multi-line fields need top padding + auto height (inputClass is a fixed-height
+// single-line style, which top-aligns text and makes the placeholder look high).
+const taClass =
+  "w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-[15px] leading-relaxed text-text placeholder:text-muted/60 outline-none transition focus:border-primary focus:ring-4 focus:ring-ring/25 resize-y";
+
 // Native question types offered in the builder.
 const TYPES = [
   { key: "Cm", label: "Tək seçim" },
@@ -979,7 +984,7 @@ const StructuredBuilder = () => {
                     onChange={(e) => patch(i, (qq) => ({ ...qq, text: e.target.value }))}
                     rows={2}
                     placeholder="Sual mətni..."
-                    className={`${inputClass} mb-2 resize-y`}
+                    className={`${taClass} mb-2`}
                   />
                   <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start">
                     <ImagePicker url={q.image} onChange={(u) => patch(i, (qq) => ({ ...qq, image: u }))} />
@@ -1158,7 +1163,7 @@ const StructuredBuilder = () => {
                       onChange={(e) => patch(i, (qq) => ({ ...qq, explanation: e.target.value }))}
                       rows={2}
                       placeholder="İzah (ixtiyari) — tələbə nəticələrdə görəcək..."
-                      className={`${inputClass} mt-3 resize-y text-sm`}
+                      className={`${taClass} mt-3 text-sm`}
                     />
                   )}
                 </div>

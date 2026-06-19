@@ -18,8 +18,6 @@ const ResultCard = ({ result }) => {
     const t = correctAnswers[i]?.type;
     return t === "Cm" || t === "Cs";
   };
-  // A matching cell: its correct value is the right texts in left order.
-  const isMatchCell = (i) => correctAnswers[i]?.type === "Cma";
   const toLetter = (n) => String.fromCharCode(65 + Number(n));
   // Render any answer shape (string / index / array / map) to a compact label —
   // never "[object Object]" and never a falsy index-0 dropped to a dash.
@@ -31,7 +29,12 @@ const ResultCard = ({ result }) => {
         .map((x) => (indexCell && /^\d+$/.test(String(x)) ? toLetter(x) : String(x)))
         .join(", ");
     }
-    if (typeof val === "object") return "—"; // matching map: detail is in the analysis below
+    if (typeof val === "object") {
+      // Matching selection map { leftIdx: rightText } — show the chosen rights in
+      // left order so the student sees their pairing (full detail is in review).
+      const keys = Object.keys(val).sort((a, b) => Number(a) - Number(b));
+      return keys.length ? keys.map((k) => String(val[k])).join(", ") : "—";
+    }
     if (indexCell && /^\d+$/.test(String(val))) return toLetter(val);
     return String(val);
   };
@@ -41,9 +44,8 @@ const ResultCard = ({ result }) => {
   const isCorrect = (i) =>
     answered(i) &&
     isSelectionCorrect(correctAnswers[i]?.answer, selectedAnswers[i]?.answer, correctAnswers[i]?.type);
-  // Colour the student-answer cell only when it's a directly comparable scalar;
-  // matching maps render a neutral "—" (the real per-pair result is below).
-  const showMark = (i) => answered(i) && hasCorrect && !isMatchCell(i);
+  // Colour the student-answer cell green/red by correctness once answered.
+  const showMark = (i) => answered(i) && hasCorrect;
 
   const rowLabel =
     "sticky left-0 z-10 bg-surface px-4 py-3 text-left font-semibold text-text whitespace-nowrap border-r border-line";

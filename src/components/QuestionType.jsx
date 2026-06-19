@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { FiFlag } from "react-icons/fi";
 import Math from "./Math";
+import MatchingQuestion from "./MatchingQuestion";
 
 const LABELS = { Cm: "Qapalı sual", Co: "Açıq sual", Cma: "Uyğunluq", Cd: "Ətraflı yazı" };
 const DEFAULT_OPTIONS = ["a", "b", "c", "d", "e"];
@@ -150,14 +151,6 @@ const QuestionType = ({
     setAnswer(i, next, "Cs");
   };
 
-  const onMatch = (i, leftIdx, rightText) => {
-    const cur = isMap(answers[i]?.answer) ? answers[i].answer : {};
-    const next = { ...cur };
-    if (norm(rightText)) next[leftIdx] = rightText;
-    else delete next[leftIdx];
-    setAnswer(i, next, "Cma");
-  };
-
   // Teacher explanation, shown only in review (it's part of the revealed key).
   const explanationNote = (def) =>
     isReview && def.explanation ? (
@@ -222,7 +215,6 @@ const QuestionType = ({
       (def.pairs
         ? def.pairs.map((p) => ({ text: p.right, latex: p.rightLatex, image: p.rightImage }))
         : []);
-    const sel = isMap(answers[i]?.answer) ? answers[i].answer : {};
 
     if (isReview) {
       const chosenMap = isMap(selectedAnswers[i]?.answer) ? selectedAnswers[i].answer : {};
@@ -263,39 +255,12 @@ const QuestionType = ({
     }
 
     return (
-      <div className="space-y-2">
-        {lefts.map((lf, li) => (
-          <div
-            key={li}
-            className="flex flex-col gap-2 rounded-xl border border-line bg-surface2/40 p-3 sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div className="min-w-0 flex-1 text-[15px] text-text">
-              <span className="text-muted">{li + 1}.</span> {lf.text}
-              {norm(lf.latex) ? (
-                <>
-                  {" "}
-                  <Math latex={lf.latex} />
-                </>
-              ) : null}
-              {lf.image && (
-                <img src={lf.image} alt="" className="mt-1 max-h-20 rounded object-contain" />
-              )}
-            </div>
-            <select
-              value={sel[li] ?? ""}
-              onChange={(e) => onMatch(i, li, e.target.value)}
-              className="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-text outline-none transition focus:border-primary sm:w-56"
-            >
-              <option value="">Seç...</option>
-              {rights.map((r, ri) => (
-                <option key={ri} value={r.text}>
-                  {r.text}
-                </option>
-              ))}
-            </select>
-          </div>
-        ))}
-      </div>
+      <MatchingQuestion
+        lefts={lefts}
+        rights={rights}
+        value={answers[i]?.answer}
+        onChange={(m) => setAnswer(i, m, "Cma")}
+      />
     );
   };
 
