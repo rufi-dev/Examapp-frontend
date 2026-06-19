@@ -34,4 +34,79 @@ const Math = ({ children, latex, display = false, className = "" }) => {
   );
 };
 
+// Split a string into plain-text and math segments. Math is written INLINE with
+// `$...$` (inline) or `$$...$$` (display) delimiters embedded in the text, so a
+// formula can sit in the MIDDLE of a sentence (e.g. "3500-ün $\frac{5}{7}$
+// hissəsini tapın."), not only appended at the end. A literal dollar sign is
+// written as `\$`. Returns [{ math, display, value }] in document order.
+export const parseMathSegments = (input) => {
+  const str = String(input ?? "");
+  const segments = [];
+  let buf = "";
+  let i = 0;
+  const flush = () => {
+    if (buf) segments.push({ math: false, value: buf });
+    buf = "";
+  };
+  while (i < str.length) {
+    const ch = str[i];
+    // Escaped dollar -> literal "$".
+    if (ch === "\\" && str[i + 1] === "$") {
+      buf += "$";
+      i += 2;
+      continue;
+    }
+    if (ch === "$") {
+      const display = str[i + 1] === "$";
+      const delim = display ? "$$" : "$";
+      const start = i + delim.length;
+      const end = str.indexOf(delim, start);
+      if (end === -1) {
+        // No closing delimiter: treat the rest as literal text (lone "$").
+        buf += str.slice(i);
+        break;
+      }
+      const tex = str.slice(start, end);
+      if (tex.trim()) {
+        flush();
+        segments.push({ math: true, display, value: tex });
+      }
+      i = end + delim.length;
+      continue;
+    }
+    buf += ch;
+    i += 1;
+  }
+  flush();
+  return segments;
+};
+
+// True when a string contains at least one inline `$...$` math segment.
+export const textHasMath = (input) =>
+  parseMathSegments(input).some((s) => s.math);
+
+// Render a string that may mix plain text and inline `$...$` math. Text with no
+// math renders as a plain string; math segments render with KaTeX in place. Use
+// this anywhere a question/choice/pair label is shown so formulas appear at
+// their original position instead of being forced to the end.
+export const MathText = ({ text, className = "" }) => {
+  const str = String(text ?? "");
+  const segments = useMemo(() => parseMathSegments(str), [str]);
+  if (!str) return null;
+  if (!segments.some((s) => s.math)) {
+    return <span className={className}>{str}</span>;
+  }
+  return (
+    <span className={className}>
+      {segments.map((s, k) =>
+        s.math ? (
+          <Math key={k} latex={s.value} display={s.display} />
+        ) : (
+          <span key={k}>{s.value}</span>
+        )
+      )}
+    </span>
+  );
+};
+
 export default Math;

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { RESET, logout, selectUser } from "../../redux/features/auth/authSlice";
-import { AdminTeacherLink } from "./protect/hiddenLink";
+import { AdminTeacherLink, AdminLink } from "./protect/hiddenLink";
 import UserMenu from "./UserMenu";
 import NotificationBell from "./NotificationBell";
 import {
@@ -16,6 +16,7 @@ import {
   FiStar,
   FiPieChart,
   FiBell,
+  FiDollarSign,
   FiLogOut,
   FiMenu,
   FiX,
@@ -141,6 +142,11 @@ export default function AccountLayout({ title, subtitle, actions, children }) {
             ))}
           </div>
         </AdminTeacherLink>
+        <AdminLink>
+          <div className="mt-1 flex flex-col gap-1">
+            <SideItem to="/aiUsage" label="AI xərcləri" icon={FiDollarSign} />
+          </div>
+        </AdminLink>
       </nav>
 
       <div className="shrink-0 border-t border-line p-3">

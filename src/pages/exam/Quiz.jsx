@@ -4,11 +4,21 @@ import { startAttempt, getPdfByExam } from "../../../redux/features/quiz/quizSli
 import { reportViolation, getAttemptStatus } from "../../../redux/features/quiz/quizService";
 import { addResult } from "../../../redux/features/quiz/resultSlice";
 import { useNavigate, useParams } from "react-router-dom";
-import { FiClock, FiCheckCircle, FiLock, FiEye, FiMaximize, FiMonitor } from "react-icons/fi";
+import {
+  FiClock,
+  FiCheckCircle,
+  FiLock,
+  FiEye,
+  FiMaximize,
+  FiMonitor,
+  FiZap,
+  FiInfo,
+} from "react-icons/fi";
 import { toast } from "react-toastify";
 import PdfOpener from "../../components/PdfOpener";
 import QuestionType from "../../components/QuestionType";
 import QuestionNav from "../../components/QuestionNav";
+import QuestionMap from "../../components/QuestionMap";
 import Spinner from "../../components/Spinner";
 import Button from "../../components/ui/Button";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
@@ -26,6 +36,44 @@ const DENY = {
 
 // Anti-cheat: auto-submit after this many leave-the-page violations.
 const ANTICHEAT_LIMIT = 3;
+
+// Circular answered-progress indicator for the exam sidebar.
+const ProgressRing = ({ value = 0, total = 0, size = 56, stroke = 5 }) => {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const frac = total > 0 ? Math.min(1, value / total) : 0;
+  const pct = Math.round(frac * 100);
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={stroke}
+          className="text-line"
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={c * (1 - frac)}
+          className="text-primary transition-all duration-500 ease-out"
+        />
+      </svg>
+      <span className="absolute inset-0 grid place-items-center text-xs font-bold tabular-nums text-text">
+        {pct}%
+      </span>
+    </div>
+  );
+};
 
 const Quiz = () => {
   const { examId } = useParams();
@@ -89,6 +137,13 @@ const Quiz = () => {
     }
   };
 
+  // Structured-exam pagination: which page is shown (0 = first). pagingRef keeps
+  // the live {perPage, pageSize} so the memoized jumpToQuestion can switch pages
+  // without taking them as deps (which would break its stable identity).
+  const [examPage, setExamPage] = useState(0);
+  const pagingRef = useRef({ perPage: 0, pageSize: 1 });
+  const sheetScrollRef = useRef(null); // the scrollable question column
+
   // "Mark for review" flags + jump-to-question (navigator grid).
   const [marked, setMarked] = useState([]);
   // useCallback so these stay reference-stable across the 1s timer ticks, which
@@ -104,10 +159,14 @@ const Quiz = () => {
   );
   const jumpToQuestion = useCallback((i) => {
     setMobileView("answers"); // on mobile, make the answer sheet visible first
-    requestAnimationFrame(() => {
+    // When paginated, switch to the page that holds this question first.
+    const { perPage, pageSize } = pagingRef.current;
+    if (perPage > 0) setExamPage(Math.floor(i / pageSize));
+    // Small delay so the target page renders before we scroll to it.
+    setTimeout(() => {
       const el = document.getElementById(`q-${i}`);
       if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+    }, 60);
   }, []);
 
   // Fullscreen lock (anti-cheat): the questions are gated until the student is
@@ -149,6 +208,18 @@ const Quiz = () => {
   // time the 1s timer ticks (only when the attempt actually changes).
   const questions = useMemo(() => attempt?.questions || [], [attempt]);
   const totalCount = questions.length || answers.length;
+
+  // Structured pagination: split the question sheet into pages of N (0 = all on
+  // one page, the default). Indices stay global; we just window the render.
+  const examPerPage = structured ? Number(attempt?.questionsPerPage || 0) : 0;
+  const examPageSize = examPerPage > 0 ? examPerPage : Math.max(1, totalCount);
+  const examPageCount = Math.max(1, Math.ceil(Math.max(1, totalCount) / examPageSize));
+  const safeExamPage = Math.min(Math.max(0, examPage), examPageCount - 1);
+  const examRange =
+    examPerPage > 0
+      ? { start: safeExamPage * examPageSize, end: safeExamPage * examPageSize + examPageSize }
+      : null;
+  pagingRef.current = { perPage: examPerPage, pageSize: examPageSize };
 
   // Start (or resume) the attempt. The server gates access (verification,
   // window, max tries, AND the exam password) and returns the questions without
@@ -253,6 +324,20 @@ const Quiz = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attempt]);
+
+  // Keep the active page within range if the question count changes.
+  useEffect(() => {
+    setExamPage((p) => Math.min(Math.max(0, p), examPageCount - 1));
+  }, [examPageCount]);
+
+  // On page change, jump the question column back to the top (a jump-to-question
+  // from the navigator then re-scrolls to its target a moment later).
+  useEffect(() => {
+    if (examPerPage > 0 && sheetScrollRef.current) {
+      sheetScrollRef.current.scrollTo({ top: 0 });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [safeExamPage]);
 
   // Persist draft answers on change.
   useEffect(() => {
@@ -573,6 +658,13 @@ const Quiz = () => {
     .slice(0, totalCount)
     .map((a, i) => (hasAnswer(a) ? null : i + 1))
     .filter((n) => n != null);
+  const flaggedCount = marked.slice(0, totalCount).filter(Boolean).length;
+  const isLastPage = safeExamPage >= examPageCount - 1;
+  // Jump to the first still-unanswered question (switches page when paginated).
+  const goNextUnanswered = () => {
+    const i = answers.slice(0, totalCount).findIndex((a) => !hasAnswer(a));
+    if (i >= 0) jumpToQuestion(i);
+  };
 
   // Password-protected exam: prompt before anything loads.
   if (access === "password") {
@@ -707,12 +799,17 @@ const Quiz = () => {
                 {violations}/{ANTICHEAT_LIMIT}
               </span>
             )}
-            <QuestionNav
-              total={totalCount}
-              answers={answers}
-              marked={marked}
-              onJump={jumpToQuestion}
-            />
+            <span className={structured ? "lg:hidden" : ""}>
+              <QuestionNav
+                total={totalCount}
+                answers={answers}
+                marked={marked}
+                activeRange={examRange}
+                onJump={jumpToQuestion}
+                onFinish={structured ? () => setConfirmFinish(true) : undefined}
+                finishing={isSubmitting}
+              />
+            </span>
           </div>
         </div>
 
@@ -740,8 +837,172 @@ const Quiz = () => {
         )}
       </header>
 
-      <div className="flex min-h-0 flex-1 gap-4 p-3 sm:p-4 lg:p-6">
-        {!structured && (
+      {structured ? (
+        <div className="flex min-h-0 flex-1 gap-3 p-3 sm:gap-4 sm:p-4 lg:p-5">
+          {/* LEFT: answered progress + persistent question map + finish. */}
+          <aside className="hidden w-72 shrink-0 flex-col gap-3 lg:flex">
+            <div className="rounded-2xl border border-line bg-surface p-4 shadow-soft">
+              <div className="flex items-center gap-3">
+                <ProgressRing value={answeredCount} total={totalCount} />
+                <div className="min-w-0">
+                  <p className="text-2xl font-bold tabular-nums leading-none text-text">
+                    {answeredCount}
+                    <span className="text-base font-semibold text-muted">/{totalCount}</span>
+                  </p>
+                  <p className="mt-1 text-xs text-muted">cavablandırılıb</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex min-h-0 flex-1 flex-col rounded-2xl border border-line bg-surface p-4 shadow-soft">
+              <QuestionMap
+                total={totalCount}
+                answers={answers}
+                marked={marked}
+                activeRange={examRange}
+                onJump={jumpToQuestion}
+                onFinish={() => setConfirmFinish(true)}
+                finishing={isSubmitting}
+              />
+            </div>
+          </aside>
+
+          {/* CENTER: the current page's questions + pager (last page finishes). */}
+          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft">
+            {examPerPage > 0 && (
+              <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line bg-surface2/40 px-4 py-2.5 sm:px-6">
+                <span className="text-sm font-bold text-text">
+                  {examRange.end - examRange.start > 1
+                    ? `Suallar ${examRange.start + 1}–${Math.min(examRange.end, totalCount)}`
+                    : `Sual ${examRange.start + 1}`}
+                </span>
+                <span className="rounded-lg bg-surface px-2 py-0.5 text-xs font-semibold text-muted">
+                  Səhifə {safeExamPage + 1} / {examPageCount}
+                </span>
+              </div>
+            )}
+            <div
+              ref={sheetScrollRef}
+              className="scrollbar-thin min-h-0 flex-1 overflow-y-auto p-4 sm:p-6"
+            >
+              <div className="mx-auto w-full max-w-2xl">
+                <QuestionType
+                  answers={answers}
+                  questions={questions}
+                  handleAnswerChange={handleAnswerChange}
+                  marked={marked}
+                  onToggleMark={toggleMark}
+                  range={examRange}
+                />
+              </div>
+            </div>
+            <div className="shrink-0 border-t border-line p-3 sm:p-4">
+              <div className="mx-auto w-full max-w-2xl">
+                {examPerPage > 0 ? (
+                  <div className="flex items-center justify-between gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setExamPage((p) => Math.max(0, p - 1))}
+                      disabled={safeExamPage <= 0}
+                    >
+                      ← Əvvəlki
+                    </Button>
+                    <span className="hidden text-sm font-semibold text-muted sm:block">
+                      {safeExamPage + 1} / {examPageCount}
+                    </span>
+                    {isLastPage ? (
+                      <Button
+                        type="button"
+                        onClick={() => setConfirmFinish(true)}
+                        disabled={isSubmitting}
+                        className="bg-success text-white hover:brightness-105"
+                      >
+                        {isSubmitting ? (
+                          <Spinner />
+                        ) : (
+                          <>
+                            İmtahanı bitir <FiCheckCircle />
+                          </>
+                        )}
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        onClick={() => setExamPage((p) => Math.min(examPageCount - 1, p + 1))}
+                      >
+                        Növbəti →
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <Button
+                    onClick={() => setConfirmFinish(true)}
+                    disabled={isSubmitting}
+                    size="lg"
+                    className="w-full bg-success text-white hover:brightness-105"
+                  >
+                    {isSubmitting ? (
+                      <Spinner />
+                    ) : (
+                      <>
+                        İmtahanı bitir <FiCheckCircle />
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT: useful at-a-glance exam info (wide screens). */}
+          <aside className="hidden w-60 shrink-0 flex-col gap-3 xl:flex">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-xl border border-line bg-surface p-2.5 text-center shadow-soft">
+                <p className="text-lg font-bold tabular-nums text-success">{answeredCount}</p>
+                <p className="text-[10px] text-muted">Cavablı</p>
+              </div>
+              <div className="rounded-xl border border-line bg-surface p-2.5 text-center shadow-soft">
+                <p className="text-lg font-bold tabular-nums text-text">
+                  {Math.max(0, totalCount - answeredCount)}
+                </p>
+                <p className="text-[10px] text-muted">Qalıb</p>
+              </div>
+              <div className="rounded-xl border border-line bg-surface p-2.5 text-center shadow-soft">
+                <p className="text-lg font-bold tabular-nums text-warning">{flaggedCount}</p>
+                <p className="text-[10px] text-muted">İşarəli</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={goNextUnanswered}
+              disabled={unansweredNums.length === 0}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/5 px-3 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 disabled:opacity-40"
+            >
+              <FiZap /> Növbəti cavabsız
+            </button>
+            <div className="rounded-2xl border border-line bg-surface p-4 shadow-soft">
+              <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
+                <FiInfo /> Məsləhət
+              </p>
+              <ul className="mt-2 space-y-1.5 text-xs leading-relaxed text-muted">
+                <li>
+                  • <span className="font-semibold text-text">İşarələ</span> ilə sualı yenidən baxış
+                  üçün qeyd et.
+                </li>
+                <li>• Xəritədən istənilən suala bir kliklə keç.</li>
+                <li>• Cavablar avtomatik saxlanılır.</li>
+                {attempt?.antiCheat && (
+                  <li className="font-medium text-danger">
+                    • Tab/pəncərə dəyişmək qadağandır — izlənilir.
+                  </li>
+                )}
+              </ul>
+            </div>
+          </aside>
+        </div>
+      ) : (
+        <div className="flex min-h-0 flex-1 gap-4 p-3 sm:p-4 lg:p-6">
+          {/* PDF panel */}
           <div
             className={`min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft lg:flex ${
               mobileView === "pdf" ? "flex" : "hidden"
@@ -754,18 +1015,15 @@ const Quiz = () => {
               <PdfOpener pdfFile={pdfData} />
             </div>
           </div>
-        )}
 
-        <div
-          className={`relative min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft lg:flex ${
-            structured || mobileView === "answers" ? "flex" : "hidden"
-          }`}
-        >
-          <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
-            {/* Structured exams render immediately (no PDF gate); PDF exams wait
-                for the PDF so the question sheet aligns with what's visible. */}
-            {structured || pdfData ? (
-              <div className={structured ? "mx-auto w-full max-w-2xl" : ""}>
+          {/* Answers column */}
+          <div
+            className={`relative min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft lg:flex ${
+              mobileView === "answers" ? "flex" : "hidden"
+            }`}
+          >
+            <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+              {pdfData ? (
                 <QuestionType
                   answers={answers}
                   questions={questions}
@@ -773,32 +1031,32 @@ const Quiz = () => {
                   marked={marked}
                   onToggleMark={toggleMark}
                 />
-              </div>
-            ) : (
-              <div className="flex h-full items-center justify-center">
-                <Spinner size={36} className="text-primary" />
-              </div>
-            )}
-          </div>
-
-          <div className="shrink-0 border-t border-line p-3 sm:p-4">
-            <Button
-              onClick={() => setConfirmFinish(true)}
-              disabled={isSubmitting}
-              size="lg"
-              className="w-full"
-            >
-              {isSubmitting ? (
-                <Spinner />
               ) : (
-                <>
-                  İmtahanı bitir <FiCheckCircle />
-                </>
+                <div className="flex h-full items-center justify-center">
+                  <Spinner size={36} className="text-primary" />
+                </div>
               )}
-            </Button>
+            </div>
+
+            <div className="shrink-0 border-t border-line p-3 sm:p-4">
+              <Button
+                onClick={() => setConfirmFinish(true)}
+                disabled={isSubmitting}
+                size="lg"
+                className="w-full"
+              >
+                {isSubmitting ? (
+                  <Spinner />
+                ) : (
+                  <>
+                    İmtahanı bitir <FiCheckCircle />
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <ConfirmDialog
         open={confirmFinish}

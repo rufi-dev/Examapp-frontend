@@ -8,14 +8,17 @@ import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser"
 import Spinner from "../../components/Spinner";
 import Button from "../../components/ui/Button";
 import { inputClass } from "../../components/ui/Field";
-import { FormulaField } from "../../components/MathEditor";
+import { MathTextField } from "../../components/MathEditor";
+import { textHasMath } from "../../components/Math";
 import QuestionType from "../../components/QuestionType";
+import PdfCropper from "../../components/PdfCropper";
 import { uploadImage } from "../../helper/cloudinary";
 import {
   FiPlus,
   FiX,
   FiImage,
   FiCopy,
+  FiCrop,
   FiChevronUp,
   FiChevronDown,
   FiChevronLeft,
@@ -29,6 +32,29 @@ import {
 import { questionPoints } from "../../helper/helper";
 
 const norm = (v) => String(v ?? "").trim();
+
+// Math now lives INLINE inside the text as `$...$`. Legacy questions stored it
+// in a separate `latex` field that rendered after the text — fold that into the
+// text (appended, where it used to show) so everything is one inline field.
+const foldMath = (text, latex) => {
+  const t = norm(text);
+  const l = norm(latex);
+  if (!l) return t;
+  return (t ? `${t} ` : "") + `$${l}$`;
+};
+
+// AI extraction spend ledger (per browser): a list of { at, usd, questions,
+// tokens, mode } so the teacher can see + tally what each PDF extraction cost.
+const AI_SPEND_KEY = "aiSpendLog";
+const readSpend = () => {
+  try {
+    const a = JSON.parse(localStorage.getItem(AI_SPEND_KEY) || "[]");
+    return Array.isArray(a) ? a : [];
+  } catch {
+    return [];
+  }
+};
+const fmtTokens = (n) => (n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n || 0));
 
 // Multi-line fields need top padding + auto height (inputClass is a fixed-height
 // single-line style, which top-aligns text and makes the placeholder look high).
@@ -73,8 +99,15 @@ const hasLatex = (qs) =>
   qs.some(
     (q) =>
       norm(q.latex) ||
-      (q.choices || []).some((c) => norm(c.latex)) ||
-      (q.pairs || []).some((p) => norm(p.leftLatex) || norm(p.rightLatex))
+      textHasMath(q.text) ||
+      (q.choices || []).some((c) => norm(c.latex) || textHasMath(c.text)) ||
+      (q.pairs || []).some(
+        (p) =>
+          norm(p.leftLatex) ||
+          norm(p.rightLatex) ||
+          textHasMath(p.left) ||
+          textHasMath(p.right)
+      )
   );
 const hasExpl = (qs) => qs.some((q) => norm(q.explanation));
 
@@ -280,6 +313,10 @@ const StructuredBuilder = () => {
   const [loading, setLoading] = useState(false);
   const [extracting, setExtracting] = useState(false); // AI PDF import running
   const pdfInputRef = useRef(null);
+  // PDF import: "append" adds to the end, "replace" overwrites everything. We
+  // ask (a 2-button dialog) only when the builder already has real content.
+  const [importChoice, setImportChoice] = useState(false);
+  const importModeRef = useRef("replace");
   const [examName, setExamName] = useState("");
   const {
     state: questions,
@@ -292,6 +329,14 @@ const StructuredBuilder = () => {
   } = useHistory([newQuestion()]);
   const [preview, setPreview] = useState(false);
   const [previewAnswers, setPreviewAnswers] = useState([]);
+  const [previewPage, setPreviewPage] = useState(0);
+  // AI extraction cost tracking (per browser).
+  const [aiSpend, setAiSpend] = useState(readSpend);
+  const [aiLogOpen, setAiLogOpen] = useState(false);
+  // Imported PDF kept in memory so figures can be cropped from it (no AI tokens);
+  // cropFor = the question index currently choosing a figure crop.
+  const [aiPdfFile, setAiPdfFile] = useState(null);
+  const [cropFor, setCropFor] = useState(null);
   // Builder feature toggles (clean UI for non-math exams): formula buttons and
   // explanation fields only appear when enabled.
   const [mathEnabled, setMathEnabled] = useState(false);
@@ -308,7 +353,12 @@ const StructuredBuilder = () => {
   const loadedRef = useRef(false);
   const serverQsRef = useRef(null);
   const savedJsonRef = useRef(""); // JSON of the last server-saved questions
-  const dirty = JSON.stringify(questions) !== savedJsonRef.current;
+  const savedPerPageRef = useRef(0); // last server-saved questionsPerPage (0 = all)
+  // "all" -> 0; otherwise the numeric per-page count.
+  const perPageNum = perPage === "all" ? 0 : Number(perPage);
+  const dirty =
+    JSON.stringify(questions) !== savedJsonRef.current ||
+    perPageNum !== savedPerPageRef.current;
 
   // Pre-load existing structured questions so editing is non-destructive.
   useEffect(() => {
@@ -318,6 +368,10 @@ const StructuredBuilder = () => {
         const examAction = await dispatch(getExam(examId));
         const exam = examAction?.payload;
         if (exam?.name) setExamName(exam.name);
+        // Restore the saved per-page layout (0/absent => "all").
+        const qpp = Number(exam?.questionsPerPage || 0);
+        savedPerPageRef.current = qpp;
+        setPerPage(qpp > 0 ? String(qpp) : "all");
         const existing = exam?.questions?.correctAnswers;
         const isStructured =
           Array.isArray(existing) &&
@@ -325,15 +379,15 @@ const StructuredBuilder = () => {
         if (isStructured) {
           serverQs = existing.map((q) => ({
             type: q.type || "Cm",
-            text: q.text || "",
+            text: foldMath(q.text, q.latex),
             image: q.image || "",
-            latex: q.latex || "",
+            latex: "",
             choices:
               Array.isArray(q.choices) && q.choices.length
                 ? q.choices.map((c) => ({
-                    text: c.text || "",
+                    text: foldMath(c.text, c.latex),
                     image: c.image || "",
-                    latex: c.latex || "",
+                    latex: "",
                   }))
                 : [emptyChoice(), emptyChoice()],
             correct: Array.isArray(q.correct)
@@ -345,12 +399,12 @@ const StructuredBuilder = () => {
             pairs:
               Array.isArray(q.pairs) && q.pairs.length
                 ? q.pairs.map((p) => ({
-                    left: p.left || "",
+                    left: foldMath(p.left, p.leftLatex),
                     leftImage: p.leftImage || "",
-                    leftLatex: p.leftLatex || "",
-                    right: p.right || "",
+                    leftLatex: "",
+                    right: foldMath(p.right, p.rightLatex),
                     rightImage: p.rightImage || "",
-                    rightLatex: p.rightLatex || "",
+                    rightLatex: "",
                   }))
                 : [emptyPair(), emptyPair()],
             explanation: q.explanation || "",
@@ -587,6 +641,7 @@ const StructuredBuilder = () => {
     });
   const openPreview = () => {
     setPreviewAnswers([]);
+    setPreviewPage(0);
     setPreview(true);
   };
   const previewChange = (e, index, type) => {
@@ -604,32 +659,63 @@ const StructuredBuilder = () => {
     const type = ["Cm", "Cs", "Co", "Cma"].includes(q.type) ? q.type : "Cm";
     const choices =
       Array.isArray(q.choices) && q.choices.length
-        ? q.choices.map((c) => ({ text: c?.text || "", image: "", latex: c?.latex || "" }))
+        ? q.choices.map((c) => ({ text: foldMath(c?.text, c?.latex), image: "", latex: "" }))
         : [emptyChoice(), emptyChoice(), emptyChoice(), emptyChoice()];
     const correct = (Array.isArray(q.correct) ? q.correct : [])
       .map(Number)
       .filter((n) => Number.isInteger(n) && n >= 0 && n < choices.length);
     return {
       type,
-      text: q.text || "",
+      // The AI now returns math inline as $...$ inside text; fold any stray
+      // separate latex it still emits into the text so nothing renders at the end.
+      text: foldMath(q.text, q.latex),
       image: "",
-      latex: q.latex || "",
+      latex: "",
       choices,
       correct: type === "Cm" && correct.length > 1 ? [correct[0]] : correct,
       answer: type === "Co" || type === "Cd" ? q.openAnswer || "" : "",
+      // Builder-only hint (not saved): the AI flagged a figure to add manually.
+      needsFigure: !!q.hasFigure,
       pairs:
         Array.isArray(q.pairs) && q.pairs.length
           ? q.pairs.map((p) => ({
-              left: p?.left || "",
+              left: foldMath(p?.left, p?.leftLatex),
               leftImage: "",
-              leftLatex: p?.leftLatex || "",
-              right: p?.right || "",
+              leftLatex: "",
+              right: foldMath(p?.right, p?.rightLatex),
               rightImage: "",
-              rightLatex: p?.rightLatex || "",
+              rightLatex: "",
             }))
           : [emptyPair(), emptyPair()],
       explanation: q.explanation || "",
     };
+  };
+
+  // Does the builder already hold real (non-empty) questions? Used to decide
+  // whether a PDF import needs to ask "add or replace".
+  const builderHasContent = () =>
+    questions.some(
+      (q) =>
+        filledContent({ text: q.text, image: q.image, latex: q.latex }) ||
+        (q.choices || []).some(filledContent) ||
+        (q.pairs || []).some((p) => norm(p.left) || norm(p.right)) ||
+        norm(q.answer)
+    );
+
+  // Import button: ask add-vs-replace only when there is content to preserve;
+  // otherwise import straight away (nothing to lose).
+  const startImport = () => {
+    if (builderHasContent()) {
+      setImportChoice(true);
+    } else {
+      importModeRef.current = "replace";
+      pdfInputRef.current?.click();
+    }
+  };
+  const pickImportMode = (mode) => {
+    importModeRef.current = mode;
+    setImportChoice(false);
+    pdfInputRef.current?.click();
   };
 
   const onExtractFile = async (e) => {
@@ -637,6 +723,8 @@ const StructuredBuilder = () => {
     e.target.value = "";
     if (!file) return;
     if (file.type !== "application/pdf") return toast.error("PDF fayl seçin");
+    const mode = importModeRef.current === "append" ? "append" : "replace";
+    setAiPdfFile(file); // keep the PDF so figures can be cropped from it
     setExtracting(true);
     try {
       const fd = new FormData();
@@ -651,20 +739,71 @@ const StructuredBuilder = () => {
         return;
       }
       const mapped = aiQs.map(fromAi);
-      setQuestions(mapped); // undoable — Ctrl+Z restores the prior state
+      if (mode === "append") {
+        // Drop a lone empty starter so appending doesn't keep a leading blank.
+        setQuestions((prev) => {
+          const base =
+            prev.length === 1 && !filledContent({ text: prev[0].text, image: prev[0].image, latex: prev[0].latex })
+              ? []
+              : prev;
+          return [...base, ...mapped];
+        });
+      } else {
+        setQuestions(mapped); // undoable — Ctrl+Z restores the prior state
+      }
       setMathEnabled((v) => v || hasLatex(mapped));
       setExplEnabled((v) => v || hasExpl(mapped));
-      toast.success(`${mapped.length} sual idxal edildi — düzgün cavabları yoxlayın.`);
+      toast.success(
+        mode === "append"
+          ? `${mapped.length} sual əlavə edildi — düzgün cavabları yoxlayın.`
+          : `${mapped.length} sual idxal edildi — düzgün cavabları yoxlayın.`
+      );
       const figs = aiQs.filter((q) => q.hasFigure).length;
       if (figs) toast.info(`${figs} sualda şəkil var — şəkilləri əl ilə əlavə edin.`);
       const noKey = mapped.filter(
         (q) => (q.type === "Cm" || q.type === "Cs") && !q.correct.length
       ).length;
       if (noKey) toast.info(`${noKey} sualda düzgün cavab işarələnməlidir.`);
+
+      // Record what this extraction cost so it can be tallied later.
+      const cost = res.data?.cost;
+      if (cost && typeof cost.usd === "number") {
+        const entry = {
+          at: Date.now(),
+          usd: cost.usd,
+          questions: mapped.length,
+          tokens: cost.totalTokens,
+          mode,
+        };
+        setAiSpend((prev) => {
+          const next = [entry, ...prev].slice(0, 200);
+          try {
+            localStorage.setItem(AI_SPEND_KEY, JSON.stringify(next));
+          } catch {
+            /* ignore */
+          }
+          return next;
+        });
+        toast.info(`Bu çıxarışın xərci: $${cost.usd.toFixed(4)} · ${fmtTokens(cost.totalTokens)} token`);
+        // eslint-disable-next-line no-console
+        console.log(
+          `[AI extract] $${cost.usd} — in:${cost.inputTokens} out:${cost.outputTokens} cacheRead:${cost.cacheReadTokens} cacheWrite:${cost.cacheWriteTokens} total:${cost.totalTokens}`
+        );
+      }
     } catch (err) {
       toast.error(err?.response?.data?.message || "AI emalı alınmadı");
     } finally {
       setExtracting(false);
+    }
+  };
+
+  const aiTotal = aiSpend.reduce((s, e) => s + (e.usd || 0), 0);
+  const clearSpend = () => {
+    setAiSpend([]);
+    try {
+      localStorage.removeItem(AI_SPEND_KEY);
+    } catch {
+      /* ignore */
     }
   };
 
@@ -763,8 +902,11 @@ const StructuredBuilder = () => {
     if (!correctAnswers) return;
     setLoading(true);
     try {
-      await dispatch(addQuestion({ examId, questionData: { correctAnswers } })).unwrap();
+      await dispatch(
+        addQuestion({ examId, questionData: { correctAnswers, questionsPerPage: perPageNum } })
+      ).unwrap();
       savedJsonRef.current = JSON.stringify(questions);
+      savedPerPageRef.current = perPageNum;
       try {
         localStorage.removeItem(draftKey);
       } catch {
@@ -834,7 +976,7 @@ const StructuredBuilder = () => {
     const importBtn = (
       <button
         type="button"
-        onClick={() => pdfInputRef.current?.click()}
+        onClick={startImport}
         disabled={extracting}
         title="AI ilə PDF-dən sualları çıxar"
         className={`inline-flex items-center justify-center gap-1.5 rounded-xl border border-primary/40 bg-primary/5 px-3 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 disabled:opacity-60 ${
@@ -883,6 +1025,17 @@ const StructuredBuilder = () => {
           {saveBtn}
           {previewBtn}
           {importBtn}
+          {aiSpend.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setAiLogOpen(true)}
+              title="AI çıxarış xərclərini gör"
+              className="w-full rounded-lg border border-line bg-surface2/40 px-2.5 py-1.5 text-center text-[11px] text-muted transition-colors hover:border-primary/40 hover:text-text"
+            >
+              AI xərci: <span className="font-bold text-text">${aiTotal.toFixed(2)}</span> ·{" "}
+              {aiSpend.length} idxal
+            </button>
+          )}
           <p className="text-center text-[11px] leading-relaxed text-muted">
             {dirty ? (
               <>
@@ -990,6 +1143,49 @@ const StructuredBuilder = () => {
         className="hidden"
       />
 
+      {/* PDF import: add to the end, or replace everything? Shown only when the
+          builder already has questions worth keeping. */}
+      {importChoice && (
+        <div className="fixed inset-0 z-[1500] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setImportChoice(false)}
+          />
+          <div className="relative w-full max-w-md animate-scale-in rounded-3xl border border-line bg-surface p-6 shadow-lift sm:p-7">
+            <div className="mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-primary/12 text-primary">
+              <FiUploadCloud className="text-2xl" />
+            </div>
+            <h2 className="font-display text-xl font-bold text-text">PDF-dən idxal</h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted">
+              Bu imtahanda artıq suallar var. Yeni sualları necə idxal edək?
+            </p>
+            <div className="mt-6 flex flex-col gap-2.5">
+              <button
+                type="button"
+                onClick={() => pickImportMode("append")}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-fg shadow-soft transition-colors hover:bg-primary-hover"
+              >
+                <FiPlus /> Sona əlavə et
+              </button>
+              <button
+                type="button"
+                onClick={() => pickImportMode("replace")}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 py-3 text-sm font-semibold text-text transition-colors hover:border-danger hover:text-danger"
+              >
+                <FiRotateCcw /> Hamısını əvəz et
+              </button>
+              <button
+                type="button"
+                onClick={() => setImportChoice(false)}
+                className="mt-1 text-sm font-semibold text-muted transition-colors hover:text-text"
+              >
+                Ləğv et
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="relative flex min-h-0 flex-1">
         {(loading || extracting) && (
           <div className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-bg/70 backdrop-blur-sm">
@@ -1079,18 +1275,35 @@ const StructuredBuilder = () => {
                     </div>
                   </div>
 
-                  {/* Question stem: text + image (+ formula when enabled) */}
-                  <textarea
-                    value={q.text}
-                    onChange={(e) => patch(i, (qq) => ({ ...qq, text: e.target.value }))}
-                    rows={2}
-                    placeholder="Sual mətni..."
-                    className={`${taClass} mb-2`}
-                  />
-                  <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start">
+                  {/* Question stem: text with inline $...$ math (ƒx inserts at the
+                      cursor) + image. */}
+                  <div className="mb-2">
+                    <MathTextField
+                      value={q.text}
+                      onChange={(v) => patch(i, (qq) => ({ ...qq, text: v }))}
+                      multiline
+                      rows={2}
+                      placeholder="Sual mətni..."
+                      inputClassName={taClass}
+                      enableMath={mathEnabled}
+                    />
+                  </div>
+                  <div className="mb-4 flex flex-wrap items-center gap-2">
                     <ImagePicker url={q.image} onChange={(u) => patch(i, (qq) => ({ ...qq, image: u }))} />
-                    {mathEnabled && (
-                      <FormulaField value={q.latex} onChange={(v) => patch(i, (qq) => ({ ...qq, latex: v }))} />
+                    <button
+                      type="button"
+                      onClick={() => setCropFor(i)}
+                      title="Şəkli/qrafiki PDF-dən kəs"
+                      className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                        q.needsFigure && !q.image
+                          ? "border-warning bg-warning/10 text-warning hover:bg-warning/20"
+                          : "border-dashed border-line text-muted hover:border-primary hover:text-primary"
+                      }`}
+                    >
+                      <FiCrop /> PDF-dən kəs
+                    </button>
+                    {q.needsFigure && !q.image && (
+                      <span className="text-[11px] font-semibold text-warning">Şəkil lazımdır</span>
                     )}
                   </div>
 
@@ -1106,7 +1319,7 @@ const StructuredBuilder = () => {
                               on ? "border-success bg-success/8" : "border-line bg-surface2/40"
                             }`}
                           >
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-start gap-2">
                               <button
                                 type="button"
                                 onClick={() => toggleCorrect(i, ci)}
@@ -1122,12 +1335,15 @@ const StructuredBuilder = () => {
                               >
                                 {q.type === "Cm" ? String.fromCharCode(65 + ci) : on ? "✓" : ""}
                               </button>
-                              <input
-                                value={c.text}
-                                onChange={(e) => setChoice(i, ci, { text: e.target.value })}
-                                placeholder={`Variant ${String.fromCharCode(65 + ci)}`}
-                                className="min-w-0 flex-1 bg-transparent text-sm text-text outline-none placeholder:text-muted"
-                              />
+                              <div className="min-w-0 flex-1">
+                                <MathTextField
+                                  value={c.text}
+                                  onChange={(v) => setChoice(i, ci, { text: v })}
+                                  placeholder={`Variant ${String.fromCharCode(65 + ci)}`}
+                                  inputClassName="w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-text outline-none focus:border-primary"
+                                  enableMath={mathEnabled}
+                                />
+                              </div>
                               {q.choices.length > 1 && (
                                 <Reorder
                                   label="Variantı"
@@ -1149,11 +1365,6 @@ const StructuredBuilder = () => {
                                 </button>
                               )}
                             </div>
-                            {mathEnabled && (
-                              <div className="mt-1.5 pl-9">
-                                <FormulaField value={c.latex} onChange={(v) => setChoice(i, ci, { latex: v })} />
-                              </div>
-                            )}
                           </div>
                         );
                       })}
@@ -1194,32 +1405,24 @@ const StructuredBuilder = () => {
                           className="grid grid-cols-1 gap-2 rounded-xl border border-line bg-surface2/40 p-2 sm:grid-cols-[1fr_1fr_auto] sm:items-start"
                         >
                           <div className="space-y-1.5">
-                            <input
+                            <MathTextField
                               value={p.left}
-                              onChange={(e) => setPair(i, pi, { left: e.target.value })}
+                              onChange={(v) => setPair(i, pi, { left: v })}
                               placeholder={`Sol ${pi + 1}`}
-                              className="w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-text outline-none focus:border-primary"
+                              inputClassName="w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-text outline-none focus:border-primary"
+                              enableMath={mathEnabled}
                             />
-                            <div className="flex items-start gap-2">
-                              <ImagePicker url={p.leftImage} label="" onChange={(u) => setPair(i, pi, { leftImage: u })} />
-                              {mathEnabled && (
-                                <FormulaField value={p.leftLatex} onChange={(v) => setPair(i, pi, { leftLatex: v })} />
-                              )}
-                            </div>
+                            <ImagePicker url={p.leftImage} label="" onChange={(u) => setPair(i, pi, { leftImage: u })} />
                           </div>
                           <div className="space-y-1.5">
-                            <input
+                            <MathTextField
                               value={p.right}
-                              onChange={(e) => setPair(i, pi, { right: e.target.value })}
+                              onChange={(v) => setPair(i, pi, { right: v })}
                               placeholder={`Sağ ${pi + 1}`}
-                              className="w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-text outline-none focus:border-primary"
+                              inputClassName="w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-text outline-none focus:border-primary"
+                              enableMath={mathEnabled}
                             />
-                            <div className="flex items-start gap-2">
-                              <ImagePicker url={p.rightImage} label="" onChange={(u) => setPair(i, pi, { rightImage: u })} />
-                              {mathEnabled && (
-                                <FormulaField value={p.rightLatex} onChange={(v) => setPair(i, pi, { rightLatex: v })} />
-                              )}
-                            </div>
+                            <ImagePicker url={p.rightImage} label="" onChange={(u) => setPair(i, pi, { rightImage: u })} />
                           </div>
                           <div className="flex items-center gap-1 self-start">
                             {q.pairs.length > 1 && (
@@ -1259,13 +1462,17 @@ const StructuredBuilder = () => {
 
                   {/* Optional explanation (only when the İzah feature is on). */}
                   {explEnabled && (
-                    <textarea
-                      value={q.explanation}
-                      onChange={(e) => patch(i, (qq) => ({ ...qq, explanation: e.target.value }))}
-                      rows={2}
-                      placeholder="İzah (ixtiyari) — tələbə nəticələrdə görəcək..."
-                      className={`${taClass} mt-3 text-sm`}
-                    />
+                    <div className="mt-3">
+                      <MathTextField
+                        value={q.explanation}
+                        onChange={(v) => patch(i, (qq) => ({ ...qq, explanation: v }))}
+                        multiline
+                        rows={2}
+                        placeholder="İzah (ixtiyari) — tələbə nəticələrdə görəcək..."
+                        inputClassName={`${taClass} text-sm`}
+                        enableMath={mathEnabled}
+                      />
+                    </div>
                   )}
                 </div>
               );
@@ -1322,6 +1529,92 @@ const StructuredBuilder = () => {
         </aside>
       </div>
 
+      {/* Crop a figure out of the imported PDF (client-side, no AI tokens). */}
+      {cropFor != null && (
+        <PdfCropper
+          file={aiPdfFile}
+          onClose={() => setCropFor(null)}
+          onCrop={async (f) => {
+            const idx = cropFor;
+            try {
+              const url = await uploadImage(f);
+              patch(idx, (qq) => ({ ...qq, image: url }));
+              setCropFor(null);
+              toast.success("Şəkil əlavə edildi");
+            } catch (err) {
+              toast.error(err?.message || "Şəkil yüklənmədi");
+            }
+          }}
+        />
+      )}
+
+      {/* AI extraction cost ledger. */}
+      {aiLogOpen && (
+        <div className="fixed inset-0 z-[1500] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setAiLogOpen(false)}
+          />
+          <div className="relative flex max-h-[80vh] w-full max-w-md animate-scale-in flex-col rounded-3xl border border-line bg-surface p-6 shadow-lift">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="font-display text-lg font-bold text-text">AI çıxarış xərcləri</h2>
+              <button
+                type="button"
+                onClick={() => setAiLogOpen(false)}
+                className="grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors hover:bg-surface2 hover:text-text"
+                aria-label="Bağla"
+              >
+                <FiX />
+              </button>
+            </div>
+            <div className="mb-3 rounded-2xl border border-primary/30 bg-primary/5 px-3 py-2.5 text-center">
+              <p className="text-2xl font-bold tabular-nums text-text">${aiTotal.toFixed(4)}</p>
+              <p className="text-xs text-muted">{aiSpend.length} idxal · ümumi xərc (bu brauzer)</p>
+            </div>
+            <div className="scrollbar-thin -mr-2 min-h-0 flex-1 overflow-y-auto pr-2">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-surface">
+                  <tr className="text-[11px] uppercase tracking-wide text-muted">
+                    <th className="py-1 text-left font-semibold">Tarix</th>
+                    <th className="py-1 text-right font-semibold">Sual</th>
+                    <th className="py-1 text-right font-semibold">Token</th>
+                    <th className="py-1 text-right font-semibold">Məbləğ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {aiSpend.map((e, k) => (
+                    <tr key={k} className="border-t border-line">
+                      <td className="py-1.5 text-muted">{new Date(e.at).toLocaleString()}</td>
+                      <td className="py-1.5 text-right tabular-nums">{e.questions}</td>
+                      <td className="py-1.5 text-right tabular-nums text-muted">{fmtTokens(e.tokens)}</td>
+                      <td className="py-1.5 text-right font-semibold tabular-nums text-text">
+                        ${(e.usd || 0).toFixed(4)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-3 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={clearSpend}
+                className="text-xs font-semibold text-muted transition-colors hover:text-danger"
+              >
+                Tarixçəni təmizlə
+              </button>
+              <button
+                type="button"
+                onClick={() => setAiLogOpen(false)}
+                className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-fg transition-colors hover:bg-primary-hover"
+              >
+                Bağla
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Preview-as-student. */}
       {preview && (
         <div className="fixed inset-0 z-[1400] flex flex-col bg-bg">
@@ -1340,7 +1633,49 @@ const StructuredBuilder = () => {
           </header>
           <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
             <div className="mx-auto w-full max-w-2xl">
-              <QuestionType answers={previewAnswers} questions={buildPreviewDefs()} handleAnswerChange={previewChange} />
+              {(() => {
+                const pvTotal = questions.length;
+                const pvSize = perPage === "all" ? Math.max(1, pvTotal) : Number(perPage);
+                const pvCount = Math.max(1, Math.ceil(Math.max(1, pvTotal) / pvSize));
+                const pvSafe = Math.min(Math.max(0, previewPage), pvCount - 1);
+                const pvRange =
+                  perPage === "all"
+                    ? null
+                    : { start: pvSafe * pvSize, end: pvSafe * pvSize + pvSize };
+                return (
+                  <>
+                    <QuestionType
+                      answers={previewAnswers}
+                      questions={buildPreviewDefs()}
+                      handleAnswerChange={previewChange}
+                      range={pvRange}
+                    />
+                    {perPage !== "all" && pvCount > 1 && (
+                      <div className="mt-6 flex items-center justify-between gap-3 border-t border-line pt-4">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setPreviewPage((p) => Math.max(0, p - 1))}
+                          disabled={pvSafe <= 0}
+                        >
+                          ← Əvvəlki
+                        </Button>
+                        <span className="text-sm font-semibold text-muted">
+                          Səhifə {pvSafe + 1} / {pvCount}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setPreviewPage((p) => Math.min(pvCount - 1, p + 1))}
+                          disabled={pvSafe >= pvCount - 1}
+                        >
+                          Növbəti →
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>

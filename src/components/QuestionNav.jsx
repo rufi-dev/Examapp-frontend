@@ -1,11 +1,20 @@
 import { useState, memo } from "react";
 import { FiGrid, FiX } from "react-icons/fi";
 import { hasAnswer } from "../helper/helper";
+import QuestionMap from "./QuestionMap";
 
-// SAT/IELTS-style question navigator. A compact header button shows progress
-// and opens a grid of every question coloured by status (answered / blank /
-// marked); tap a number to jump.
-const QuestionNav = ({ total = 0, answers = [], marked = [], onJump }) => {
+// Compact question-navigator trigger: a button showing progress that opens a
+// bottom-sheet/modal holding the full QuestionMap. Used in the header on mobile
+// and for PDF exams (the desktop structured layout shows the map in a sidebar).
+const QuestionNav = ({
+  total = 0,
+  answers = [],
+  marked = [],
+  activeRange = null,
+  onJump,
+  onFinish,
+  finishing = false,
+}) => {
   const [open, setOpen] = useState(false);
   if (!total) return null;
 
@@ -37,11 +46,11 @@ const QuestionNav = ({ total = 0, answers = [], marked = [], onJump }) => {
           onClick={() => setOpen(false)}
         >
           <div
-            className="w-full max-w-md animate-scale-in rounded-2xl border border-line bg-surface p-5 shadow-lift"
+            className="flex max-h-[80vh] w-full max-w-md animate-scale-in flex-col rounded-2xl border border-line bg-surface p-5 shadow-lift"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="font-display text-base font-bold text-text">Suallar xəritəsi</h3>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="font-display text-base font-bold text-text">Naviqasiya</h3>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
@@ -51,45 +60,26 @@ const QuestionNav = ({ total = 0, answers = [], marked = [], onJump }) => {
                 <FiX />
               </button>
             </div>
-
-            <div className="grid grid-cols-6 gap-2 sm:grid-cols-8">
-              {Array.from({ length: total }, (_, i) => {
-                const a = hasAnswer(answers[i]);
-                const m = !!marked[i];
-                return (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => {
-                      onJump?.(i);
+            <QuestionMap
+              total={total}
+              answers={answers}
+              marked={marked}
+              activeRange={activeRange}
+              onJump={(i) => {
+                onJump?.(i);
+                setOpen(false);
+              }}
+              onFinish={
+                onFinish
+                  ? () => {
                       setOpen(false);
-                    }}
-                    className={`relative grid h-10 place-items-center rounded-lg border text-sm font-bold transition-colors ${
-                      a
-                        ? "border-primary bg-primary text-primary-fg"
-                        : "border-line bg-surface text-muted hover:border-primary/40"
-                    }`}
-                  >
-                    {i + 1}
-                    {m && (
-                      <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-surface bg-warning" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted">
-              <span className="flex items-center gap-1.5">
-                <span className="h-3 w-3 rounded bg-primary" /> Cavablandı
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="h-3 w-3 rounded border border-line" /> Boş
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="h-3 w-3 rounded-full bg-warning" /> İşarələnib
-              </span>
-            </div>
+                      onFinish();
+                    }
+                  : undefined
+              }
+              finishing={finishing}
+              dense
+            />
           </div>
         </div>
       )}

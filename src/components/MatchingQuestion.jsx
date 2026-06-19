@@ -1,15 +1,17 @@
 import { useState } from "react";
-import Math from "./Math";
+import Math, { MathText } from "./Math";
+import ZoomableImage from "./ZoomableImage";
 
 const norm = (v) => String(v ?? "").trim();
 const isMap = (v) => v && typeof v === "object" && !Array.isArray(v);
 
-// Render an item's content: text + optional LaTeX + optional image.
+// Render an item's content: text (with inline $...$ math) + optional trailing
+// LaTeX + optional image.
 const Content = ({ item }) => (
   <span className="inline-flex min-w-0 items-center gap-1.5">
-    {item.text ? <span className="break-words">{item.text}</span> : null}
+    {item.text ? <MathText text={item.text} className="break-words" /> : null}
     {norm(item.latex) ? <Math latex={item.latex} /> : null}
-    {item.image && <img src={item.image} alt="" className="max-h-9 rounded object-contain" />}
+    {item.image && <ZoomableImage src={item.image} className="max-h-9 rounded object-contain" />}
   </span>
 );
 

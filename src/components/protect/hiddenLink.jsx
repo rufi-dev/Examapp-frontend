@@ -84,3 +84,14 @@ export const AdminTeacherLink = ({ children }) => {
   }
   return null;
 };
+
+// Admin-only (not teachers). Used for sensitive admin tools like AI spend.
+export const AdminLink = ({ children }) => {
+  const isLoggedIn = useSelector(selectIsLoggedIn);
+  const user = useSelector(selectUser);
+
+  if (isLoggedIn && user?.role === "admin") {
+    return <>{children}</>;
+  }
+  return null;
+};

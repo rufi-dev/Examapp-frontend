@@ -1,7 +1,8 @@
 import { memo } from "react";
 import { FiFlag } from "react-icons/fi";
-import Math from "./Math";
+import Math, { MathText } from "./Math";
 import MatchingQuestion from "./MatchingQuestion";
+import ZoomableImage from "./ZoomableImage";
 
 const LABELS = { Cm: "Qapalı sual", Co: "Açıq sual", Cma: "Uyğunluq", Cd: "Ətraflı yazı" };
 const DEFAULT_OPTIONS = ["a", "b", "c", "d", "e"];
@@ -24,15 +25,22 @@ const Stem = ({ def, i, label }) => {
   return (
     <div className="min-w-0 space-y-2">
       <p className="text-[15px] font-semibold leading-relaxed text-text">
-        <span className="text-muted">{i + 1}.</span> {def.text}{" "}
+        <span className="text-muted">{i + 1}.</span> <MathText text={def.text} />{" "}
         {norm(def.latex) ? <Math latex={def.latex} /> : null}
       </p>
       {def.image && (
-        <img src={def.image} alt="" className="max-h-64 rounded-xl border border-line object-contain" />
+        <ZoomableImage
+          src={def.image}
+          className="max-h-64 rounded-xl border border-line object-contain"
+        />
       )}
       {Array.isArray(def.images) &&
         def.images.map((u, k) => (
-          <img key={k} src={u} alt="" className="max-h-64 rounded-xl border border-line object-contain" />
+          <ZoomableImage
+            key={k}
+            src={u}
+            className="max-h-64 rounded-xl border border-line object-contain"
+          />
         ))}
     </div>
   );
@@ -47,6 +55,10 @@ const QuestionType = ({
   handleAnswerChange,
   marked = [],
   onToggleMark,
+  // Optional render window {start, end} for paginated exams. Indices stay
+  // GLOBAL (answers[i], q-${i}, handlers) — we just skip questions outside the
+  // current page. Omitted => render every question (default, all-on-one-page).
+  range = null,
 }) => {
   const selectedAnswers = review?.selectedAnswers || [];
   const isReview = selectedAnswers.length > 0;
@@ -156,7 +168,7 @@ const QuestionType = ({
     isReview && def.explanation ? (
       <div className="mt-2.5 rounded-lg border border-line bg-surface2/40 px-3 py-2 text-sm leading-relaxed text-muted">
         <span className="font-semibold text-text">İzah: </span>
-        {def.explanation}
+        <MathText text={def.explanation} />
       </div>
     ) : null;
 
@@ -184,7 +196,7 @@ const QuestionType = ({
               <span className="w-5 shrink-0 font-bold">{String.fromCharCode(65 + ci)}</span>
             )}
             <span className="min-w-0 flex-1 break-words">
-              {choice.text}
+              <MathText text={choice.text} />
               {norm(choice.latex) ? (
                 <>
                   {" "}
@@ -193,7 +205,7 @@ const QuestionType = ({
               ) : null}
             </span>
             {choice.image && (
-              <img src={choice.image} alt="" className="max-h-14 rounded object-contain" />
+              <ZoomableImage src={choice.image} className="max-h-14 rounded object-contain" />
             )}
           </button>
         );
@@ -233,7 +245,7 @@ const QuestionType = ({
                 }`}
               >
                 <div className="text-[15px] font-medium text-text">
-                  {lf.text}
+                  <MathText text={lf.text} />
                   {norm(lf.latex) ? (
                     <>
                       {" "}
@@ -243,9 +255,13 @@ const QuestionType = ({
                 </div>
                 <div className="mt-1 flex flex-wrap gap-x-4 text-sm">
                   <span className={ok ? "text-success" : "text-danger"}>
-                    Sənin: {norm(chosen) || "—"}
+                    Sənin: {norm(chosen) ? <MathText text={chosen} /> : "—"}
                   </span>
-                  {!ok && <span className="text-success">Doğru: {norm(correctR) || "—"}</span>}
+                  {!ok && (
+                    <span className="text-success">
+                      Doğru: {norm(correctR) ? <MathText text={correctR} /> : "—"}
+                    </span>
+                  )}
                 </div>
               </div>
             );
@@ -267,6 +283,8 @@ const QuestionType = ({
   return (
     <div className="flex flex-col gap-5">
       {defs.map((def, i) => {
+        // Pagination: render only questions inside the active page window.
+        if (range && (i < range.start || i >= range.end)) return null;
         const structuredChoice =
           (def.type === "Cm" || def.type === "Cs") &&
           Array.isArray(def.choices) &&
@@ -345,7 +363,9 @@ const QuestionType = ({
                 <p className="mt-1 flex flex-wrap items-center gap-2 text-sm">
                   {isCorrect === true && <span className="text-success">✓ Doğru</span>}
                   {isCorrect === false && (
-                    <span className="text-danger">✕ Doğru: {norm(correctAnswer)}</span>
+                    <span className="text-danger">
+                      ✕ Doğru: <MathText text={correctAnswer} />
+                    </span>
                   )}
                 </p>
               </div>

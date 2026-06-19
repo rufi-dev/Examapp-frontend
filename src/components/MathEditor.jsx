@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { MathfieldElement } from "mathlive";
-import Math from "./Math";
+import Math, { MathText, textHasMath } from "./Math";
 import { FiX } from "react-icons/fi";
 
 // MathLive renders the editor glyphs from its own fonts. The builder is an
@@ -270,6 +270,122 @@ const MathEditor = ({ value, onChange, onClose }) => {
           Bitdi
         </button>
       </div>
+    </div>
+  );
+};
+
+// A text field (input or textarea) that supports INLINE math: an "ƒx" button
+// opens the visual editor, and on "Bitdi" the composed formula is inserted as
+// `$...$` AT THE CURSOR — so a formula can sit in the middle of a sentence, not
+// only at the end. A live preview underneath renders the text with its math in
+// place. Used for question stems, choices, matching sides and explanations.
+export const MathTextField = ({
+  value,
+  onChange,
+  placeholder,
+  multiline = false,
+  rows = 2,
+  inputClassName = "",
+  enableMath = true,
+}) => {
+  const ref = useRef(null);
+  const caret = useRef(null); // last known selection in the text field
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState(""); // formula being composed
+
+  const remember = () => {
+    const el = ref.current;
+    if (el && typeof el.selectionStart === "number") {
+      caret.current = { s: el.selectionStart, e: el.selectionEnd };
+    }
+  };
+
+  const insert = (tex) => {
+    const clean = String(tex || "").trim();
+    if (!clean) return;
+    const t = String(value || "");
+    const sel = caret.current || { s: t.length, e: t.length };
+    const snippet = `$${clean}$`;
+    const next = t.slice(0, sel.s) + snippet + t.slice(sel.e);
+    onChange(next);
+    const pos = sel.s + snippet.length;
+    caret.current = { s: pos, e: pos };
+    // Restore focus + caret after the controlled value updates.
+    requestAnimationFrame(() => {
+      const el = ref.current;
+      if (el) {
+        el.focus();
+        try {
+          el.setSelectionRange(pos, pos);
+        } catch {
+          /* ignore */
+        }
+      }
+    });
+  };
+
+  const Field = multiline ? "textarea" : "input";
+  const showPreview = textHasMath(value);
+
+  return (
+    <div>
+      <div className="flex items-start gap-1.5">
+        <Field
+          ref={ref}
+          value={value || ""}
+          rows={multiline ? rows : undefined}
+          onChange={(e) => onChange(e.target.value)}
+          onSelect={remember}
+          onKeyUp={remember}
+          onClick={remember}
+          onBlur={remember}
+          placeholder={placeholder}
+          className={`min-w-0 flex-1 ${inputClassName}`}
+        />
+        {enableMath && (
+          <button
+            type="button"
+            // mousedown (not click) so the textarea keeps its selection when we
+            // capture the caret before focus moves to this button.
+            onMouseDown={(e) => {
+              e.preventDefault();
+              remember();
+            }}
+            onClick={() => {
+              setDraft("");
+              setOpen((o) => !o);
+            }}
+            title="Düstur əlavə et (kursor olduğu yerə)"
+            className={`shrink-0 rounded-lg border px-2 py-1.5 text-xs font-semibold transition-colors ${
+              open
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-dashed border-line text-muted hover:border-primary hover:text-primary"
+            }`}
+          >
+            <span className="font-serif italic">ƒx</span>
+          </button>
+        )}
+      </div>
+
+      {showPreview && (
+        <div className="mt-1 rounded-lg border border-line bg-surface2/40 px-2.5 py-1.5 text-sm text-text">
+          <MathText text={value} />
+        </div>
+      )}
+
+      {open && (
+        <div className="mt-2">
+          <MathEditor
+            value={draft}
+            onChange={setDraft}
+            onClose={() => {
+              insert(draft);
+              setDraft("");
+              setOpen(false);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 };

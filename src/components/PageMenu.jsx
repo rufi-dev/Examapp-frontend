@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { AdminTeacherLink } from "./protect/hiddenLink";
+import { AdminTeacherLink, AdminLink } from "./protect/hiddenLink";
 
 const items = [
   { to: "/", label: "Ana səhifə", end: true },
@@ -13,6 +13,9 @@ const adminItems = [
   { to: "/users", label: "İstifadəçilər" },
   { to: "/tagAdd", label: "İmtahan kateqoriyası" },
 ];
+
+// Admin-only (teachers don't see these).
+const adminOnlyItems = [{ to: "/aiUsage", label: "AI xərcləri" }];
 
 const pill = ({ isActive }) =>
   `rounded-xl px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
@@ -40,6 +43,15 @@ const PageMenu = () => {
             </li>
           ))}
         </AdminTeacherLink>
+        <AdminLink>
+          {adminOnlyItems.map((it) => (
+            <li key={it.to}>
+              <NavLink to={it.to} className={pill}>
+                {it.label}
+              </NavLink>
+            </li>
+          ))}
+        </AdminLink>
       </ul>
     </nav>
   );
