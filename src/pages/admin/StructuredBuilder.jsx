@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import axios from "axios";
 import { addQuestion, getExam } from "../../../redux/features/quiz/quizSlice";
 import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser";
 import Spinner from "../../components/Spinner";
@@ -23,6 +24,7 @@ import {
   FiRotateCcw,
   FiRotateCw,
   FiSave,
+  FiUploadCloud,
 } from "react-icons/fi";
 import { questionPoints } from "../../helper/helper";
 
@@ -276,6 +278,8 @@ const StructuredBuilder = () => {
   const navigate = useNavigate();
   const { examId } = useParams();
   const [loading, setLoading] = useState(false);
+  const [extracting, setExtracting] = useState(false); // AI PDF import running
+  const pdfInputRef = useRef(null);
   const [examName, setExamName] = useState("");
   const {
     state: questions,
@@ -594,6 +598,76 @@ const StructuredBuilder = () => {
     });
   };
 
+  // ---- AI import from PDF ----------------------------------------------------
+  // Map one AI-extracted question into the builder's working shape.
+  const fromAi = (q) => {
+    const type = ["Cm", "Cs", "Co", "Cma"].includes(q.type) ? q.type : "Cm";
+    const choices =
+      Array.isArray(q.choices) && q.choices.length
+        ? q.choices.map((c) => ({ text: c?.text || "", image: "", latex: c?.latex || "" }))
+        : [emptyChoice(), emptyChoice(), emptyChoice(), emptyChoice()];
+    const correct = (Array.isArray(q.correct) ? q.correct : [])
+      .map(Number)
+      .filter((n) => Number.isInteger(n) && n >= 0 && n < choices.length);
+    return {
+      type,
+      text: q.text || "",
+      image: "",
+      latex: q.latex || "",
+      choices,
+      correct: type === "Cm" && correct.length > 1 ? [correct[0]] : correct,
+      answer: type === "Co" || type === "Cd" ? q.openAnswer || "" : "",
+      pairs:
+        Array.isArray(q.pairs) && q.pairs.length
+          ? q.pairs.map((p) => ({
+              left: p?.left || "",
+              leftImage: "",
+              leftLatex: p?.leftLatex || "",
+              right: p?.right || "",
+              rightImage: "",
+              rightLatex: p?.rightLatex || "",
+            }))
+          : [emptyPair(), emptyPair()],
+      explanation: q.explanation || "",
+    };
+  };
+
+  const onExtractFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (file.type !== "application/pdf") return toast.error("PDF fayl seçin");
+    setExtracting(true);
+    try {
+      const fd = new FormData();
+      fd.append("pdf", file);
+      const res = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/quiz/extractQuestions/${examId}`,
+        fd
+      );
+      const aiQs = res.data?.questions || [];
+      if (!aiQs.length) {
+        toast.error("PDF-də sual tapılmadı");
+        return;
+      }
+      const mapped = aiQs.map(fromAi);
+      setQuestions(mapped); // undoable — Ctrl+Z restores the prior state
+      setMathEnabled((v) => v || hasLatex(mapped));
+      setExplEnabled((v) => v || hasExpl(mapped));
+      toast.success(`${mapped.length} sual idxal edildi — düzgün cavabları yoxlayın.`);
+      const figs = aiQs.filter((q) => q.hasFigure).length;
+      if (figs) toast.info(`${figs} sualda şəkil var — şəkilləri əl ilə əlavə edin.`);
+      const noKey = mapped.filter(
+        (q) => (q.type === "Cm" || q.type === "Cs") && !q.correct.length
+      ).length;
+      if (noKey) toast.info(`${noKey} sualda düzgün cavab işarələnməlidir.`);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "AI emalı alınmadı");
+    } finally {
+      setExtracting(false);
+    }
+  };
+
   // ---- submit ----------------------------------------------------------------
   const buildPayload = () => {
     const correctAnswers = [];
@@ -757,6 +831,19 @@ const StructuredBuilder = () => {
         <FiEye /> Önizləmə
       </button>
     );
+    const importBtn = (
+      <button
+        type="button"
+        onClick={() => pdfInputRef.current?.click()}
+        disabled={extracting}
+        title="AI ilə PDF-dən sualları çıxar"
+        className={`inline-flex items-center justify-center gap-1.5 rounded-xl border border-primary/40 bg-primary/5 px-3 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 disabled:opacity-60 ${
+          vertical ? "w-full" : "shrink-0"
+        }`}
+      >
+        {extracting ? <Spinner size={16} /> : <FiUploadCloud />} PDF-dən idxal
+      </button>
+    );
     const undoRedo = (
       <div className="flex items-center gap-1">
         <button type="button" onClick={undo} disabled={!canUndo} title="Geri al (Ctrl+Z)" className={toolBtn}>
@@ -774,6 +861,7 @@ const StructuredBuilder = () => {
         <div className="flex items-center gap-2 overflow-x-auto px-4 py-2">
           {saveBtn}
           {previewBtn}
+          {importBtn}
           {undoRedo}
           <button type="button" onClick={() => setMathEnabled((v) => !v)} className={togglePill(mathEnabled)}>
             <span className="font-serif italic">ƒx</span> Düstur
@@ -794,6 +882,7 @@ const StructuredBuilder = () => {
         <div className="space-y-2">
           {saveBtn}
           {previewBtn}
+          {importBtn}
           <p className="text-center text-[11px] leading-relaxed text-muted">
             {dirty ? (
               <>
@@ -892,10 +981,22 @@ const StructuredBuilder = () => {
       {/* Tools — horizontal strip on mobile; the right sidebar holds them on desktop. */}
       <div className="shrink-0 border-b border-line bg-surface lg:hidden">{renderTools(false)}</div>
 
+      {/* Hidden file picker for the AI PDF import. */}
+      <input
+        ref={pdfInputRef}
+        type="file"
+        accept="application/pdf"
+        onChange={onExtractFile}
+        className="hidden"
+      />
+
       <div className="relative flex min-h-0 flex-1">
-        {loading && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center bg-bg/70 backdrop-blur-sm">
+        {(loading || extracting) && (
+          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-bg/70 backdrop-blur-sm">
             <Spinner size={46} className="text-primary" />
+            {extracting && (
+              <p className="text-sm font-medium text-text">AI PDF-dən sualları çıxarır…</p>
+            )}
           </div>
         )}
 
