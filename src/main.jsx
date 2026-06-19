@@ -31,9 +31,14 @@ try {
 // new hashed filenames; a browser/service-worker still holding the OLD
 // index.html requests an old chunk that no longer exists, and Vercel's SPA
 // rewrite answers with index.html (MIME text/html), so the dynamic import fails
-// and the route renders blank. Reload ONCE (guarded against loops) to pick up
-// the fresh index.html + current chunk hashes, so the user never sees the blank
-// page or has to refresh manually.
+// and the route renders blank.
+//
+// A plain reload ISN'T enough: the stale PWA service worker keeps serving the
+// old precached shell, so the reload hits the same dead chunk hashes — which is
+// why it used to take several manual refreshes. So we UNREGISTER the service
+// worker and CLEAR its caches first, then reload once: that forces a fresh fetch
+// of the current index.html + chunk hashes from the network. The SW re-registers
+// itself on the clean load.
 const recoverFromStaleChunk = () => {
     try {
         const KEY = "__chunkReloadAt"
@@ -42,7 +47,36 @@ const recoverFromStaleChunk = () => {
     } catch {
         /* sessionStorage unavailable -> still reload once below */
     }
-    window.location.reload()
+    let reloaded = false
+    const reloadOnce = () => {
+        if (reloaded) return
+        reloaded = true
+        window.location.reload()
+    }
+    try {
+        const tasks = []
+        if ("serviceWorker" in navigator) {
+            tasks.push(
+                navigator.serviceWorker
+                    .getRegistrations()
+                    .then((regs) => Promise.all(regs.map((r) => r.unregister())))
+                    .catch(() => {})
+            )
+        }
+        if (typeof caches !== "undefined" && caches.keys) {
+            tasks.push(
+                caches
+                    .keys()
+                    .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+                    .catch(() => {})
+            )
+        }
+        Promise.all(tasks).then(reloadOnce)
+        // Never hang on cleanup — reload anyway shortly after.
+        setTimeout(reloadOnce, 1500)
+    } catch {
+        reloadOnce()
+    }
 }
 const looksLikeChunkError = (m) =>
     /dynamically imported module|module script|Importing a module script failed|Loading chunk/i.test(
