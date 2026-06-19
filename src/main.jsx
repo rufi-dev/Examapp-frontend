@@ -27,6 +27,48 @@ try {
     /* keep default toast behavior */
 }
 
+// Auto-recover from stale lazy-chunks after a deploy. Every build gives chunks
+// new hashed filenames; a browser/service-worker still holding the OLD
+// index.html requests an old chunk that no longer exists, and Vercel's SPA
+// rewrite answers with index.html (MIME text/html), so the dynamic import fails
+// and the route renders blank. Reload ONCE (guarded against loops) to pick up
+// the fresh index.html + current chunk hashes, so the user never sees the blank
+// page or has to refresh manually.
+const recoverFromStaleChunk = () => {
+    try {
+        const KEY = "__chunkReloadAt"
+        if (Date.now() - Number(sessionStorage.getItem(KEY) || 0) < 15000) return // don't loop
+        sessionStorage.setItem(KEY, String(Date.now()))
+    } catch {
+        /* sessionStorage unavailable -> still reload once below */
+    }
+    window.location.reload()
+}
+const looksLikeChunkError = (m) =>
+    /dynamically imported module|module script|Importing a module script failed|Loading chunk/i.test(
+        String(m || "")
+    )
+// Vite emits this when a preloaded dynamic import fails — the most reliable signal.
+window.addEventListener("vite:preloadError", (e) => {
+    e?.preventDefault?.()
+    recoverFromStaleChunk()
+})
+window.addEventListener("unhandledrejection", (e) => {
+    if (looksLikeChunkError(e?.reason?.message || e?.reason)) recoverFromStaleChunk()
+})
+// Capture phase: resource (script/link) load errors don't bubble.
+window.addEventListener(
+    "error",
+    (e) => {
+        const t = e?.target
+        const src = t && (t.tagName === "SCRIPT" || t.tagName === "LINK") ? t.src || t.href || "" : ""
+        if (looksLikeChunkError(e?.message) || /\/assets\/[^/]+\.(js|css)(\?|$)/.test(src)) {
+            recoverFromStaleChunk()
+        }
+    },
+    true
+)
+
 ReactDOM.createRoot(document.getElementById('root')).render(
     <Provider store={store}>
       <App />
