@@ -69,7 +69,7 @@ const Categories = () => {
         {tags.map((tag, index) => (
           <div
             key={tag._id}
-            className="group relative animate-fade-in"
+            className="group relative animate-fade-in transition-transform duration-200 ease-out-quint hover:-translate-y-1"
             style={{ animationDelay: `${Math.min(index * 70, 420)}ms` }}
           >
             {canManage(tag) && (
@@ -93,7 +93,7 @@ const Categories = () => {
             )}
             <Link
               to={`/class/${tag._id}`}
-              className="flex h-full flex-col items-start gap-4 rounded-2xl border border-line bg-surface p-6 shadow-soft transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:border-primary/40 hover:shadow-lift"
+              className="flex h-full flex-col items-start gap-4 rounded-2xl border border-line bg-surface p-6 shadow-soft transition-all duration-200 ease-out-quint group-hover:border-primary/40 group-hover:shadow-lift"
             >
               <span className="grid h-12 w-12 place-items-center rounded-xl bg-primary/12 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-fg">
                 <LuGraduationCap className="text-[22px]" />

@@ -1,7 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { LuGraduationCap } from "react-icons/lu";
-import { FiArrowUpRight } from "react-icons/fi";
+import { FiArrowUpRight, FiUsers } from "react-icons/fi";
 import { MdOutlineModeEditOutline } from "react-icons/md";
 import { AiFillDelete } from "react-icons/ai";
 import { useDispatch, useSelector } from "react-redux";
@@ -9,6 +9,7 @@ import { getClassesByTag, deleteClass } from "../../redux/features/quiz/quizSlic
 import { selectUser } from "../../redux/features/auth/authSlice";
 import CenterLoader from "./ui/CenterLoader";
 import ConfirmDialog from "./ui/ConfirmDialog";
+import ClassRoster from "./ClassRoster";
 
 const levelLabel = (level) =>
   [1, 2].includes(Number(level)) ? `${level} ci qrup` : `${level} sinif`;
@@ -27,6 +28,7 @@ const ClassList = () => {
   const [loadedOnce, setLoadedOnce] = useState(false);
   const [confirmClass, setConfirmClass] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [rosterClass, setRosterClass] = useState(null); // class whose roster is open
 
   useEffect(() => {
     let active = true;
@@ -75,11 +77,23 @@ const ClassList = () => {
         {classes.map((_class, index) => (
           <div
             key={_class._id}
-            className="group relative animate-fade-in"
+            className="group relative animate-fade-in transition-transform duration-200 ease-out-quint hover:-translate-y-1"
             style={{ animationDelay: `${Math.min(index * 70, 420)}ms` }}
           >
             {canManage(_class) && (
-              <div className="absolute right-3 top-3 z-10 flex gap-1">
+              <div className="absolute right-3 top-3 z-10 flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setRosterClass(_class);
+                  }}
+                  title="Qoşulan tələbələr"
+                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-line bg-surface px-2 text-xs font-bold text-text transition-colors hover:border-primary hover:text-primary"
+                >
+                  <FiUsers className="text-primary" /> {_class.students ?? 0}
+                </button>
                 <Link
                   to={`/class/edit/${_class._id}`}
                   className="grid h-8 w-8 place-items-center rounded-lg border border-line bg-surface text-muted transition-colors hover:text-primary"
@@ -99,7 +113,7 @@ const ClassList = () => {
             )}
             <Link
               to={`/exam/${_class._id}`}
-              className="flex h-full flex-col items-start gap-4 rounded-2xl border border-line bg-surface p-6 shadow-soft transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:border-primary/40 hover:shadow-lift"
+              className="flex h-full flex-col items-start gap-4 rounded-2xl border border-line bg-surface p-6 shadow-soft transition-all duration-200 ease-out-quint group-hover:border-primary/40 group-hover:shadow-lift"
             >
               <span className="grid h-12 w-12 place-items-center rounded-xl bg-primary/12 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-fg">
                 <LuGraduationCap className="text-[22px]" />
@@ -112,6 +126,15 @@ const ClassList = () => {
           </div>
         ))}
       </div>
+
+      {rosterClass && (
+        <ClassRoster
+          classObj={rosterClass}
+          label={classLabel(rosterClass)}
+          onClose={() => setRosterClass(null)}
+          onChange={() => dispatch(getClassesByTag(tagId))}
+        />
+      )}
 
       <ConfirmDialog
         open={!!confirmClass}
