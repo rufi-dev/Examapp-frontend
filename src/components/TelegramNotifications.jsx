@@ -21,6 +21,7 @@ const EVENTS = [
   { key: "onFinish", label: "İmtahan bitəndə", desc: "Şagird bitirəndə — bal ilə birlikdə" },
   { key: "onViolation", label: "Pozuntu (anti-cheat)", desc: "İmtahan pozuntuya görə dayandırılanda" },
   { key: "onJoin", label: "Sinfə qoşulma", desc: "Şagird sinfə qoşulanda / sorğu göndərəndə" },
+  { key: "onReport", label: "İmtahan hesabatı", desc: "İmtahan bitdikdə PDF + Excel nəticə hesabatı" },
 ];
 
 // A small native checkbox styled with the brand accent.
@@ -186,6 +187,7 @@ const TelegramNotifications = () => {
         onFinish: auto.prefs.onFinish,
         onViolation: auto.prefs.onViolation,
         onJoin: auto.prefs.onJoin,
+        onReport: auto.prefs.onReport,
         excludedClasses: exClasses,
         excludedExams: exExams,
       });
