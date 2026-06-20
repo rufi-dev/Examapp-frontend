@@ -11,6 +11,7 @@ import { FiCamera } from "react-icons/fi";
 import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
 import Spinner from "../../components/Spinner";
+import TelegramNotifications from "../../components/TelegramNotifications";
 import { Field, inputClass, textareaClass } from "../../components/ui/Field";
 
 const cloud_name = import.meta.env.VITE_CLOUD_NAME;
@@ -201,6 +202,8 @@ const Profile = () => {
                 </Button>
               </div>
             </form>
+
+            {(role === "teacher" || role === "admin") && <TelegramNotifications />}
           </>
         )}
     </AccountLayout>

@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import { reviewResult } from "../../../redux/features/quiz/resultSlice";
 import { getExamTagandClass, getPdfByExam } from "../../../redux/features/quiz/quizSlice";
-import { FiArrowLeft } from "react-icons/fi";
+import { FiArrowLeft, FiUser } from "react-icons/fi";
 import Spinner from "../../components/Spinner";
 import PdfOpener from "../../components/PdfOpener";
 import QuestionType from "../../components/QuestionType";
@@ -136,6 +136,14 @@ const Review = () => {
               <h1 className="truncate font-display text-lg font-bold text-text sm:text-xl">
                 Cavabların təhlili
               </h1>
+              {review?.userId?.name && (
+                <p className="mt-0.5 flex items-center gap-1.5 truncate text-sm font-semibold text-primary">
+                  <FiUser className="shrink-0" /> {review.userId.name}
+                  {review.userId.email && (
+                    <span className="truncate font-normal text-muted">· {review.userId.email}</span>
+                  )}
+                </p>
+              )}
             </div>
           </div>
           {canSeeScore && review?.earnPoints != null && (
