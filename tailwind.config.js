@@ -62,12 +62,29 @@ export default {
           '0%': { transform: 'translateX(0)' },
           '100%': { transform: 'translateX(-50%)' },
         },
+        // AI extractor loader: a scan line sweeping a document, an indeterminate
+        // progress bar sliding across, and gently floating sparkles.
+        scan: {
+          '0%': { transform: 'translateY(-120%)' },
+          '100%': { transform: 'translateY(320%)' },
+        },
+        indeterminate: {
+          '0%': { transform: 'translateX(-120%)' },
+          '100%': { transform: 'translateX(340%)' },
+        },
+        float: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-7px)' },
+        },
       },
       animation: {
         'fade-rise': 'fade-rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) both',
         'fade-in': 'fade-in 0.5s ease-out both',
         'scale-in': 'scale-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both',
         marquee: 'marquee 28s linear infinite',
+        scan: 'scan 1.9s ease-in-out infinite',
+        indeterminate: 'indeterminate 1.4s ease-in-out infinite',
+        float: 'float 2.6s ease-in-out infinite',
       },
       transitionTimingFunction: {
         'out-quint': 'cubic-bezier(0.22, 1, 0.36, 1)',

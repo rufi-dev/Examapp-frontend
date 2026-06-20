@@ -11,6 +11,7 @@ import { inputClass } from "../../components/ui/Field";
 import { MathTextField } from "../../components/MathEditor";
 import { textHasMath } from "../../components/Math";
 import QuestionType from "../../components/QuestionType";
+import QuestionMap from "../../components/QuestionMap";
 import PdfCropper from "../../components/PdfCropper";
 import { uploadImage } from "../../helper/cloudinary";
 import {
@@ -28,8 +29,50 @@ import {
   FiRotateCw,
   FiSave,
   FiUploadCloud,
+  FiClock,
+  FiZap,
+  FiInfo,
+  FiCheckCircle,
 } from "react-icons/fi";
-import { questionPoints } from "../../helper/helper";
+import { questionPoints, hasAnswer } from "../../helper/helper";
+
+// Compact answered-progress ring for the preview sidebar (mirrors the live exam).
+const PreviewRing = ({ value = 0, total = 0, size = 56, stroke = 5 }) => {
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const frac = total > 0 ? Math.min(1, value / total) : 0;
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" strokeWidth={stroke} className="text-line" />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={c * (1 - frac)}
+          className="text-primary transition-all duration-500 ease-out"
+        />
+      </svg>
+      <span className="absolute inset-0 grid place-items-center text-xs font-bold tabular-nums text-text">
+        {Math.round(frac * 100)}%
+      </span>
+    </div>
+  );
+};
+
+// Rotating status lines shown while the AI extracts questions from the PDF.
+const EXTRACT_STEPS = [
+  "PDF oxunur…",
+  "Suallar müəyyən edilir…",
+  "Variantlar ayrılır…",
+  "Düsturlar tanınır…",
+  "Suallar hazırlanır…",
+];
 
 const norm = (v) => String(v ?? "").trim();
 
@@ -330,6 +373,9 @@ const StructuredBuilder = () => {
   const [preview, setPreview] = useState(false);
   const [previewAnswers, setPreviewAnswers] = useState([]);
   const [previewPage, setPreviewPage] = useState(0);
+  const [previewMarked, setPreviewMarked] = useState([]);
+  // Cycling status step shown in the animated AI extraction loader.
+  const [extractStep, setExtractStep] = useState(0);
   // AI extraction cost tracking (per browser).
   const [aiSpend, setAiSpend] = useState(readSpend);
   const [aiLogOpen, setAiLogOpen] = useState(false);
@@ -344,6 +390,16 @@ const StructuredBuilder = () => {
   // Display paging: how many questions per page (default all).
   const [perPage, setPerPage] = useState("all");
   const [page, setPage] = useState(0);
+
+  // Cycle the AI loader status lines while an extraction runs.
+  useEffect(() => {
+    if (!extracting) {
+      setExtractStep(0);
+      return;
+    }
+    const id = setInterval(() => setExtractStep((s) => (s + 1) % EXTRACT_STEPS.length), 2200);
+    return () => clearInterval(id);
+  }, [extracting]);
 
   // Autosave / dirty tracking.
   const draftKey = `structDraft_${examId}`;
@@ -641,6 +697,7 @@ const StructuredBuilder = () => {
     });
   const openPreview = () => {
     setPreviewAnswers([]);
+    setPreviewMarked([]);
     setPreviewPage(0);
     setPreview(true);
   };
@@ -651,6 +708,21 @@ const StructuredBuilder = () => {
       u[index] = { ...u[index], answer: value, type };
       return u;
     });
+  };
+  const previewToggleMark = (i) =>
+    setPreviewMarked((prev) => {
+      const u = [...prev];
+      u[i] = !u[i];
+      return u;
+    });
+  // Jump to a question in the preview (switch page when paginated, then scroll).
+  const previewJump = (i) => {
+    const size = perPage === "all" ? Math.max(1, questions.length) : Number(perPage);
+    if (perPage !== "all") setPreviewPage(Math.floor(i / size));
+    setTimeout(() => {
+      const el = document.getElementById(`q-${i}`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 60);
   };
 
   // ---- AI import from PDF ----------------------------------------------------
@@ -978,12 +1050,15 @@ const StructuredBuilder = () => {
         type="button"
         onClick={startImport}
         disabled={extracting}
-        title="AI ilə PDF-dən sualları çıxar"
-        className={`inline-flex items-center justify-center gap-1.5 rounded-xl border border-primary/40 bg-primary/5 px-3 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 disabled:opacity-60 ${
+        title="Süni intellekt PDF-dən sualları avtomatik çıxarır"
+        className={`inline-flex items-center justify-center gap-1.5 rounded-xl border border-primary/40 bg-gradient-to-r from-primary/10 to-accent2/10 px-3 py-2.5 text-sm font-bold text-primary transition-colors hover:from-primary/20 hover:to-accent2/20 disabled:opacity-60 ${
           vertical ? "w-full" : "shrink-0"
         }`}
       >
-        {extracting ? <Spinner size={16} /> : <FiUploadCloud />} PDF-dən idxal
+        {extracting ? <Spinner size={16} /> : <FiZap />} PDF-dən idxal
+        <span className="rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-primary-fg">
+          AI
+        </span>
       </button>
     );
     const undoRedo = (
@@ -1187,12 +1262,62 @@ const StructuredBuilder = () => {
       )}
 
       <div className="relative flex min-h-0 flex-1">
-        {(loading || extracting) && (
-          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-bg/70 backdrop-blur-sm">
+        {loading && !extracting && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-bg/70 backdrop-blur-sm">
             <Spinner size={46} className="text-primary" />
-            {extracting && (
-              <p className="text-sm font-medium text-text">AI PDF-dən sualları çıxarır…</p>
-            )}
+          </div>
+        )}
+
+        {/* Animated AI extraction panel — scanning document + rotating status. */}
+        {extracting && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-bg/85 p-6 backdrop-blur-md">
+            <div className="w-full max-w-sm animate-scale-in rounded-3xl border border-line bg-surface p-8 text-center shadow-lift">
+              <div className="relative mx-auto mb-7 h-28 w-24">
+                <div className="absolute inset-0 overflow-hidden rounded-2xl border-2 border-primary/25 bg-surface2/60 shadow-glow">
+                  <div className="space-y-2.5 p-4">
+                    {[92, 70, 84, 58, 78, 66].map((w, k) => (
+                      <div key={k} className="h-1.5 rounded-full bg-primary/25" style={{ width: `${w}%` }} />
+                    ))}
+                  </div>
+                  <div className="absolute inset-x-0 top-0 h-10 animate-scan bg-gradient-to-b from-primary/0 via-primary/40 to-primary/0" />
+                </div>
+                <FiZap className="absolute -right-2.5 -top-2.5 animate-float text-lg text-primary" />
+                <FiZap
+                  className="absolute -left-3 top-9 animate-float text-accent2"
+                  style={{ animationDelay: "0.6s" }}
+                />
+                <span
+                  className="absolute -bottom-1 right-1 animate-float text-lg"
+                  style={{ animationDelay: "1.1s" }}
+                >
+                  ✨
+                </span>
+              </div>
+
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/12 px-3 py-1 text-xs font-bold uppercase tracking-wide text-primary">
+                <FiZap className="text-[13px]" /> Süni intellekt
+              </span>
+              <h3 className="mt-3 font-display text-lg font-bold text-text">Suallar çıxarılır</h3>
+              <p key={extractStep} className="mt-1.5 animate-fade-in text-sm font-semibold text-primary">
+                {EXTRACT_STEPS[extractStep]}
+              </p>
+
+              <div className="relative mt-5 h-1.5 w-full overflow-hidden rounded-full bg-surface2">
+                <div className="absolute inset-y-0 w-1/3 animate-indeterminate rounded-full bg-gradient-to-r from-primary/30 via-primary to-primary/30" />
+              </div>
+              <div className="mt-4 flex items-center justify-center gap-1.5">
+                {[0, 1, 2].map((d) => (
+                  <span
+                    key={d}
+                    className="h-2 w-2 animate-bounce rounded-full bg-primary/60"
+                    style={{ animationDelay: `${d * 0.15}s` }}
+                  />
+                ))}
+              </div>
+              <p className="mt-4 text-xs leading-relaxed text-muted">
+                Bir neçə saniyə çəkə bilər — PDF-in həcmindən asılıdır.
+              </p>
+            </div>
           </div>
         )}
 
@@ -1615,71 +1740,186 @@ const StructuredBuilder = () => {
         </div>
       )}
 
-      {/* Preview-as-student. */}
-      {preview && (
-        <div className="fixed inset-0 z-[1400] flex flex-col bg-bg">
-          <header className="flex shrink-0 items-center justify-between gap-4 border-b border-line bg-surface px-4 py-3 sm:px-6">
-            <div className="min-w-0">
-              <h2 className="truncate font-display text-lg font-bold text-text">Önizləmə</h2>
-              <p className="text-xs text-muted">Tələbə imtahanı belə görəcək (cavablar gizlidir).</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setPreview(false)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-3 py-1.5 text-sm font-semibold text-text transition-colors hover:border-primary hover:text-primary"
-            >
-              <FiX /> Bağla
-            </button>
-          </header>
-          <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
-            <div className="mx-auto w-full max-w-2xl">
-              {(() => {
-                const pvTotal = questions.length;
-                const pvSize = perPage === "all" ? Math.max(1, pvTotal) : Number(perPage);
-                const pvCount = Math.max(1, Math.ceil(Math.max(1, pvTotal) / pvSize));
-                const pvSafe = Math.min(Math.max(0, previewPage), pvCount - 1);
-                const pvRange =
-                  perPage === "all"
-                    ? null
-                    : { start: pvSafe * pvSize, end: pvSafe * pvSize + pvSize };
-                return (
-                  <>
-                    <QuestionType
-                      answers={previewAnswers}
-                      questions={buildPreviewDefs()}
-                      handleAnswerChange={previewChange}
-                      range={pvRange}
-                    />
-                    {perPage !== "all" && pvCount > 1 && (
-                      <div className="mt-6 flex items-center justify-between gap-3 border-t border-line pt-4">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setPreviewPage((p) => Math.max(0, p - 1))}
-                          disabled={pvSafe <= 0}
-                        >
-                          ← Əvvəlki
-                        </Button>
-                        <span className="text-sm font-semibold text-muted">
-                          Səhifə {pvSafe + 1} / {pvCount}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setPreviewPage((p) => Math.min(pvCount - 1, p + 1))}
-                          disabled={pvSafe >= pvCount - 1}
-                        >
-                          Növbəti →
-                        </Button>
+      {/* Preview-as-student — mirrors the real exam runner (map + progress +
+          stats + pager) so the teacher sees exactly what students will. */}
+      {preview &&
+        (() => {
+          const pvTotal = questions.length;
+          const pvSize = perPage === "all" ? Math.max(1, pvTotal) : Number(perPage);
+          const pvCount = Math.max(1, Math.ceil(Math.max(1, pvTotal) / pvSize));
+          const pvSafe = Math.min(Math.max(0, previewPage), pvCount - 1);
+          const pvRange =
+            perPage === "all" ? null : { start: pvSafe * pvSize, end: pvSafe * pvSize + pvSize };
+          const answered = previewAnswers.slice(0, pvTotal).filter(hasAnswer).length;
+          const flagged = previewMarked.slice(0, pvTotal).filter(Boolean).length;
+          const remaining = Math.max(0, pvTotal - answered);
+          const firstBlank = previewAnswers.slice(0, pvTotal).findIndex((a) => !hasAnswer(a));
+          const isLast = pvSafe >= pvCount - 1;
+          const close = () => setPreview(false);
+
+          return (
+            <div className="fixed inset-0 z-[1400] flex flex-col overflow-hidden bg-bg">
+              <header className="flex shrink-0 items-center justify-between gap-4 border-b border-line bg-surface px-4 py-3 sm:px-6">
+                <div className="min-w-0">
+                  {examName && (
+                    <p className="mb-0.5 truncate text-xs font-medium text-muted">{examName}</p>
+                  )}
+                  <div className="flex items-center gap-2 font-display text-xl font-bold text-text sm:text-2xl">
+                    <FiClock className="text-primary" /> --:--
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-primary">
+                    <FiEye /> Önizləmə
+                  </span>
+                  <button
+                    type="button"
+                    onClick={close}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-3 py-1.5 text-sm font-semibold text-text transition-colors hover:border-primary hover:text-primary"
+                  >
+                    <FiX /> Bağla
+                  </button>
+                </div>
+              </header>
+
+              <div className="flex min-h-0 flex-1 gap-3 p-3 sm:gap-4 sm:p-4 lg:p-5">
+                {/* LEFT: answered progress + question map. */}
+                <aside className="hidden w-72 shrink-0 flex-col gap-3 lg:flex">
+                  <div className="rounded-2xl border border-line bg-surface p-4 shadow-soft">
+                    <div className="flex items-center gap-3">
+                      <PreviewRing value={answered} total={pvTotal} />
+                      <div className="min-w-0">
+                        <p className="text-2xl font-bold tabular-nums leading-none text-text">
+                          {answered}
+                          <span className="text-base font-semibold text-muted">/{pvTotal}</span>
+                        </p>
+                        <p className="mt-1 text-xs text-muted">cavablandırılıb</p>
                       </div>
-                    )}
-                  </>
-                );
-              })()}
+                    </div>
+                  </div>
+                  <div className="flex min-h-0 flex-1 flex-col rounded-2xl border border-line bg-surface p-4 shadow-soft">
+                    <QuestionMap
+                      total={pvTotal}
+                      answers={previewAnswers}
+                      marked={previewMarked}
+                      activeRange={pvRange}
+                      onJump={previewJump}
+                      onFinish={close}
+                    />
+                  </div>
+                </aside>
+
+                {/* CENTER: the current page + pager. */}
+                <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft">
+                  {perPage !== "all" && (
+                    <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line bg-surface2/40 px-4 py-2.5 sm:px-6">
+                      <span className="text-sm font-bold text-text">
+                        {pvRange.end - pvRange.start > 1
+                          ? `Suallar ${pvRange.start + 1}–${Math.min(pvRange.end, pvTotal)}`
+                          : `Sual ${pvRange.start + 1}`}
+                      </span>
+                      <span className="rounded-lg bg-surface px-2 py-0.5 text-xs font-semibold text-muted">
+                        Səhifə {pvSafe + 1} / {pvCount}
+                      </span>
+                    </div>
+                  )}
+                  <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+                    <div className="mx-auto w-full max-w-2xl">
+                      <QuestionType
+                        answers={previewAnswers}
+                        questions={buildPreviewDefs()}
+                        handleAnswerChange={previewChange}
+                        marked={previewMarked}
+                        onToggleMark={previewToggleMark}
+                        range={pvRange}
+                      />
+                    </div>
+                  </div>
+                  <div className="shrink-0 border-t border-line p-3 sm:p-4">
+                    <div className="mx-auto w-full max-w-2xl">
+                      {perPage !== "all" ? (
+                        <div className="flex items-center justify-between gap-3">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setPreviewPage((p) => Math.max(0, p - 1))}
+                            disabled={pvSafe <= 0}
+                          >
+                            ← Əvvəlki
+                          </Button>
+                          <span className="hidden text-sm font-semibold text-muted sm:block">
+                            {pvSafe + 1} / {pvCount}
+                          </span>
+                          {isLast ? (
+                            <Button
+                              type="button"
+                              onClick={close}
+                              className="bg-success text-white hover:brightness-105"
+                            >
+                              İmtahanı bitir <FiCheckCircle />
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              onClick={() => setPreviewPage((p) => Math.min(pvCount - 1, p + 1))}
+                            >
+                              Növbəti →
+                            </Button>
+                          )}
+                        </div>
+                      ) : (
+                        <Button
+                          type="button"
+                          onClick={close}
+                          size="lg"
+                          className="w-full bg-success text-white hover:brightness-105"
+                        >
+                          İmtahanı bitir <FiCheckCircle />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* RIGHT: at-a-glance stats + tips (wide screens). */}
+                <aside className="hidden w-60 shrink-0 flex-col gap-3 xl:flex">
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="rounded-xl border border-line bg-surface p-2.5 text-center shadow-soft">
+                      <p className="text-lg font-bold tabular-nums text-success">{answered}</p>
+                      <p className="text-[10px] text-muted">Cavablı</p>
+                    </div>
+                    <div className="rounded-xl border border-line bg-surface p-2.5 text-center shadow-soft">
+                      <p className="text-lg font-bold tabular-nums text-text">{remaining}</p>
+                      <p className="text-[10px] text-muted">Qalıb</p>
+                    </div>
+                    <div className="rounded-xl border border-line bg-surface p-2.5 text-center shadow-soft">
+                      <p className="text-lg font-bold tabular-nums text-warning">{flagged}</p>
+                      <p className="text-[10px] text-muted">İşarəli</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => firstBlank >= 0 && previewJump(firstBlank)}
+                    disabled={firstBlank < 0}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/5 px-3 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 disabled:opacity-40"
+                  >
+                    <FiZap /> Növbəti cavabsız
+                  </button>
+                  <div className="rounded-2xl border border-line bg-surface p-4 shadow-soft">
+                    <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
+                      <FiInfo /> Önizləmə
+                    </p>
+                    <ul className="mt-2 space-y-1.5 text-xs leading-relaxed text-muted">
+                      <li>• Tələbə imtahanı tam belə görəcək.</li>
+                      <li>• Sualları sınaq üçün cavablandıra bilərsiniz.</li>
+                      <li>• Cavablar saxlanılmır — bu yalnız önizlədir.</li>
+                    </ul>
+                  </div>
+                </aside>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          );
+        })()}
     </div>
   );
 };
