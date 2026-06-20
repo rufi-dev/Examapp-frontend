@@ -9,6 +9,8 @@ import {
   FiLink2,
   FiChevronDown,
   FiChevronRight,
+  FiSettings,
+  FiX,
 } from "react-icons/fi";
 import Button from "./ui/Button";
 import Spinner from "./Spinner";
@@ -42,20 +44,21 @@ const Check = ({ checked, indeterminate, disabled, onChange }) => {
   );
 };
 
-// Teacher-facing card: link Telegram + choose which notifications to receive and
-// for which classes/exams. Lives on the profile page (staff only).
+// Teacher-facing: a Settings entry on the profile that opens a Telegram settings
+// modal (connect + choose notifications + scope to classes/exams). Staff only.
 const TelegramNotifications = () => {
   const [status, setStatus] = useState(null); // { configured, linked, deepLink, ... }
   const [loading, setLoading] = useState(true);
+  const [open, setOpenModal] = useState(false); // settings modal
   const [busy, setBusy] = useState(""); // "test" | "unlink" | "check"
   const [waiting, setWaiting] = useState(false); // polling after Connect tap
   const pollRef = useRef(null);
 
   // Automation state.
-  const [auto, setAuto] = useState(null); // { onStart, ... , classes }
+  const [auto, setAuto] = useState(null); // { prefs, classes }
   const [exClasses, setExClasses] = useState([]); // excluded class ids
   const [exExams, setExExams] = useState([]); // excluded exam ids
-  const [open, setOpen] = useState({}); // expanded class ids in the tree
+  const [openClass, setOpenClass] = useState({}); // expanded class ids in tree
   const [saving, setSaving] = useState(false);
 
   const loadStatus = async () => {
@@ -83,15 +86,25 @@ const TelegramNotifications = () => {
   };
 
   useEffect(() => {
-    (async () => {
-      const s = await loadStatus();
-      if (s?.linked) loadAutomation();
-    })();
+    loadStatus();
     return () => pollRef.current && clearInterval(pollRef.current);
   }, []);
 
-  // After the teacher opens the bot, poll so the card flips to "connected" once
-  // they press Start in Telegram.
+  // Close the modal on Escape.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => e.key === "Escape" && setOpenModal(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  const openSettings = () => {
+    setOpenModal(true);
+    if (status?.linked && !auto) loadAutomation();
+  };
+
+  // After the teacher opens the bot, poll so it flips to "connected" once they
+  // press Start in Telegram.
   const startPolling = () => {
     setWaiting(true);
     let tries = 0;
@@ -160,10 +173,8 @@ const TelegramNotifications = () => {
 
   const toggleClass = (cls) => {
     if (classOn(cls._id)) {
-      // turn off -> exclude the class
       setExClasses((s) => [...s, cls._id]);
     } else {
-      // turn on -> include the class AND re-enable all its exams (clean slate)
       setExClasses((s) => s.filter((id) => id !== cls._id));
       const ids = new Set(cls.exams.map((e) => e._id));
       setExExams((s) => s.filter((id) => !ids.has(id)));
@@ -175,7 +186,6 @@ const TelegramNotifications = () => {
     setExExams((s) => (s.includes(eid) ? s.filter((id) => id !== eid) : [...s, eid]));
   };
 
-  // A class is "partial" when it's on but some of its exams are excluded.
   const classPartial = (cls) =>
     classOn(cls._id) && cls.exams.some((e) => exExams.includes(e._id));
 
@@ -202,182 +212,197 @@ const TelegramNotifications = () => {
   // Hide entirely when the server has no bot configured.
   if (!loading && status && status.configured === false) return null;
 
+  const linked = !!status?.linked;
+
+  // The settings body (rendered inside the modal).
+  const body = loading ? (
+    <div className="grid place-items-center py-10">
+      <Spinner size={24} className="text-primary" />
+    </div>
+  ) : !linked ? (
+    <div>
+      <ol className="mb-4 space-y-1.5 text-sm text-muted">
+        <li>1. “Telegram-ı qoş” düyməsini basın — bot açılacaq.</li>
+        <li>
+          2. Telegram-da <span className="font-semibold text-text">Start</span> düyməsini basın.
+        </li>
+        <li>3. Bu pəncərə avtomatik “Qoşulub” olacaq.</li>
+      </ol>
+      <div className="flex flex-wrap gap-2.5">
+        <Button type="button" onClick={onConnect} className="bg-[#229ED9] text-white hover:brightness-105">
+          <FiLink2 /> Telegram-ı qoş
+        </Button>
+        <Button type="button" variant="soft" onClick={onCheck} disabled={busy === "check"}>
+          {busy === "check" || waiting ? <Spinner size={16} /> : <FiRefreshCw />} Yoxla
+        </Button>
+      </div>
+      {waiting && (
+        <p className="mt-3 text-xs text-muted">Botda “Start” gözlənilir… Bu pəncərəni açıq saxlayın.</p>
+      )}
+    </div>
+  ) : (
+    <div className="space-y-6">
+      <div className="flex flex-wrap gap-2.5">
+        <Button type="button" variant="soft" onClick={onTest} disabled={busy === "test"}>
+          {busy === "test" ? <Spinner size={16} /> : <FiSend />} Test bildirişi
+        </Button>
+        <Button type="button" variant="secondary" onClick={onUnlink} disabled={busy === "unlink"}>
+          {busy === "unlink" ? <Spinner size={16} /> : null} Ayır
+        </Button>
+      </div>
+
+      {!auto ? (
+        <Spinner size={18} className="text-primary" />
+      ) : (
+        <>
+          <div>
+            <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">Bildiriş növləri</h3>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {EVENTS.map((ev) => (
+                <label
+                  key={ev.key}
+                  className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-surface2/40 p-3 transition-colors hover:border-primary/40"
+                >
+                  <Check checked={!!auto.prefs[ev.key]} onChange={(e) => setEvent(ev.key, e.target.checked)} />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold text-text">{ev.label}</span>
+                    <span className="block text-xs text-muted">{ev.desc}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <h3 className="mb-1 text-sm font-bold uppercase tracking-wide text-muted">Siniflər və imtahanlar</h3>
+            <p className="mb-2 text-xs text-muted">
+              Seçilmiş siniflər/imtahanlar üçün bildiriş gəlir. Yeni yaradılanlar avtomatik seçilir —
+              istəmədiyinizi söndürün.
+            </p>
+            {auto.classes.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-line p-4 text-sm text-muted">
+                Hələ sinif/imtahan yoxdur.
+              </p>
+            ) : (
+              <div className="divide-y divide-line overflow-hidden rounded-xl border border-line">
+                {auto.classes.map((cls) => (
+                  <div key={cls._id}>
+                    <div className="flex items-center gap-2 bg-surface2/40 px-3 py-2.5">
+                      <Check
+                        checked={classOn(cls._id)}
+                        indeterminate={classPartial(cls)}
+                        onChange={() => toggleClass(cls)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setOpenClass((o) => ({ ...o, [cls._id]: !o[cls._id] }))}
+                        className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
+                      >
+                        <span className="truncate text-sm font-semibold text-text">{cls.name}</span>
+                        <span className="shrink-0 rounded-full bg-surface px-1.5 text-[11px] font-semibold text-muted">
+                          {cls.exams.length}
+                        </span>
+                        {cls.exams.length > 0 &&
+                          (openClass[cls._id] ? (
+                            <FiChevronDown className="text-muted" />
+                          ) : (
+                            <FiChevronRight className="text-muted" />
+                          ))}
+                      </button>
+                    </div>
+                    {openClass[cls._id] && cls.exams.length > 0 && (
+                      <div className="space-y-1 px-3 py-2 pl-9">
+                        {cls.exams.map((ex) => (
+                          <label
+                            key={ex._id}
+                            className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 ${
+                              classOn(cls._id) ? "hover:bg-surface2/60" : "opacity-50"
+                            }`}
+                          >
+                            <Check
+                              checked={examOn(cls._id, ex._id)}
+                              disabled={!classOn(cls._id)}
+                              onChange={() => toggleExam(cls._id, ex._id)}
+                            />
+                            <span className="truncate text-sm text-text">{ex.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end">
+            <Button type="button" onClick={onSave} disabled={saving}>
+              {saving ? <Spinner size={16} /> : null} Yadda saxla
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+
   return (
-    <div className="mt-6 rounded-3xl border border-line bg-surface p-6 shadow-soft sm:p-8">
-      <div className="flex items-start gap-4">
+    <>
+      {/* Settings entry on the profile */}
+      <button
+        type="button"
+        onClick={openSettings}
+        className="mt-6 flex w-full items-center gap-4 rounded-3xl border border-line bg-surface p-5 text-left shadow-soft transition-colors hover:border-primary/40 sm:p-6"
+      >
         <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#229ED9]/12 text-[#229ED9]">
           <FaTelegramPlane className="text-2xl" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-display text-lg font-bold text-text">Avtomatlaşdırma — Telegram</h2>
-            {status?.linked && (
+            <span className="font-display text-base font-bold text-text">Telegram bildirişləri</span>
+            {linked ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-success/12 px-2.5 py-0.5 text-xs font-semibold text-success">
                 <FiCheckCircle /> Qoşulub
               </span>
+            ) : (
+              <span className="inline-flex items-center rounded-full bg-warning/12 px-2.5 py-0.5 text-xs font-semibold text-warning">
+                Qoşulmayıb
+              </span>
             )}
           </div>
-          <p className="mt-1 text-sm leading-relaxed text-muted">
-            Şagird fəaliyyətindən (başlama, bitirmə, pozuntu, qoşulma) dərhal Telegram-a bildiriş.
-          </p>
-
-          {loading ? (
-            <div className="mt-4">
-              <Spinner size={20} className="text-primary" />
-            </div>
-          ) : !status?.linked ? (
-            /* ---- not linked: connect flow ---- */
-            <div className="mt-4">
-              <ol className="mb-4 space-y-1.5 text-sm text-muted">
-                <li>1. “Telegram-ı qoş” düyməsini basın — bot açılacaq.</li>
-                <li>
-                  2. Telegram-da <span className="font-semibold text-text">Start</span> düyməsini
-                  basın.
-                </li>
-                <li>3. Bu səhifə avtomatik “Qoşulub” olacaq.</li>
-              </ol>
-              <div className="flex flex-wrap gap-2.5">
-                <Button
-                  type="button"
-                  onClick={onConnect}
-                  className="bg-[#229ED9] text-white hover:brightness-105"
-                >
-                  <FiLink2 /> Telegram-ı qoş
-                </Button>
-                <Button type="button" variant="soft" onClick={onCheck} disabled={busy === "check"}>
-                  {busy === "check" || waiting ? <Spinner size={16} /> : <FiRefreshCw />} Yoxla
-                </Button>
-              </div>
-              {waiting && (
-                <p className="mt-3 text-xs text-muted">
-                  Botda “Start” gözlənilir… Bu pəncərəni açıq saxlayın.
-                </p>
-              )}
-            </div>
-          ) : (
-            /* ---- linked: test/unlink + automation settings ---- */
-            <div className="mt-4 space-y-6">
-              <div className="flex flex-wrap gap-2.5">
-                <Button type="button" variant="soft" onClick={onTest} disabled={busy === "test"}>
-                  {busy === "test" ? <Spinner size={16} /> : <FiSend />} Test bildirişi
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={onUnlink}
-                  disabled={busy === "unlink"}
-                >
-                  {busy === "unlink" ? <Spinner size={16} /> : null} Ayır
-                </Button>
-              </div>
-
-              {!auto ? (
-                <Spinner size={18} className="text-primary" />
-              ) : (
-                <>
-                  {/* Event types */}
-                  <div>
-                    <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">
-                      Bildiriş növləri
-                    </h3>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {EVENTS.map((ev) => (
-                        <label
-                          key={ev.key}
-                          className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-surface2/40 p-3 transition-colors hover:border-primary/40"
-                        >
-                          <Check
-                            checked={!!auto.prefs[ev.key]}
-                            onChange={(e) => setEvent(ev.key, e.target.checked)}
-                          />
-                          <span className="min-w-0">
-                            <span className="block text-sm font-semibold text-text">{ev.label}</span>
-                            <span className="block text-xs text-muted">{ev.desc}</span>
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Class / exam scope */}
-                  <div>
-                    <h3 className="mb-1 text-sm font-bold uppercase tracking-wide text-muted">
-                      Siniflər və imtahanlar
-                    </h3>
-                    <p className="mb-2 text-xs text-muted">
-                      Seçilmiş siniflər/imtahanlar üçün bildiriş gəlir. Yeni yaradılanlar avtomatik
-                      seçilir — istəmədiyinizi söndürün.
-                    </p>
-                    {auto.classes.length === 0 ? (
-                      <p className="rounded-xl border border-dashed border-line p-4 text-sm text-muted">
-                        Hələ sinif/imtahan yoxdur.
-                      </p>
-                    ) : (
-                      <div className="divide-y divide-line overflow-hidden rounded-xl border border-line">
-                        {auto.classes.map((cls) => (
-                          <div key={cls._id}>
-                            <div className="flex items-center gap-2 bg-surface2/40 px-3 py-2.5">
-                              <Check
-                                checked={classOn(cls._id)}
-                                indeterminate={classPartial(cls)}
-                                onChange={() => toggleClass(cls)}
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setOpen((o) => ({ ...o, [cls._id]: !o[cls._id] }))}
-                                className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
-                              >
-                                <span className="truncate text-sm font-semibold text-text">
-                                  {cls.name}
-                                </span>
-                                <span className="shrink-0 rounded-full bg-surface px-1.5 text-[11px] font-semibold text-muted">
-                                  {cls.exams.length}
-                                </span>
-                                {cls.exams.length > 0 &&
-                                  (open[cls._id] ? (
-                                    <FiChevronDown className="text-muted" />
-                                  ) : (
-                                    <FiChevronRight className="text-muted" />
-                                  ))}
-                              </button>
-                            </div>
-                            {open[cls._id] && cls.exams.length > 0 && (
-                              <div className="space-y-1 px-3 py-2 pl-9">
-                                {cls.exams.map((ex) => (
-                                  <label
-                                    key={ex._id}
-                                    className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 ${
-                                      classOn(cls._id) ? "hover:bg-surface2/60" : "opacity-50"
-                                    }`}
-                                  >
-                                    <Check
-                                      checked={examOn(cls._id, ex._id)}
-                                      disabled={!classOn(cls._id)}
-                                      onChange={() => toggleExam(cls._id, ex._id)}
-                                    />
-                                    <span className="truncate text-sm text-text">{ex.name}</span>
-                                  </label>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex justify-end">
-                    <Button type="button" onClick={onSave} disabled={saving}>
-                      {saving ? <Spinner size={16} /> : null} Yadda saxla
-                    </Button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+          <p className="mt-0.5 text-sm text-muted">Bildiriş növləri, siniflər və imtahanlar üçün ayarlar</p>
         </div>
-      </div>
-    </div>
+        <FiSettings className="shrink-0 text-xl text-muted" />
+      </button>
+
+      {/* Settings modal */}
+      {open && (
+        <div className="fixed inset-0 z-[1500] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setOpenModal(false)} />
+          <div className="animate-scale-in relative flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-lift">
+            <div className="flex items-center gap-3 border-b border-line p-5">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#229ED9]/12 text-[#229ED9]">
+                <FaTelegramPlane className="text-xl" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="font-display text-lg font-bold text-text">Telegram bildirişləri</h2>
+                <p className="text-xs text-muted">
+                  Şagird fəaliyyətindən dərhal Telegram-a bildiriş.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOpenModal(false)}
+                aria-label="Bağla"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-line text-muted transition-colors hover:text-text"
+              >
+                <FiX />
+              </button>
+            </div>
+            <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto p-5">{body}</div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
