@@ -77,20 +77,27 @@ const ResultCard = ({ result }) => {
           )}
           <tr className={hasCorrect ? "border-b border-line" : ""}>
             <td className={rowLabel}>Sənin cavabın</td>
-            {cells.map((i) => (
-              <td
-                key={i}
-                className={`border-l border-line px-3 py-3 text-center font-medium ${
-                  showMark(i)
-                    ? isCorrect(i)
-                      ? "bg-success/15 text-success"
-                      : "bg-danger/12 text-danger"
-                    : "text-muted"
-                }`}
-              >
-                {fmt(selectedAnswers[i]?.answer, isIndexCell(i))}
-              </td>
-            ))}
+            {cells.map((i) => {
+              // Distinguish three states: left blank (amber "Boş"), answered
+              // correct (green), answered wrong (red).
+              const empty = !answered(i);
+              return (
+                <td
+                  key={i}
+                  className={`border-l border-line px-3 py-3 text-center font-medium ${
+                    empty
+                      ? "bg-warning/10 text-warning"
+                      : showMark(i)
+                        ? isCorrect(i)
+                          ? "bg-success/15 text-success"
+                          : "bg-danger/12 text-danger"
+                        : "text-muted"
+                  }`}
+                >
+                  {empty ? "Boş" : fmt(selectedAnswers[i]?.answer, isIndexCell(i))}
+                </td>
+              );
+            })}
           </tr>
           {hasCorrect && (
             <tr>

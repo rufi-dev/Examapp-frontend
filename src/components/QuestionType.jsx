@@ -1,5 +1,5 @@
 import { memo, useState } from "react";
-import { FiFlag, FiCamera, FiX } from "react-icons/fi";
+import { FiFlag, FiCamera, FiX, FiAlertCircle } from "react-icons/fi";
 import { toast } from "react-toastify";
 import Math, { MathText } from "./Math";
 import MatchingQuestion from "./MatchingQuestion";
@@ -123,6 +123,23 @@ const QuestionType = ({
 }) => {
   const selectedAnswers = review?.selectedAnswers || [];
   const isReview = selectedAnswers.length > 0;
+
+  // True when the student actually answered (any answer shape: text / index /
+  // array of indices / matching map). Empty string, [], {} and null = no answer.
+  const answeredVal = (v) => {
+    if (v == null || v === "") return false;
+    if (Array.isArray(v)) return v.length > 0;
+    if (typeof v === "object") return Object.keys(v).length > 0;
+    return String(v).trim() !== "";
+  };
+  // In review, an unmistakable "left blank" chip so an empty answer reads as
+  // skipped, not as a wrong choice.
+  const unansweredBadge = (i) =>
+    isReview && !answeredVal(selectedAnswers[i]?.answer) ? (
+      <span className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-warning/40 bg-warning/15 px-2 py-1 text-xs font-semibold text-warning">
+        <FiAlertCircle /> Cavabsız buraxılıb
+      </span>
+    ) : null;
 
   // The solution-photo control (live upload) / display (review) for question i.
   const photoBlock = (i) => {
@@ -379,6 +396,7 @@ const QuestionType = ({
               <div className="mb-2.5 flex items-start justify-between gap-2">
                 <Stem def={def} i={i} label={LABELS.Cm} />
                 {markBtn(i)}
+                {unansweredBadge(i)}
               </div>
               {renderChoices(def, i, def.type === "Cs")}
               {explanationNote(def)}
@@ -394,6 +412,7 @@ const QuestionType = ({
               <div className="mb-2.5 flex items-start justify-between gap-2">
                 <Stem def={def} i={i} label={LABELS.Cma} />
                 {markBtn(i)}
+                {unansweredBadge(i)}
               </div>
               {renderMatching(def, i)}
               {explanationNote(def)}
@@ -411,6 +430,7 @@ const QuestionType = ({
                   {LABELS.Cm} {i + 1}
                 </p>
                 {markBtn(i)}
+                {unansweredBadge(i)}
               </div>
               <div className="flex flex-wrap gap-3">
                 {(def.options || DEFAULT_OPTIONS).map((option) => (
@@ -452,9 +472,16 @@ const QuestionType = ({
                       ✕ Doğru: <MathText text={correctAnswer} />
                     </span>
                   )}
+                  {/* Left blank: still reveal the correct answer (the badge marks it skipped). */}
+                  {isReview && !answeredVal(userAnswer) && correctAnswer && (
+                    <span className="text-success">
+                      Doğru: <MathText text={correctAnswer} />
+                    </span>
+                  )}
                 </p>
               </div>
               {markBtn(i)}
+              {unansweredBadge(i)}
             </div>
             <textarea
               rows={def.type === "Cd" ? 6 : 4}
