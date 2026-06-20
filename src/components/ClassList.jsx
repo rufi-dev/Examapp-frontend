@@ -1,10 +1,9 @@
 import { Link, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { LuGraduationCap } from "react-icons/lu";
-import { FiArrowUpRight, FiUsers, FiCopy, FiLink2 } from "react-icons/fi";
+import { FiArrowUpRight, FiUsers } from "react-icons/fi";
 import { MdOutlineModeEditOutline } from "react-icons/md";
 import { AiFillDelete } from "react-icons/ai";
-import { toast } from "react-toastify";
 import { useDispatch, useSelector } from "react-redux";
 import { getClassesByTag, deleteClass } from "../../redux/features/quiz/quizSlice";
 import { selectUser } from "../../redux/features/auth/authSlice";
@@ -25,23 +24,6 @@ const ClassList = () => {
   const me = useSelector(selectUser);
   const canManage = (item) =>
     me?.role === "admin" || (item?.owner && String(item.owner) === String(me?._id));
-  const copyCode = (code) => {
-    try {
-      navigator.clipboard.writeText(code);
-      toast.success(`Kod kopyalandı: ${code}`);
-    } catch {
-      toast.info(code);
-    }
-  };
-  const copyLink = (code) => {
-    const url = `${window.location.origin}/join/${code}`;
-    try {
-      navigator.clipboard.writeText(url);
-      toast.success("Qoşulma linki kopyalandı");
-    } catch {
-      toast.info(url);
-    }
-  };
   const { tagId } = useParams();
   const [loadedOnce, setLoadedOnce] = useState(false);
   const [confirmClass, setConfirmClass] = useState(null);
@@ -138,36 +120,6 @@ const ClassList = () => {
                 <FiArrowUpRight className="shrink-0 text-xl text-muted transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary" />
               </div>
             </Link>
-
-            {/* Join code + copy (owner/admin only). */}
-            {canManage(_class) && _class.joinCode && (
-              <div className="mt-auto flex items-center justify-between gap-2 rounded-xl border border-line bg-surface2/50 px-3 py-2">
-                <span className="flex items-center gap-2 text-xs text-muted">
-                  Kod:
-                  <span className="font-mono text-sm font-bold tracking-[0.2em] text-text">
-                    {_class.joinCode}
-                  </span>
-                </span>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => copyLink(_class.joinCode)}
-                    title="Qoşulma linkini kopyala"
-                    className="grid h-7 w-7 place-items-center rounded-lg text-muted transition-colors hover:bg-surface hover:text-primary"
-                  >
-                    <FiLink2 />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => copyCode(_class.joinCode)}
-                    title="Kodu kopyala"
-                    className="grid h-7 w-7 place-items-center rounded-lg text-muted transition-colors hover:bg-surface hover:text-primary"
-                  >
-                    <FiCopy />
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         ))}
       </div>

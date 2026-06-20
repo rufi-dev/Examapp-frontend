@@ -45,8 +45,6 @@ const statusInfo = (exam, now) => {
   return { label: "Həmişə aktiv", cls: "bg-success/15 text-success" };
 };
 
-const examCode = (id) => String(id || "").slice(-8).toUpperCase();
-
 const Stat = ({ value, label, cls }) => (
   <div className="px-2 py-3 text-center">
     <p className={`font-display text-2xl font-bold tabular-nums ${cls}`}>{value}</p>
@@ -212,10 +210,7 @@ const ExamList = ({ classId }) => {
                   <h3 className="line-clamp-2 font-display text-lg font-bold leading-tight text-text">
                     {exam.name}
                   </h3>
-                  <p className="mt-1 text-xs text-muted">
-                    Kod: <span className="font-mono font-semibold text-text">{examCode(exam._id)}</span>
-                    {category ? <span> · {category}</span> : null}
-                  </p>
+                  {category && <p className="mt-1 text-xs text-muted">{category}</p>}
                 </div>
               </div>
 
