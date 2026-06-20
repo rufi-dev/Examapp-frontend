@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import {
   FiUsers,
   FiCopy,
+  FiLink2,
   FiRefreshCw,
   FiCheck,
   FiX,
@@ -82,6 +83,15 @@ const MyClasses = () => {
       toast.success(`Kod kopyalandı: ${code}`);
     } catch {
       toast.info(code);
+    }
+  };
+  const copyLink = (code) => {
+    const url = `${window.location.origin}/join/${code}`;
+    try {
+      navigator.clipboard.writeText(url);
+      toast.success("Qoşulma linki kopyalandı");
+    } catch {
+      toast.info(url);
     }
   };
 
@@ -240,8 +250,16 @@ const MyClasses = () => {
                     </span>
                     <button
                       type="button"
+                      onClick={() => copyLink(c.joinCode)}
+                      title="Qoşulma linkini kopyala"
+                      className="grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors hover:bg-surface hover:text-primary"
+                    >
+                      <FiLink2 />
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => copyCode(c.joinCode)}
-                      title="Kopyala"
+                      title="Kodu kopyala"
                       className="grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors hover:bg-surface hover:text-primary"
                     >
                       <FiCopy />

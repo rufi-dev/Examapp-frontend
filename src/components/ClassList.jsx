@@ -1,7 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { LuGraduationCap } from "react-icons/lu";
-import { FiArrowUpRight, FiUsers, FiCopy } from "react-icons/fi";
+import { FiArrowUpRight, FiUsers, FiCopy, FiLink2 } from "react-icons/fi";
 import { MdOutlineModeEditOutline } from "react-icons/md";
 import { AiFillDelete } from "react-icons/ai";
 import { toast } from "react-toastify";
@@ -31,6 +31,15 @@ const ClassList = () => {
       toast.success(`Kod kopyalandı: ${code}`);
     } catch {
       toast.info(code);
+    }
+  };
+  const copyLink = (code) => {
+    const url = `${window.location.origin}/join/${code}`;
+    try {
+      navigator.clipboard.writeText(url);
+      toast.success("Qoşulma linki kopyalandı");
+    } catch {
+      toast.info(url);
     }
   };
   const { tagId } = useParams();
@@ -139,14 +148,24 @@ const ClassList = () => {
                     {_class.joinCode}
                   </span>
                 </span>
-                <button
-                  type="button"
-                  onClick={() => copyCode(_class.joinCode)}
-                  title="Kodu kopyala"
-                  className="grid h-7 w-7 place-items-center rounded-lg text-muted transition-colors hover:bg-surface hover:text-primary"
-                >
-                  <FiCopy />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => copyLink(_class.joinCode)}
+                    title="Qoşulma linkini kopyala"
+                    className="grid h-7 w-7 place-items-center rounded-lg text-muted transition-colors hover:bg-surface hover:text-primary"
+                  >
+                    <FiLink2 />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => copyCode(_class.joinCode)}
+                    title="Kodu kopyala"
+                    className="grid h-7 w-7 place-items-center rounded-lg text-muted transition-colors hover:bg-surface hover:text-primary"
+                  >
+                    <FiCopy />
+                  </button>
+                </div>
               </div>
             )}
           </div>

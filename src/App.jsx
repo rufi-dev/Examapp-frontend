@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import Layout from "./components/Layout";
 import ScrollToTop from "./components/ScrollToTop";
+import PendingJoinHandler from "./components/PendingJoinHandler";
 import axios from "axios";
 import { ToastContainer, Slide } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -63,6 +64,7 @@ const MyClasses = lazy(() => import("./pages/admin/MyClasses"));
 const ExamResults = lazy(() => import("./pages/admin/ExamResults"));
 const Notifications = lazy(() => import("./pages/admin/Notifications"));
 const ExamInstructions = lazy(() => import("./pages/exam/ExamInstructions"));
+const JoinByLink = lazy(() => import("./pages/JoinByLink"));
 const Quiz = lazy(() => import("./pages/exam/Quiz"));
 const Result = lazy(() => import("./pages/exam/Result"));
 const MyResults = lazy(() => import("./pages/exam/MyResults"));
@@ -129,6 +131,7 @@ function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
+      <PendingJoinHandler />
       <Wrapper>
         <ToastContainer
           position="top-right"
@@ -162,6 +165,9 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
             </Route>
+
+            {/* Shareable class-join link (works logged in or out). */}
+            <Route path="/join/:code" element={<JoinByLink />} />
 
             {/* Auth utility routes */}
             <Route path="/forgot" element={<Forgot />} />

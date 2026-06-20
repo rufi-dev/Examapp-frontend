@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
 import { AdminTeacherLink } from "../components/protect/hiddenLink";
 import ExamList from "../components/ExamList";
+import ClassShareBanner from "../components/ClassShareBanner";
 import useRedirectLoggedOutUser from "../customHook/useRedirectLoggedOutUser";
 import AccountLayout from "../components/AccountLayout";
 import Button from "../components/ui/Button";
@@ -22,6 +23,7 @@ const Exams = () => {
         </AdminTeacherLink>
       }
     >
+      <ClassShareBanner classId={classId} />
       <ExamList classId={classId} />
     </AccountLayout>
   );
