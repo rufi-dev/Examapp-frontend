@@ -26,6 +26,12 @@ export const getTags = createAsyncThunk("quiz/getTags", async (_, thunkAPI) => {
   try {
     return await quizService.getTags();
   } catch (error) {
+    // Categories are fetched on the PUBLIC landing page. A 401 there just means
+    // the visitor isn't logged in — reject silently (null) so no scary
+    // "Not authorized" toast pops up for someone just browsing the site.
+    if (error.response && error.response.status === 401) {
+      return thunkAPI.rejectWithValue(null);
+    }
     const message =
       (error.response && error.response.data && error.response.data.message) ||
       error.message ||
@@ -607,7 +613,8 @@ const quizSlice = createSlice({
         state.isError = true;
         state.message = action.payload;
         state.tags = null;
-        toast.error(action.payload);
+        // payload is null on a silent 401 (visitor not logged in) — no toast.
+        if (action.payload) toast.error(action.payload);
       })
       .addCase(getClassesByTag.pending, (state, action) => {
         state.isLoading = true;

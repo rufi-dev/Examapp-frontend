@@ -984,7 +984,9 @@ const StructuredBuilder = () => {
       } catch {
         /* ignore */
       }
-      navigate(-1);
+      // After saving questions, take the teacher to the exam's instructions
+      // page (a clean overview) rather than back to the previous page.
+      navigate(`/exam/details/${examId}`);
     } catch {
       // error toast shown by the slice's rejected case
     } finally {

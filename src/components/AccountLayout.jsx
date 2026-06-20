@@ -46,6 +46,23 @@ const adminNav = [
   { to: "/notifications", label: "Bildirişlər", icon: FiBell },
 ];
 
+// Fallback label for the CURRENT page when a page doesn't pass a `title`
+// (e.g. Profile) — so the breadcrumb never shows a generic "Səhifə".
+const PATH_LABELS = {
+  "/dashboard": "İcmal",
+  "/tags": "Kateqoriyalar",
+  "/myExams": "İmtahanlarım",
+  "/myResults": "Nəticələrim",
+  "/achievements": "Nailiyyətlərimiz",
+  "/profile": "Profil",
+  "/changePassword": "Şifrə",
+  "/myClasses": "Siniflərim",
+  "/users": "İstifadəçilər",
+  "/examResults": "Nəticələr",
+  "/notifications": "Bildirişlər",
+  "/aiUsage": "AI xərcləri",
+};
+
 // Parent crumbs (with links) for nested routes; the current page itself is
 // appended from the `title` prop. Leaf pages get just İcmal / {title}.
 const sectionParents = (path) => {
@@ -90,7 +107,7 @@ export default function AccountLayout({ title, subtitle, actions, children }) {
       : [
           { label: "İcmal", to: "/dashboard" },
           ...sectionParents(pathname),
-          { label: title || "Səhifə", current: true },
+          { label: title || PATH_LABELS[pathname] || "Səhifə", current: true },
         ];
   // Drop a current crumb that just repeats its parent (e.g. /tags).
   const crumbs = rawCrumbs.filter(

@@ -129,7 +129,8 @@ const QuestionAdd = () => {
       // Success/error toasts are handled by the addQuestion slice; unwrap() so
       // we only navigate away when the save actually succeeds.
       await dispatch(addQuestion({ examId, questionData: { correctAnswers } })).unwrap();
-      navigate(-1);
+      // Take the teacher to the exam instructions overview after saving.
+      navigate(`/exam/details/${examId}`);
     } catch {
       // error toast is shown by the slice's rejected case
     } finally {
