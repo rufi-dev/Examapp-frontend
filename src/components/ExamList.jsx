@@ -276,11 +276,11 @@ const ExamList = ({ classId }) => {
                     >
                       <FiBarChart2 /> Nəticəni gör
                     </Button>
-                    {!ended && (
-                      <Button to={`/exam/details/${exam._id}`} variant="outline" size="lg" className="w-full">
-                        İmtahana bax
-                      </Button>
-                    )}
+                    {/* Always offer a look at the exam when a result exists —
+                        including ended exams (review what you took). */}
+                    <Button to={`/exam/details/${exam._id}`} variant="outline" size="lg" className="w-full">
+                      İmtahana bax
+                    </Button>
                   </div>
                 ) : upcoming ? (
                   <Button disabled size="lg" className="w-full">
