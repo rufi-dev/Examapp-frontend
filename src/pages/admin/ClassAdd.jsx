@@ -13,18 +13,18 @@ const ClassAdd = () => {
   const navigate = useNavigate();
   const { tagId } = useParams();
   const dispatch = useDispatch();
-  const [classForm, setClassForm] = useState({ level: "" });
-  const { level } = classForm;
+  const [classForm, setClassForm] = useState({ name: "" });
+  const { name } = classForm;
 
   const handleInputChange = (e) =>
     setClassForm({ ...classForm, [e.target.name]: e.target.value });
 
   const addClassForm = async (e) => {
     e.preventDefault();
-    if (!level) {
-      return toast.error("Sinif xanasını doldurun");
+    if (!name.trim()) {
+      return toast.error("Sinif adını daxil edin");
     }
-    const addClassData = await dispatch(addClass({ classData: { level }, tagId }));
+    const addClassData = await dispatch(addClass({ classData: { name: name.trim() }, tagId }));
     if (addClassData.type != "quiz/addClass/rejected") {
       navigate("/class/" + tagId);
     }
@@ -37,14 +37,14 @@ const ClassAdd = () => {
           onSubmit={addClassForm}
           className="rounded-3xl border border-line bg-surface p-6 shadow-soft sm:p-8"
         >
-          <Field label="Sinif" htmlFor="level">
+          <Field label="Sinif adı" htmlFor="name">
             <input
-              id="level"
-              name="level"
-              value={level}
+              id="name"
+              name="name"
+              value={name}
               onChange={handleInputChange}
               className={inputClass}
-              placeholder="Məsələn: 11"
+              placeholder="Məsələn: 11-ci sinif"
             />
           </Field>
           <Button type="submit" className="mt-6">

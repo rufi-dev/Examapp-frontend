@@ -14,12 +14,12 @@ import {
   CALC_VERIFIED_USER,
   deleteUser,
   getUsers,
+  selectUser,
 } from "../../../redux/features/auth/authSlice";
 import { shortenText } from "./Profile";
 import { FILTER_USERS, selectUsers } from "../../../redux/features/auth/filterSlice";
 import ReactPaginate from "react-paginate";
 import { Link } from "react-router-dom";
-import { AdminTeacherLink } from "../../components/protect/hiddenLink";
 import Badge from "../../components/ui/Badge";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 
@@ -46,6 +46,8 @@ const UserList = () => {
   const { isLoading, users, suspendedUsers, verifiedUsers } = useSelector(
     (state) => state.auth
   );
+  const me = useSelector(selectUser);
+  const isAdmin = me?.role === "admin";
   const unVerifiedUser = users.length - verifiedUsers;
 
   useEffect(() => {
@@ -135,10 +137,9 @@ const UserList = () => {
                   <th className="px-4 py-4 font-semibold">Telefon</th>
                   <th className="px-4 py-4 font-semibold">Rol</th>
                   <th className="px-4 py-4 font-semibold">Status</th>
-                  <AdminTeacherLink>
-                    <th className="px-4 py-4 font-semibold">Rolu dəyiş</th>
-                    <th className="px-4 py-4 text-right font-semibold">Əməliyyat</th>
-                  </AdminTeacherLink>
+                  {isAdmin && (
+                    <th className="px-4 py-4 text-right font-semibold">İdarəetmə</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -172,20 +173,22 @@ const UserList = () => {
                         <Badge tone="warning">Təsdiqlənməyib</Badge>
                       )}
                     </td>
-                    <AdminTeacherLink>
+                    {isAdmin && (
                       <td className="px-4 py-4">
-                        <ChangeRole _id={user._id} email={user.email} />
+                        <div className="flex items-center justify-end gap-2">
+                          {/* Admin only: full role control + delete. Teachers manage
+                              students per-class from Siniflərim (remove from class). */}
+                          <ChangeRole _id={user._id} email={user.email} />
+                          <button
+                            onClick={() => setConfirmUser(user)}
+                            aria-label="Sil"
+                            className="grid h-9 w-9 place-items-center rounded-lg text-muted transition-colors hover:bg-danger/12 hover:text-danger"
+                          >
+                            <AiFillDelete />
+                          </button>
+                        </div>
                       </td>
-                      <td className="px-4 py-4 text-right">
-                        <button
-                          onClick={() => setConfirmUser(user)}
-                          aria-label="Sil"
-                          className="ml-auto grid h-9 w-9 place-items-center rounded-lg text-muted transition-colors hover:bg-danger/12 hover:text-danger"
-                        >
-                          <AiFillDelete />
-                        </button>
-                      </td>
-                    </AdminTeacherLink>
+                    )}
                   </tr>
                 ))}
               </tbody>

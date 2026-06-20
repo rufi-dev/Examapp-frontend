@@ -14,8 +14,8 @@ const ClassEdit = () => {
   const { singleClass, isLoading } = useSelector((state) => state.quiz);
   const navigate = useNavigate();
   const { classId } = useParams();
-  const [classForm, setClassForm] = useState({ level: "" });
-  const { level } = classForm;
+  const [classForm, setClassForm] = useState({ name: "" });
+  const { name } = classForm;
   const dispatch = useDispatch();
 
   const handleInputChange = (e) =>
@@ -26,13 +26,17 @@ const ClassEdit = () => {
   }, [dispatch, classId]);
 
   useEffect(() => {
-    if (singleClass) setClassForm({ level: singleClass.level ?? "" });
+    if (singleClass)
+      setClassForm({
+        // Prefill the text name; fall back to the legacy numeric level.
+        name: singleClass.name || (singleClass.level != null ? String(singleClass.level) : ""),
+      });
   }, [singleClass]);
 
   const editClassForm = async (e) => {
     e.preventDefault();
-    if (!level) return toast.error("Sinif xanasını doldurun");
-    const res = await dispatch(editClass({ classId, classData: { level } }));
+    if (!name.trim()) return toast.error("Sinif adını daxil edin");
+    const res = await dispatch(editClass({ classId, classData: { name: name.trim() } }));
     if (res.type != "quiz/editClass/rejected") navigate(-1);
   };
 
@@ -45,14 +49,14 @@ const ClassEdit = () => {
           onSubmit={editClassForm}
           className="rounded-3xl border border-line bg-surface p-6 shadow-soft sm:p-8"
         >
-          <Field label="Sinif" htmlFor="level">
+          <Field label="Sinif adı" htmlFor="name">
             <input
-              id="level"
-              name="level"
-              value={level}
+              id="name"
+              name="name"
+              value={name}
               onChange={handleInputChange}
               className={inputClass}
-              placeholder="Məsələn: 11"
+              placeholder="Məsələn: 11-ci sinif"
             />
           </Field>
           <Button type="submit" className="mt-6">

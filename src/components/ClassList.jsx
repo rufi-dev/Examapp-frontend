@@ -13,6 +13,10 @@ import ConfirmDialog from "./ui/ConfirmDialog";
 const levelLabel = (level) =>
   [1, 2].includes(Number(level)) ? `${level} ci qrup` : `${level} sinif`;
 
+// Prefer the free-text class name; fall back to the legacy numeric level label.
+const classLabel = (c) =>
+  c?.name && String(c.name).trim() ? c.name : c?.level != null ? levelLabel(c.level) : "Sinif";
+
 const ClassList = () => {
   const dispatch = useDispatch();
   const { classes } = useSelector((state) => state.quiz);
@@ -98,7 +102,7 @@ const ClassList = () => {
                 <LuGraduationCap className="text-[22px]" />
               </span>
               <div className="flex w-full items-center justify-between gap-3">
-                <h3 className="font-display text-lg font-bold text-text">{levelLabel(_class.level)}</h3>
+                <h3 className="font-display text-lg font-bold text-text">{classLabel(_class)}</h3>
                 <FiArrowUpRight className="shrink-0 text-xl text-muted transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary" />
               </div>
             </Link>
@@ -117,7 +121,7 @@ const ClassList = () => {
         loading={deleting}
       >
         <p>
-          <span className="font-semibold text-text">{levelLabel(confirmClass?.level)}</span> və
+          <span className="font-semibold text-text">{classLabel(confirmClass)}</span> və
           içindəki{" "}
           <span className="font-semibold text-text">
             bütün imtahanlar, suallar və nəticələr

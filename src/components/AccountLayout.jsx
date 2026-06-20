@@ -40,6 +40,7 @@ const navItems = [
 // "Add category" already lives as a button on the Kateqoriyalar page, so the
 // admin nav doesn't repeat it — it only keeps user management here.
 const adminNav = [
+  { to: "/myClasses", label: "Siniflərim", icon: FiUsers },
   { to: "/users", label: "İstifadəçilər", icon: FiUsers },
   { to: "/examResults", label: "Nəticələr", icon: FiPieChart },
   { to: "/notifications", label: "Bildirişlər", icon: FiBell },

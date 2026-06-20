@@ -188,8 +188,10 @@ const ExamList = ({ classId }) => {
               <Badge tone="neutral">
                 <FiClock /> {Math.floor(exam.duration / 60)} dəq {exam.duration % 60} san
               </Badge>
-              {exam.class?.level != null && (
-                <Badge tone="primary">{exam.class.level} sinif</Badge>
+              {(exam.class?.name || exam.class?.level != null) && (
+                <Badge tone="primary">
+                  {exam.class.name || `${exam.class.level} sinif`}
+                </Badge>
               )}
               <Badge tone={exam.price > 0 ? "accent" : "success"}>
                 {exam.price > 0 ? `${exam.price} AZN` : "Pulsuz"}
