@@ -6,7 +6,9 @@ import ResultCard from "../../components/ResultCard";
 import Loader from "../../components/Loader";
 import AccountLayout from "../../components/AccountLayout";
 import ExamAnalytics from "../../components/analytics/ExamAnalytics";
-import { FiDownload, FiAlertTriangle } from "react-icons/fi";
+import { toast } from "react-toastify";
+import { FiDownload, FiAlertTriangle, FiFileText } from "react-icons/fi";
+import Spinner from "../../components/Spinner";
 
 // Heavy (@react-pdf/renderer ~1.3MB) — loaded only when a teacher clicks export.
 const ResultsPdfExport = lazy(() => import("../../components/ResultsPdfExport"));
@@ -20,6 +22,7 @@ const ResultsByExam = () => {
   const { resultsByExam, isLoading } = useSelector((state) => state.result);
   const [tab, setTab] = useState("analytics"); // "analytics" | "students"
   const [showPdf, setShowPdf] = useState(false); // defer the PDF export library
+  const [excelBusy, setExcelBusy] = useState(false);
 
   useEffect(() => {
     dispatch(getResultsByExam(examId));
@@ -31,6 +34,22 @@ const ResultsByExam = () => {
 
   const results = Array.isArray(resultsByExam) ? resultsByExam : [];
   const passingMarks = results[0]?.examId?.passingMarks;
+
+  // Defer the (heavy) exceljs library until the teacher actually exports.
+  const onExcel = async () => {
+    if (!results.length) return toast.info("İxrac üçün nəticə yoxdur");
+    setExcelBusy(true);
+    try {
+      const { exportResultsExcel } = await import("../../components/ResultsExcelExport");
+      await exportResultsExcel(results);
+    } catch (e) {
+      toast.error("Excel hazırlanmadı");
+      // eslint-disable-next-line no-console
+      console.error("excel export:", e);
+    } finally {
+      setExcelBusy(false);
+    }
+  };
 
   const tabBtn = (active) =>
     `rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
@@ -54,6 +73,9 @@ const ResultsByExam = () => {
               <FiDownload /> PDF ixrac et
             </button>
           )}
+          <button type="button" onClick={onExcel} disabled={excelBusy} className={pdfBtn}>
+            {excelBusy ? <Spinner size={16} /> : <FiFileText className="text-success" />} Excel ixrac et
+          </button>
         </div>
       }
     >

@@ -41,7 +41,12 @@ export default defineConfig({
         // the structured-question builder bundles MathLive (~800KB) and the
         // results PDF export bundles @react-pdf (~1.3MB). Staff load them on
         // demand over the network instead; students never download them.
-        globIgnores: ['**/StructuredBuilder-*.js', '**/ResultsPdfExport-*.js'],
+        globIgnores: [
+          '**/StructuredBuilder-*.js',
+          '**/ResultsPdfExport-*.js',
+          '**/ResultsExcelExport-*.js',
+          '**/exceljs*.js',
+        ],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api/],
         cleanupOutdatedCaches: true,

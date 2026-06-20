@@ -6,13 +6,18 @@ import { MdOutlineModeEditOutline } from "react-icons/md";
 import { AiFillDelete } from "react-icons/ai";
 import { useDispatch, useSelector } from "react-redux";
 import { getTags, deleteTag } from "../../redux/features/quiz/quizSlice";
-import { AdminTeacherLink } from "./protect/hiddenLink";
+import { selectUser } from "../../redux/features/auth/authSlice";
 import CenterLoader from "./ui/CenterLoader";
 import ConfirmDialog from "./ui/ConfirmDialog";
 
 const Categories = () => {
   const dispatch = useDispatch();
   const { tags } = useSelector((state) => state.quiz);
+  const me = useSelector(selectUser);
+  // Only the owner (or admin) may edit/delete — not a teacher who's just a
+  // participant in someone else's category.
+  const canManage = (item) =>
+    me?.role === "admin" || (item?.owner && String(item.owner) === String(me?._id));
   const [loadedOnce, setLoadedOnce] = useState(false);
   const [confirmTag, setConfirmTag] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -67,7 +72,7 @@ const Categories = () => {
             className="group relative animate-fade-in"
             style={{ animationDelay: `${Math.min(index * 70, 420)}ms` }}
           >
-            <AdminTeacherLink>
+            {canManage(tag) && (
               <div className="absolute right-3 top-3 z-10 flex gap-1">
                 <Link
                   to={`/tag/edit/${tag._id}`}
@@ -85,7 +90,7 @@ const Categories = () => {
                   <AiFillDelete />
                 </button>
               </div>
-            </AdminTeacherLink>
+            )}
             <Link
               to={`/class/${tag._id}`}
               className="flex h-full flex-col items-start gap-4 rounded-2xl border border-line bg-surface p-6 shadow-soft transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:border-primary/40 hover:shadow-lift"

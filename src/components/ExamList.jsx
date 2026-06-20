@@ -10,7 +10,6 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import Loader from "./Loader";
 import { MdOutlineModeEditOutline } from "react-icons/md";
-import { AdminTeacherLink } from "./protect/hiddenLink";
 import { AiFillDelete, AiOutlinePlus } from "react-icons/ai";
 import { FiClock, FiBarChart2, FiArrowRight, FiFileText, FiEye, FiEyeOff, FiCalendar } from "react-icons/fi";
 import { payExam } from "../../redux/features/stripe/stripeSlice";
@@ -81,6 +80,9 @@ const ExamList = ({ classId }) => {
   const dispatch = useDispatch();
   const { exams, myExams } = useSelector((state) => state.quiz);
   const { user } = useSelector((state) => state.auth);
+  // Only the owner (or admin) manages an exam — not a participant teacher.
+  const canManage = (exam) =>
+    user?.role === "admin" || (exam?.owner && String(exam.owner) === String(user?._id));
   const navigate = useNavigate();
   const [loadedOnce, setLoadedOnce] = useState(false);
   // The card pills show coarse units ("starts in 2 days", "closes in 45 min"),
@@ -201,7 +203,7 @@ const ExamList = ({ classId }) => {
             <ExamSchedule exam={exam} now={now} />
 
             <div className="mt-auto pt-6">
-              <AdminTeacherLink>
+              {canManage(exam) && (
                 <div className="mb-4 flex items-center justify-end gap-1.5 border-t border-line pt-4">
                   <ExamAction
                     onClick={() => handleToggleHidden(exam)}
@@ -233,7 +235,7 @@ const ExamList = ({ classId }) => {
                     <AiFillDelete className="text-[17px]" />
                   </ExamAction>
                 </div>
-              </AdminTeacherLink>
+              )}
               {owned ? (
                 <Button to={`/exam/details/${exam._id}`} size="lg" className="w-full">
                   İmtahana bax <FiArrowRight />

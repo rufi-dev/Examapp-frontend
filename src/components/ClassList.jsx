@@ -6,7 +6,7 @@ import { MdOutlineModeEditOutline } from "react-icons/md";
 import { AiFillDelete } from "react-icons/ai";
 import { useDispatch, useSelector } from "react-redux";
 import { getClassesByTag, deleteClass } from "../../redux/features/quiz/quizSlice";
-import { AdminTeacherLink } from "./protect/hiddenLink";
+import { selectUser } from "../../redux/features/auth/authSlice";
 import CenterLoader from "./ui/CenterLoader";
 import ConfirmDialog from "./ui/ConfirmDialog";
 
@@ -20,6 +20,9 @@ const classLabel = (c) =>
 const ClassList = () => {
   const dispatch = useDispatch();
   const { classes } = useSelector((state) => state.quiz);
+  const me = useSelector(selectUser);
+  const canManage = (item) =>
+    me?.role === "admin" || (item?.owner && String(item.owner) === String(me?._id));
   const { tagId } = useParams();
   const [loadedOnce, setLoadedOnce] = useState(false);
   const [confirmClass, setConfirmClass] = useState(null);
@@ -75,7 +78,7 @@ const ClassList = () => {
             className="group relative animate-fade-in"
             style={{ animationDelay: `${Math.min(index * 70, 420)}ms` }}
           >
-            <AdminTeacherLink>
+            {canManage(_class) && (
               <div className="absolute right-3 top-3 z-10 flex gap-1">
                 <Link
                   to={`/class/edit/${_class._id}`}
@@ -93,7 +96,7 @@ const ClassList = () => {
                   <AiFillDelete />
                 </button>
               </div>
-            </AdminTeacherLink>
+            )}
             <Link
               to={`/exam/${_class._id}`}
               className="flex h-full flex-col items-start gap-4 rounded-2xl border border-line bg-surface p-6 shadow-soft transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:border-primary/40 hover:shadow-lift"
