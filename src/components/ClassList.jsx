@@ -1,9 +1,10 @@
 import { Link, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { LuGraduationCap } from "react-icons/lu";
-import { FiArrowUpRight, FiUsers } from "react-icons/fi";
+import { FiArrowUpRight, FiUsers, FiCopy } from "react-icons/fi";
 import { MdOutlineModeEditOutline } from "react-icons/md";
 import { AiFillDelete } from "react-icons/ai";
+import { toast } from "react-toastify";
 import { useDispatch, useSelector } from "react-redux";
 import { getClassesByTag, deleteClass } from "../../redux/features/quiz/quizSlice";
 import { selectUser } from "../../redux/features/auth/authSlice";
@@ -24,6 +25,14 @@ const ClassList = () => {
   const me = useSelector(selectUser);
   const canManage = (item) =>
     me?.role === "admin" || (item?.owner && String(item.owner) === String(me?._id));
+  const copyCode = (code) => {
+    try {
+      navigator.clipboard.writeText(code);
+      toast.success(`Kod kopyalandı: ${code}`);
+    } catch {
+      toast.info(code);
+    }
+  };
   const { tagId } = useParams();
   const [loadedOnce, setLoadedOnce] = useState(false);
   const [confirmClass, setConfirmClass] = useState(null);
@@ -77,7 +86,7 @@ const ClassList = () => {
         {classes.map((_class, index) => (
           <div
             key={_class._id}
-            className="group relative animate-fade-in transition-transform duration-200 ease-out-quint hover:-translate-y-1"
+            className="group relative flex h-full animate-fade-in flex-col rounded-2xl border border-line bg-surface p-6 shadow-soft transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:border-primary/40 hover:shadow-lift"
             style={{ animationDelay: `${Math.min(index * 70, 420)}ms` }}
           >
             {canManage(_class) && (
@@ -111,10 +120,7 @@ const ClassList = () => {
                 </button>
               </div>
             )}
-            <Link
-              to={`/exam/${_class._id}`}
-              className="flex h-full flex-col items-start gap-4 rounded-2xl border border-line bg-surface p-6 shadow-soft transition-all duration-200 ease-out-quint group-hover:border-primary/40 group-hover:shadow-lift"
-            >
+            <Link to={`/exam/${_class._id}`} className="flex flex-col items-start gap-4">
               <span className="grid h-12 w-12 place-items-center rounded-xl bg-primary/12 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-fg">
                 <LuGraduationCap className="text-[22px]" />
               </span>
@@ -123,6 +129,26 @@ const ClassList = () => {
                 <FiArrowUpRight className="shrink-0 text-xl text-muted transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary" />
               </div>
             </Link>
+
+            {/* Join code + copy (owner/admin only). */}
+            {canManage(_class) && _class.joinCode && (
+              <div className="mt-auto flex items-center justify-between gap-2 rounded-xl border border-line bg-surface2/50 px-3 py-2">
+                <span className="flex items-center gap-2 text-xs text-muted">
+                  Kod:
+                  <span className="font-mono text-sm font-bold tracking-[0.2em] text-text">
+                    {_class.joinCode}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => copyCode(_class.joinCode)}
+                  title="Kodu kopyala"
+                  className="grid h-7 w-7 place-items-center rounded-lg text-muted transition-colors hover:bg-surface hover:text-primary"
+                >
+                  <FiCopy />
+                </button>
+              </div>
+            )}
           </div>
         ))}
       </div>
