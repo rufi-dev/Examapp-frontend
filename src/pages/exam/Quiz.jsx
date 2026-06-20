@@ -204,6 +204,9 @@ const Quiz = () => {
   // Structured (native) exam: questions are rendered in-app, there is no PDF
   // panel and no PDF-readiness gate.
   const structured = attempt?.mode === "structured";
+  // When the exam enables it, the student may attach one worked-solution photo
+  // per question (works for both PDF and structured exams).
+  const allowPhoto = !!attempt?.studentSolutionPhotos;
   // Stable reference so the memoized question sheet doesn't reconcile every
   // time the 1s timer ticks (only when the attempt actually changes).
   const questions = useMemo(() => attempt?.questions || [], [attempt]);
@@ -405,7 +408,11 @@ const Quiz = () => {
       const len = questions.length || latest.length;
       const selectedAnswers = latest
         .slice(0, len)
-        .map((a) => ({ type: a?.type, answer: a?.answer }));
+        .map((a) => ({
+          type: a?.type,
+          answer: a?.answer,
+          ...(a?.photo ? { photo: a.photo } : {}),
+        }));
       // The server scores it (the browser never had the answer key).
       await dispatch(
         addResult({
@@ -641,6 +648,15 @@ const Quiz = () => {
     setAnswers((prev) => {
       const updated = [...prev];
       updated[index] = { ...updated[index], answer: value, type };
+      return updated;
+    });
+  }, []);
+
+  // Attach (or clear, with "") the worked-solution photo URL for a question.
+  const handlePhotoChange = useCallback((index, url) => {
+    setAnswers((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], photo: url };
       return updated;
     });
   }, []);
@@ -892,6 +908,8 @@ const Quiz = () => {
                   marked={marked}
                   onToggleMark={toggleMark}
                   range={examRange}
+                  allowPhoto={allowPhoto}
+                  onPhotoChange={handlePhotoChange}
                 />
               </div>
             </div>
@@ -1030,6 +1048,8 @@ const Quiz = () => {
                   handleAnswerChange={handleAnswerChange}
                   marked={marked}
                   onToggleMark={toggleMark}
+                  allowPhoto={allowPhoto}
+                  onPhotoChange={handlePhotoChange}
                 />
               ) : (
                 <div className="flex h-full items-center justify-center">

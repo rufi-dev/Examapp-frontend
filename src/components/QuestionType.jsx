@@ -1,13 +1,70 @@
-import { memo } from "react";
-import { FiFlag } from "react-icons/fi";
+import { memo, useState } from "react";
+import { FiFlag, FiCamera, FiX } from "react-icons/fi";
+import { toast } from "react-toastify";
 import Math, { MathText } from "./Math";
 import MatchingQuestion from "./MatchingQuestion";
 import ZoomableImage from "./ZoomableImage";
+import Spinner from "./Spinner";
+import { uploadImage } from "../helper/cloudinary";
 
 const LABELS = { Cm: "Qapalı sual", Co: "Açıq sual", Cma: "Uyğunluq", Cd: "Ətraflı yazı" };
 const DEFAULT_OPTIONS = ["a", "b", "c", "d", "e"];
 
 const norm = (v) => String(v ?? "").trim();
+
+// Optional per-question "upload my worked solution" control (live exam only).
+// `capture` hints phones to open the camera so students photograph their work.
+const SolutionPhoto = ({ value, onChange }) => {
+  const [busy, setBusy] = useState(false);
+  const onFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setBusy(true);
+    try {
+      onChange(await uploadImage(file));
+    } catch (err) {
+      toast.error(err?.message || "Şəkil yüklənmədi");
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (value) {
+    return (
+      <div className="mt-3">
+        <p className="mb-1 text-xs font-semibold text-muted">Həll şəklin:</p>
+        <div className="relative inline-block">
+          <img
+            src={value}
+            alt=""
+            className="max-h-44 rounded-xl border border-line object-contain"
+          />
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            aria-label="Şəkli sil"
+            className="absolute -right-2 -top-2 grid h-7 w-7 place-items-center rounded-full border-2 border-surface bg-danger text-white shadow-soft"
+          >
+            <FiX className="text-sm" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <label className="mt-3 inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-dashed border-line px-3 py-2 text-sm font-semibold text-muted transition-colors hover:border-primary hover:text-primary">
+      {busy ? <Spinner size={16} /> : <FiCamera />} Həll şəklini yüklə
+      <input
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={onFile}
+        disabled={busy}
+      />
+    </label>
+  );
+};
 // Normalize any choice-answer shape to a numeric-index array / set.
 const toIndexArray = (v) =>
   Array.isArray(v) ? v.map(Number) : v === "" || v == null ? [] : [Number(v)];
@@ -59,9 +116,34 @@ const QuestionType = ({
   // GLOBAL (answers[i], q-${i}, handlers) — we just skip questions outside the
   // current page. Omitted => render every question (default, all-on-one-page).
   range = null,
+  // Per-question solution photos: in the live exam (allowPhoto) the student can
+  // upload one per question; in review the stored photo is shown.
+  allowPhoto = false,
+  onPhotoChange,
 }) => {
   const selectedAnswers = review?.selectedAnswers || [];
   const isReview = selectedAnswers.length > 0;
+
+  // The solution-photo control (live upload) / display (review) for question i.
+  const photoBlock = (i) => {
+    if (isReview) {
+      const p = selectedAnswers[i]?.photo;
+      if (!p) return null;
+      return (
+        <div className="mt-3">
+          <p className="mb-1 text-xs font-semibold text-muted">Şagirdin həll şəkli:</p>
+          <ZoomableImage
+            src={p}
+            className="max-h-56 rounded-xl border border-line object-contain"
+          />
+        </div>
+      );
+    }
+    if (!allowPhoto) return null;
+    return (
+      <SolutionPhoto value={answers[i]?.photo} onChange={(url) => onPhotoChange?.(i, url)} />
+    );
+  };
 
   const markBtn = (i) =>
     !isReview && onToggleMark ? (
@@ -300,6 +382,7 @@ const QuestionType = ({
               </div>
               {renderChoices(def, i, def.type === "Cs")}
               {explanationNote(def)}
+              {photoBlock(i)}
             </div>
           );
         }
@@ -314,6 +397,7 @@ const QuestionType = ({
               </div>
               {renderMatching(def, i)}
               {explanationNote(def)}
+              {photoBlock(i)}
             </div>
           );
         }
@@ -344,6 +428,7 @@ const QuestionType = ({
                   </button>
                 ))}
               </div>
+              {photoBlock(i)}
             </div>
           );
         }
@@ -380,6 +465,7 @@ const QuestionType = ({
               className="w-full rounded-xl border border-line bg-surface p-3 text-[15px] text-text outline-none transition placeholder:text-muted/60 read-only:bg-surface2 focus:border-primary focus:ring-4 focus:ring-ring/25"
             />
             {explanationNote(def)}
+            {photoBlock(i)}
           </div>
         );
       })}

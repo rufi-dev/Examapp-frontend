@@ -1,13 +1,13 @@
 import { useEffect, useState, lazy, Suspense } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getResultsByExam } from "../../../redux/features/quiz/resultSlice";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import ResultCard from "../../components/ResultCard";
 import Loader from "../../components/Loader";
 import AccountLayout from "../../components/AccountLayout";
 import ExamAnalytics from "../../components/analytics/ExamAnalytics";
 import { toast } from "react-toastify";
-import { FiDownload, FiAlertTriangle, FiFileText } from "react-icons/fi";
+import { FiDownload, FiAlertTriangle, FiFileText, FiEye } from "react-icons/fi";
 import Spinner from "../../components/Spinner";
 
 // Heavy (@react-pdf/renderer ~1.3MB) — loaded only when a teacher clicks export.
@@ -130,6 +130,15 @@ const ResultsByExam = () => {
                   <span className="inline-flex items-center rounded-full bg-primary/12 px-3 py-1 text-sm font-semibold text-primary">
                     {result.earnPoints} bal
                   </span>
+                  {result._id && (
+                    <Link
+                      to={`/result/${result._id}/review`}
+                      title="Şagirdin cavablarına və həll şəkillərinə bax"
+                      className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-primary/40 bg-primary/5 px-3 text-sm font-semibold text-primary transition-colors hover:bg-primary/10"
+                    >
+                      <FiEye /> Bax
+                    </Link>
+                  )}
                 </div>
               </div>
               <ResultCard result={result} />

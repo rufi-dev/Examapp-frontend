@@ -17,6 +17,7 @@ import PriceField from "../../components/ui/PriceField";
 import VideoLinkField from "../../components/ui/VideoLinkField";
 import NegativeMarkingField from "../../components/ui/NegativeMarkingField";
 import AntiCheatField from "../../components/ui/AntiCheatField";
+import SolutionPhotosField from "../../components/ui/SolutionPhotosField";
 import StructuredGradingFields from "../../components/ui/StructuredGradingFields";
 import { toLocalInput, toUtcIso } from "../../helper/datetime";
 import { HiOutlinePhotograph } from "react-icons/hi";
@@ -39,6 +40,7 @@ const ExamEdit = () => {
   const [antiEnabled, setAntiEnabled] = useState(false);
   const [shuffleEnabled, setShuffleEnabled] = useState(false);
   const [partialEnabled, setPartialEnabled] = useState(false);
+  const [solutionPhotosEnabled, setSolutionPhotosEnabled] = useState(false);
 
   useRedirectLoggedOutUser("/login");
   const { singleExam } = useSelector((state) => state.quiz);
@@ -125,6 +127,7 @@ const ExamEdit = () => {
       setNegEnabled(!!singleExam.negativeMarking);
       setAntiEnabled(!!singleExam.antiCheat);
       setShuffleEnabled(!!singleExam.shuffleOptions);
+      setSolutionPhotosEnabled(!!singleExam.studentSolutionPhotos);
       setPartialEnabled(!!singleExam.partialCredit);
     }
   }, [singleExam]);
@@ -216,6 +219,7 @@ const ExamEdit = () => {
         antiCheat: antiEnabled,
         partialCredit: partialEnabled,
         shuffleOptions: shuffleEnabled,
+        studentSolutionPhotos: solutionPhotosEnabled,
         // Only send a path when a new PDF was uploaded (so the old file is
         // replaced/deleted, and untouched edits keep the existing PDF).
         pdfPath: pdfUrl,
@@ -372,6 +376,10 @@ const ExamEdit = () => {
             onChange={handleInputChange}
           />
           <AntiCheatField enabled={antiEnabled} onToggle={setAntiEnabled} />
+          <SolutionPhotosField
+            enabled={solutionPhotosEnabled}
+            onToggle={setSolutionPhotosEnabled}
+          />
           {isStructured && (
             <StructuredGradingFields
               shuffle={shuffleEnabled}

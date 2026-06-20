@@ -17,6 +17,7 @@ import PriceField from "../../components/ui/PriceField";
 import VideoLinkField from "../../components/ui/VideoLinkField";
 import NegativeMarkingField from "../../components/ui/NegativeMarkingField";
 import AntiCheatField from "../../components/ui/AntiCheatField";
+import SolutionPhotosField from "../../components/ui/SolutionPhotosField";
 import StructuredGradingFields from "../../components/ui/StructuredGradingFields";
 import { toUtcIso } from "../../helper/datetime";
 
@@ -40,6 +41,7 @@ const ExamAdd = () => {
   const [antiEnabled, setAntiEnabled] = useState(false);
   const [shuffleEnabled, setShuffleEnabled] = useState(false);
   const [partialEnabled, setPartialEnabled] = useState(false);
+  const [solutionPhotosEnabled, setSolutionPhotosEnabled] = useState(false);
 
   const navigate = useNavigate();
   const { classId } = useParams();
@@ -135,6 +137,7 @@ const ExamAdd = () => {
       examData.append("mode", isStructured ? "structured" : "pdf");
       examData.append("shuffleOptions", isStructured && shuffleEnabled);
       examData.append("partialCredit", isStructured && partialEnabled);
+      examData.append("studentSolutionPhotos", solutionPhotosEnabled);
       if (!isStructured) examData.append("pdf", pdfUrl);
 
       const addExamData = await dispatch(addExam({ examData, classId }));
@@ -254,6 +257,10 @@ const ExamAdd = () => {
             onChange={handleInputChange}
           />
           <AntiCheatField enabled={antiEnabled} onToggle={setAntiEnabled} />
+          <SolutionPhotosField
+            enabled={solutionPhotosEnabled}
+            onToggle={setSolutionPhotosEnabled}
+          />
           {source === "structured" && (
             <StructuredGradingFields
               shuffle={shuffleEnabled}
