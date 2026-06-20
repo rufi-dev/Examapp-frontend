@@ -1,3 +1,6 @@
+import { Link } from "react-router-dom";
+import { FiEye } from "react-icons/fi";
+
 const ResultTable = ({ results }) => {
   if (!results || results.length === 0) {
     return (
@@ -15,6 +18,7 @@ const ResultTable = ({ results }) => {
             <th className="px-6 py-4 font-semibold">Ad Soyad</th>
             <th className="px-6 py-4 font-semibold">Cavablanan</th>
             <th className="px-6 py-4 font-semibold">Yığılan bal</th>
+            <th className="px-6 py-4 text-right font-semibold">Bax</th>
           </tr>
         </thead>
         <tbody>
@@ -31,6 +35,15 @@ const ResultTable = ({ results }) => {
                 <span className="inline-flex items-center rounded-full bg-primary/12 px-2.5 py-1 text-xs font-semibold text-primary">
                   {result.earnPoints != null ? `${result.earnPoints} bal` : "Qəbul edildi"}
                 </span>
+              </td>
+              <td className="px-6 py-4 text-right">
+                <Link
+                  to={`/result/${result._id}/review`}
+                  title="Cavablara bax"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-primary/40 bg-primary/5 px-3 text-sm font-semibold text-primary transition-colors hover:bg-primary/10"
+                >
+                  <FiEye /> Bax
+                </Link>
               </td>
             </tr>
           ))}
