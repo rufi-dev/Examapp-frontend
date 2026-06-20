@@ -39,6 +39,7 @@ const QuestionAdd = () => {
   const navigate = useNavigate();
   const [pdfData, setPdfData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [ready, setReady] = useState(false); // exam/answer key loaded -> show builder
   const [questions, setQuestions] = useState(() =>
     Array.from({ length: 25 }, (_, i) => newQuestion(i < CLOSED_COUNT ? "Cm" : "Co"))
   );
@@ -68,6 +69,8 @@ const QuestionAdd = () => {
         }
       } catch (error) {
         console.error("Error fetching exam data:", error);
+      } finally {
+        setReady(true);
       }
     };
     fetchData();
@@ -139,6 +142,16 @@ const QuestionAdd = () => {
   };
 
   const points = questionPoints(questions.length);
+
+  // Hold back the answer-key builder until the existing key is loaded, so the
+  // teacher never sees the blank default sheet flash before it populates.
+  if (!ready) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-bg">
+        <Spinner size={44} className="text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-bg">

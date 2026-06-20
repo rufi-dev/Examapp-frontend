@@ -243,6 +243,18 @@ const ExamEdit = () => {
 
   const minuteHint = `≈ ${Math.round((Number(duration) || 0) / 60)} dəqiqə`;
 
+  // Wait for THIS exam to load (not stale redux data) before showing the form,
+  // so the fields don't flash empty/default values then snap to the real ones.
+  if (!singleExam || String(singleExam._id) !== String(examId)) {
+    return (
+      <AccountLayout title="İmtahanı redaktə et" subtitle="İmtahan məlumatlarını yenilə.">
+        <div className="flex justify-center py-24">
+          <Spinner size={44} className="text-primary" />
+        </div>
+      </AccountLayout>
+    );
+  }
+
   return (
     <AccountLayout title="İmtahanı redaktə et" subtitle="İmtahan məlumatlarını yenilə.">
       <form

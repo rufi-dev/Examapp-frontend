@@ -19,9 +19,16 @@ const Notifications = () => {
   const dispatch = useDispatch();
   const { items, isLoading } = useSelector((s) => s.notification);
   const [form, setForm] = useState({ title: "", message: "" });
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    dispatch(getNotifications());
+    let active = true;
+    Promise.resolve(dispatch(getNotifications())).finally(() => {
+      if (active) setLoaded(true);
+    });
+    return () => {
+      active = false;
+    };
   }, [dispatch]);
 
   const send = async (e) => {
@@ -65,7 +72,11 @@ const Notifications = () => {
         </FormSection>
 
         <FormSection title="Göndərilmiş bildirişlər">
-          {items.length === 0 ? (
+          {!loaded ? (
+            <div className="flex justify-center py-8">
+              <Spinner size={28} className="text-primary" />
+            </div>
+          ) : items.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted">Hələ bildiriş yoxdur.</p>
           ) : (
             <div className="space-y-3">

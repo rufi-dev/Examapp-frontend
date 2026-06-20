@@ -354,6 +354,7 @@ const StructuredBuilder = () => {
   const navigate = useNavigate();
   const { examId } = useParams();
   const [loading, setLoading] = useState(false);
+  const [ready, setReady] = useState(false); // exam/questions loaded -> show builder
   const [extracting, setExtracting] = useState(false); // AI PDF import running
   const pdfInputRef = useRef(null);
   // PDF import: "append" adds to the end, "replace" overwrites everything. We
@@ -498,6 +499,7 @@ const StructuredBuilder = () => {
       setMathEnabled(prefs?.mathEnabled ?? hasLatex(baseQs));
       setExplEnabled(prefs?.explEnabled ?? hasExpl(baseQs));
       loadedRef.current = true;
+      setReady(true);
     };
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1184,6 +1186,16 @@ const StructuredBuilder = () => {
       </div>
     </div>
   );
+
+  // Hold the full builder back until the exam + saved questions are loaded, so
+  // the teacher never sees the empty/default state flash before it populates.
+  if (!ready) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-bg">
+        <Spinner size={44} className="text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-bg">

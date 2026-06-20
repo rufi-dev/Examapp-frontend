@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import useRedirectLoggedOutUser from "../customHook/useRedirectLoggedOutUser";
@@ -6,6 +6,7 @@ import { getUser } from "../../redux/features/auth/authSlice";
 import { getExamsByUser } from "../../redux/features/quiz/quizSlice";
 import { getResultsByUser } from "../../redux/features/quiz/resultSlice";
 import AccountLayout from "../components/AccountLayout";
+import Spinner from "../components/Spinner";
 import InfoBox from "../components/InfoBox";
 import Button from "../components/ui/Button";
 import ProgressChart from "../components/analytics/ProgressChart";
@@ -26,11 +27,20 @@ const Overview = () => {
   const { user } = useSelector((s) => s.auth);
   const { myExams } = useSelector((s) => s.quiz);
   const { result } = useSelector((s) => s.result);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    dispatch(getUser());
-    dispatch(getExamsByUser());
-    dispatch(getResultsByUser());
+    let active = true;
+    Promise.all([
+      dispatch(getUser()),
+      dispatch(getExamsByUser()),
+      dispatch(getResultsByUser()),
+    ]).finally(() => {
+      if (active) setLoaded(true);
+    });
+    return () => {
+      active = false;
+    };
   }, [dispatch]);
 
   const results = result || [];
@@ -45,6 +55,18 @@ const Overview = () => {
   const series = progressSeries(results);
 
   const firstName = user?.name?.split(" ")[0] || "";
+
+  // Hold the dashboard until the stats are loaded, so the counts/greeting don't
+  // flash zeros and then jump to the real numbers.
+  if (!loaded) {
+    return (
+      <AccountLayout title="İcmal" subtitle="Hesabının icmalı və son fəaliyyətin.">
+        <div className="flex justify-center py-24">
+          <Spinner size={44} className="text-primary" />
+        </div>
+      </AccountLayout>
+    );
+  }
 
   return (
     <AccountLayout
