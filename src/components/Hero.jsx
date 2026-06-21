@@ -5,7 +5,6 @@ import Button from "./ui/Button";
 // sizing/optimization (auto=format gives webp/avif where supported).
 export const eduImg = (id, w = 1200) =>
   `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${w}&q=80`;
-const HERO_IMG = eduImg("photo-1523240795612-9a054b0db644", 1100); // students in a library
 
 const stats = [
   { value: "10 000+", label: "Sual bazası" },
@@ -59,21 +58,25 @@ const Hero = () => {
           </dl>
         </div>
 
-        {/* Photo visual with floating proof cards */}
-        <div className="relative mx-auto w-full max-w-xl animate-scale-in lg:max-w-none">
-          <div className="relative overflow-hidden rounded-[2rem] border border-line shadow-lift">
-            <img
-              src={HERO_IMG}
-              alt="Tələbələr birlikdə imtahana hazırlaşır"
-              loading="eager"
-              className="aspect-[4/3] w-full object-cover"
-            />
-            {/* legibility veil for the overlaid cards */}
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
-          </div>
+        {/* Mascot teacher on a soft platform, with floating proof cards */}
+        <div className="relative mx-auto w-full max-w-sm animate-scale-in lg:max-w-md">
+          {/* gradient platform the figure stands on */}
+          <div className="absolute inset-x-2 bottom-2 top-12 rounded-[2.75rem] bg-gradient-to-b from-primary/15 via-primary/5 to-accent2/12 ring-1 ring-inset ring-line" />
+          {/* glow behind the head */}
+          <div className="pointer-events-none absolute left-1/2 top-8 h-52 w-52 -translate-x-1/2 rounded-full bg-primary/30 blur-3xl" />
+          {/* soft ground shadow */}
+          <div className="pointer-events-none absolute bottom-4 left-1/2 h-5 w-3/5 -translate-x-1/2 rounded-[50%] bg-black/25 blur-xl" />
 
-          {/* top-right: instant result */}
-          <div className="absolute -right-3 -top-5 z-10 flex items-center gap-2.5 rounded-2xl border border-line bg-surface px-4 py-3 shadow-lift">
+          {/* the teacher (transparent PNG → object-contain, head pops above) */}
+          <img
+            src="/hero.png"
+            alt="İmtahan platforması — müəllim"
+            fetchpriority="high"
+            className="relative z-[1] mx-auto block max-h-[460px] w-auto object-contain drop-shadow-[0_22px_40px_rgba(0,0,0,0.22)]"
+          />
+
+          {/* floating: instant result (top-right) */}
+          <div className="absolute right-0 top-8 z-10 flex items-center gap-2.5 rounded-2xl border border-line bg-surface px-3.5 py-2.5 shadow-lift">
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-success/15 text-success">
               <FiCheckCircle className="text-lg" />
             </span>
@@ -83,8 +86,8 @@ const Hero = () => {
             </div>
           </div>
 
-          {/* bottom-left: last score */}
-          <div className="absolute -bottom-6 -left-3 z-10 w-44 rounded-2xl border border-line bg-surface p-4 shadow-lift">
+          {/* floating: last score (bottom-left) */}
+          <div className="absolute -left-3 bottom-10 z-10 w-40 rounded-2xl border border-line bg-surface p-3.5 shadow-lift">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wide text-muted">
                 Son sınaq
