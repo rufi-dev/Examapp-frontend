@@ -1,44 +1,17 @@
-import { FiArrowRight } from "react-icons/fi";
+import { FiArrowRight, FiCheckCircle, FiStar } from "react-icons/fi";
 import Button from "./ui/Button";
+
+// Verified Unsplash education photos, served from their CDN with on-the-fly
+// sizing/optimization (auto=format gives webp/avif where supported).
+export const eduImg = (id, w = 1200) =>
+  `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${w}&q=80`;
+const HERO_IMG = eduImg("photo-1523240795612-9a054b0db644", 1100); // students in a library
 
 const stats = [
   { value: "10 000+", label: "Sual bazası" },
   { value: "Anlıq", label: "Nəticə və təhlil" },
   { value: "Pulsuz", label: "Başlanğıc" },
 ];
-
-const breakdown = [
-  { label: "Qapalı suallar", value: 92 },
-  { label: "Açıq suallar", value: 81 },
-  { label: "Uyğunluq", value: 88 },
-];
-
-const ScoreRing = ({ value = 87 }) => {
-  const r = 52;
-  const c = 2 * Math.PI * r;
-  const offset = c * (1 - value / 100);
-  return (
-    <div className="relative grid h-32 w-32 place-items-center">
-      <svg viewBox="0 0 120 120" className="h-32 w-32 -rotate-90">
-        <circle cx="60" cy="60" r={r} className="fill-none stroke-line" strokeWidth="11" />
-        <circle
-          cx="60"
-          cy="60"
-          r={r}
-          className="fill-none stroke-primary"
-          strokeWidth="11"
-          strokeLinecap="round"
-          strokeDasharray={c}
-          strokeDashoffset={offset}
-        />
-      </svg>
-      <div className="absolute text-center">
-        <div className="font-display text-3xl font-extrabold leading-none text-text">{value}</div>
-        <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">bal</div>
-      </div>
-    </div>
-  );
-};
 
 const Hero = () => {
   return (
@@ -48,7 +21,7 @@ const Hero = () => {
       <div className="pointer-events-none absolute -left-24 top-10 h-72 w-72 rounded-full bg-primary/20 blur-3xl" />
       <div className="pointer-events-none absolute right-0 top-40 h-72 w-72 rounded-full bg-accent2/15 blur-3xl" />
 
-      <div className="container-app relative grid items-center gap-14 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:py-24">
+      <div className="container-app relative grid items-center gap-14 py-16 lg:grid-cols-[1.02fr_0.98fr] lg:py-24">
         {/* Copy */}
         <div className="animate-fade-rise">
           <span className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-4 py-1.5 text-xs font-semibold text-muted shadow-soft">
@@ -86,53 +59,44 @@ const Hero = () => {
           </dl>
         </div>
 
-        {/* Product visual */}
-        <div className="relative mx-auto w-full max-w-md animate-scale-in lg:max-w-none">
-          <div className="absolute -right-4 -top-6 z-10 rounded-2xl border border-line bg-surface px-4 py-3 shadow-lift">
-            <div className="text-xs font-semibold text-muted">Bu həftə</div>
-            <div className="flex items-center gap-1.5 font-display text-lg font-extrabold text-success">
-              +12 bal
-            </div>
-          </div>
-          <div className="absolute -bottom-6 -left-4 z-10 rounded-2xl border border-line bg-surface px-4 py-3 shadow-lift">
-            <div className="text-xs font-semibold text-muted">Ardıcıllıq</div>
-            <div className="font-display text-lg font-extrabold text-primary">5 gün 🔥</div>
+        {/* Photo visual with floating proof cards */}
+        <div className="relative mx-auto w-full max-w-xl animate-scale-in lg:max-w-none">
+          <div className="relative overflow-hidden rounded-[2rem] border border-line shadow-lift">
+            <img
+              src={HERO_IMG}
+              alt="Tələbələr birlikdə imtahana hazırlaşır"
+              loading="eager"
+              className="aspect-[4/3] w-full object-cover"
+            />
+            {/* legibility veil for the overlaid cards */}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
           </div>
 
-          <div className="rounded-3xl border border-line bg-surface p-7 shadow-lift">
+          {/* top-right: instant result */}
+          <div className="absolute -right-3 -top-5 z-10 flex items-center gap-2.5 rounded-2xl border border-line bg-surface px-4 py-3 shadow-lift">
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-success/15 text-success">
+              <FiCheckCircle className="text-lg" />
+            </span>
+            <div>
+              <div className="text-xs font-semibold text-muted">Anlıq</div>
+              <div className="font-display text-sm font-extrabold text-text">Nəticə hazırdır</div>
+            </div>
+          </div>
+
+          {/* bottom-left: last score */}
+          <div className="absolute -bottom-6 -left-3 z-10 w-44 rounded-2xl border border-line bg-surface p-4 shadow-lift">
             <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wide text-muted">
-                  Buraxılış · Riyaziyyat
-                </div>
-                <div className="mt-1 font-display text-lg font-bold text-text">
-                  Sınaq imtahanı #14
-                </div>
-              </div>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-success/15 px-3 py-1 text-xs font-semibold text-success">
-                Tamamlandı
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+                Son sınaq
               </span>
+              <FiStar className="text-warning" />
             </div>
-
-            <div className="my-7 flex items-center justify-center">
-              <ScoreRing value={87} />
+            <div className="mt-1 flex items-end gap-1">
+              <span className="font-display text-3xl font-extrabold leading-none text-text">87</span>
+              <span className="mb-0.5 text-xs font-semibold text-muted">/ 100 bal</span>
             </div>
-
-            <div className="flex flex-col gap-4">
-              {breakdown.map((b) => (
-                <div key={b.label}>
-                  <div className="mb-1.5 flex items-center justify-between text-sm">
-                    <span className="text-muted">{b.label}</span>
-                    <span className="font-semibold text-text">{b.value}%</span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-surface2">
-                    <div
-                      className="h-full rounded-full bg-primary"
-                      style={{ width: `${b.value}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+            <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-surface2">
+              <div className="h-full rounded-full bg-primary" style={{ width: "87%" }} />
             </div>
           </div>
         </div>
