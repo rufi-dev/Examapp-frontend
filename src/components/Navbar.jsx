@@ -82,6 +82,9 @@ const Navbar = () => {
                 </Button>
               </ShowOnLogout>
               <ShowOnLogin>
+                <Button to="/dashboard" variant="primary" size="sm">
+                  İcmal
+                </Button>
                 <span className="text-sm font-semibold text-text">
                   <UserName />
                 </span>
@@ -162,6 +165,9 @@ const Navbar = () => {
                 <div className="rounded-xl border border-line bg-surface px-4 py-3 text-sm font-semibold text-text">
                   <UserName />
                 </div>
+                <Button to="/dashboard" variant="primary" onClick={close} size="lg" className="w-full">
+                  İcmal
+                </Button>
                 <Button
                   variant="secondary"
                   size="lg"

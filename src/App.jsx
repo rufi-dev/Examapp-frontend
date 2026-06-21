@@ -152,16 +152,18 @@ function App() {
             }
           >
           <Routes>
-            {/* Public marketing + auth (logged-in users redirected to /dashboard) */}
+            {/* Home is open to EVERYONE — logged-in users can return here too. */}
+            <Route
+              index
+              element={
+                <Layout>
+                  <Home />
+                </Layout>
+              }
+            />
+
+            {/* Auth pages: a logged-in user is sent straight to the dashboard. */}
             <Route element={<RedirectIfAuth />}>
-              <Route
-                index
-                element={
-                  <Layout>
-                    <Home />
-                  </Layout>
-                }
-              />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
             </Route>

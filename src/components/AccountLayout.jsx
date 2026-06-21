@@ -21,6 +21,7 @@ import {
   FiMenu,
   FiX,
   FiChevronRight,
+  FiHome,
 } from "react-icons/fi";
 
 const navItems = [
@@ -268,6 +269,14 @@ export default function AccountLayout({ title, subtitle, actions, children }) {
             </nav>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
+            <Link
+              to="/"
+              title="Ana səhifə"
+              aria-label="Ana səhifə"
+              className="grid h-10 w-10 place-items-center rounded-full border border-line bg-surface text-muted transition-colors hover:bg-surface2 hover:text-primary"
+            >
+              <FiHome className="text-[18px]" />
+            </Link>
             <NotificationBell />
             <UserMenu user={user} onLogout={handleLogout} />
           </div>
