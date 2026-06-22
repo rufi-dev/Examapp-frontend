@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import axios from "axios";
 import { addQuestion, getExam } from "../../../redux/features/quiz/quizSlice";
-import { PRESETS, presetTypes } from "../../helper/examPresets";
+import { PRESETS, presetTypes, presetPointsPlan, presetTotalMarks } from "../../helper/examPresets";
 import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser";
 import Spinner from "../../components/Spinner";
 import Button from "../../components/ui/Button";
@@ -363,6 +363,7 @@ const StructuredBuilder = () => {
   const [importChoice, setImportChoice] = useState(false);
   const importModeRef = useRef("replace");
   const [examName, setExamName] = useState("");
+  const [preset, setPreset] = useState(""); // exam scoring preset (for bal preview)
   const {
     state: questions,
     set: setQuestions,
@@ -426,6 +427,7 @@ const StructuredBuilder = () => {
         const examAction = await dispatch(getExam(examId));
         const exam = examAction?.payload;
         if (exam?.name) setExamName(exam.name);
+        setPreset(exam?.preset || "");
         // Restore the saved per-page layout (0/absent => "all").
         const qpp = Number(exam?.questionsPerPage || 0);
         savedPerPageRef.current = qpp;
@@ -1001,7 +1003,10 @@ const StructuredBuilder = () => {
     }
   };
 
-  const points = questionPoints(questions.length);
+  // Per-question bal preview from the exam's preset (e.g. Blok = 150) so the
+  // builder matches the server score; legacy/Buraxılış fall back to questionPoints.
+  const points = presetPointsPlan(preset, questions.length) || questionPoints(questions.length);
+  const totalBal = presetTotalMarks(preset);
   const isChoice = (t) => t === "Cm" || t === "Cs";
 
   const safePage = Math.min(Math.max(0, page), pageCount - 1);
@@ -1147,7 +1152,7 @@ const StructuredBuilder = () => {
           <Dropdown value={perPage} options={PAGE_OPTIONS} onChange={setPageCount} />
         </div>
 
-        <div className="border-t border-line pt-3 text-xs text-muted">{total} sual · 100 bal</div>
+        <div className="border-t border-line pt-3 text-xs text-muted">{total} sual · {totalBal} bal</div>
       </div>
     );
   };

@@ -15,7 +15,7 @@ import Button from "../../components/ui/Button";
 import { inputClass } from "../../components/ui/Field";
 import { FiPlus, FiX } from "react-icons/fi";
 import { questionPoints } from "../../helper/helper";
-import { PRESETS, presetTypes } from "../../helper/examPresets";
+import { PRESETS, presetTypes, presetPointsPlan, presetTotalMarks } from "../../helper/examPresets";
 
 // Questions 1-13 default to closed (Cm); 14+ default to open (Co).
 const CLOSED_COUNT = 13;
@@ -45,6 +45,7 @@ const QuestionAdd = () => {
     Array.from({ length: 25 }, (_, i) => newQuestion(i < CLOSED_COUNT ? "Cm" : "Co"))
   );
   const [mobileView, setMobileView] = useState("pdf"); // "pdf" | "builder"
+  const [preset, setPreset] = useState(""); // exam scoring preset (for bal preview)
   const { examId } = useParams();
 
   useEffect(() => {
@@ -59,6 +60,7 @@ const QuestionAdd = () => {
         const examAction = await dispatch(getExam(examId));
         const existing = examAction?.payload?.questions?.correctAnswers;
         const presetId = examAction?.payload?.preset;
+        setPreset(presetId || "");
         if (existing && existing.length) {
           setQuestions(
             existing.map((q) => ({
@@ -149,7 +151,11 @@ const QuestionAdd = () => {
     }
   };
 
-  const points = questionPoints(questions.length);
+  // Preview the per-question bal from the exam's preset (e.g. Blok = 150) so the
+  // builder matches the server score; legacy/Buraxılış fall back to questionPoints.
+  const customPlan = presetPointsPlan(preset, questions.length);
+  const points = customPlan || questionPoints(questions.length);
+  const totalBal = presetTotalMarks(preset);
 
   // Hold back the answer-key builder until the existing key is loaded, so the
   // teacher never sees the blank default sheet flash before it populates.
@@ -184,14 +190,22 @@ const QuestionAdd = () => {
             </div>
           </div>
           <div className="hidden shrink-0 items-center gap-2 text-xs lg:flex">
-            <span className="rounded-full border border-line bg-surface px-2.5 py-0.5 font-semibold text-text">
-              İlk 18 → 55
-            </span>
-            <span className="rounded-full border border-line bg-surface px-2.5 py-0.5 font-semibold text-text">
-              Qalanı → 45
-            </span>
+            {customPlan ? (
+              <span className="rounded-full border border-line bg-surface px-2.5 py-0.5 font-semibold text-text">
+                Son 3 sual → 9 bal
+              </span>
+            ) : (
+              <>
+                <span className="rounded-full border border-line bg-surface px-2.5 py-0.5 font-semibold text-text">
+                  İlk 18 → 55
+                </span>
+                <span className="rounded-full border border-line bg-surface px-2.5 py-0.5 font-semibold text-text">
+                  Qalanı → 45
+                </span>
+              </>
+            )}
             <span className="rounded-full bg-primary/12 px-2.5 py-0.5 font-semibold text-primary">
-              Cəmi 100 bal
+              Cəmi {totalBal} bal
             </span>
           </div>
         </div>
