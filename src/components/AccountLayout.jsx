@@ -4,7 +4,6 @@ import { useDispatch, useSelector } from "react-redux";
 import { RESET, logout, selectUser } from "../../redux/features/auth/authSlice";
 import { AdminTeacherLink, AdminLink } from "./protect/hiddenLink";
 import UserMenu from "./UserMenu";
-import NotificationBell from "./NotificationBell";
 import {
   FiGrid,
   FiBarChart2,
@@ -13,7 +12,6 @@ import {
   FiUsers,
   FiStar,
   FiPieChart,
-  FiBell,
   FiDollarSign,
   FiLogOut,
   FiMenu,
@@ -42,7 +40,6 @@ const navItems = [
 const adminNav = [
   { to: "/users", label: "İstifadəçilər", icon: FiUsers },
   { to: "/examResults", label: "Nəticələr", icon: FiPieChart },
-  { to: "/notifications", label: "Bildirişlər", icon: FiBell },
 ];
 
 // Fallback label for the CURRENT page when a page doesn't pass a `title`
@@ -56,7 +53,6 @@ const PATH_LABELS = {
   "/profile": "Profil",
   "/users": "İstifadəçilər",
   "/examResults": "Nəticələr",
-  "/notifications": "Bildirişlər",
   "/aiUsage": "AI xərcləri",
 };
 
@@ -276,7 +272,6 @@ export default function AccountLayout({ title, subtitle, actions, children }) {
             >
               <FiHome className="text-[18px]" />
             </Link>
-            <NotificationBell />
             <UserMenu user={user} onLogout={handleLogout} />
           </div>
         </header>

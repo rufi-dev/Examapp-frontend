@@ -6,7 +6,6 @@ import quizReducer from "../redux/features/quiz/quizSlice"
 import resultReducer from "./features/quiz/resultSlice";
 import achivementReducer from "./features/achivement/achivementSlice";
 import stripeReducer from "./features/stripe/stripeSlice";
-import notificationReducer from "./features/notification/notificationSlice";
 
 export const store = configureStore({
     reducer: {
@@ -17,6 +16,5 @@ export const store = configureStore({
         result: resultReducer,
         achivement: achivementReducer,
         stripe: stripeReducer,
-        notification: notificationReducer
     },
 })

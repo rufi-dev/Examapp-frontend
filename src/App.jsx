@@ -60,7 +60,6 @@ const StructuredBuilder = lazy(() => import("./pages/admin/StructuredBuilder"));
 const UserDetails = lazy(() => import("./pages/admin/UserDetails"));
 const AiUsage = lazy(() => import("./pages/admin/AiUsage"));
 const ExamResults = lazy(() => import("./pages/admin/ExamResults"));
-const Notifications = lazy(() => import("./pages/admin/Notifications"));
 const ExamInstructions = lazy(() => import("./pages/exam/ExamInstructions"));
 const JoinByLink = lazy(() => import("./pages/JoinByLink"));
 const Quiz = lazy(() => import("./pages/exam/Quiz"));
@@ -209,7 +208,6 @@ function App() {
               <Route path="/users" element={<UserList />} />
               <Route path="/aiUsage" element={<AiUsage />} />
               <Route path="/examResults" element={<ExamResults />} />
-              <Route path="/notifications" element={<Notifications />} />
               {/* Achievements manager inside the dashboard shell (the public
                   /ourSuccess page above stays for visitors). */}
               <Route
