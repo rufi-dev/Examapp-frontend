@@ -15,11 +15,11 @@ import { AiFillDelete, AiOutlinePlus } from "react-icons/ai";
 import {
   FiClock,
   FiBarChart2,
-  FiArrowRight,
   FiFileText,
   FiEye,
   FiEyeOff,
-  FiCalendar,
+  FiGift,
+  FiPlay,
   FiCheckCircle,
 } from "react-icons/fi";
 import { payExam } from "../../redux/features/stripe/stripeSlice";
@@ -44,13 +44,6 @@ const statusInfo = (exam, now) => {
   if (e) return { label: "Aktiv", cls: "bg-success/15 text-success" };
   return { label: "Həmişə aktiv", cls: "bg-success/15 text-success" };
 };
-
-const Stat = ({ value, label, cls }) => (
-  <div className="px-2 py-3 text-center">
-    <p className={`font-display text-2xl font-bold tabular-nums ${cls}`}>{value}</p>
-    <p className="text-[11px] font-medium text-muted">{label}</p>
-  </div>
-);
 
 // Admin action button with a hover tooltip so each icon's purpose is clear.
 const ExamAction = ({ to, onClick, label, tone = "primary", children }) => {
@@ -173,142 +166,156 @@ const ExamList = ({ classId }) => {
           const taken = takenIds.has(String(exam._id));
           const free = !exam.price || Number(exam.price) === 0;
           const category = exam.class?.name || (exam.class?.level != null ? `${exam.class.level} sinif` : null);
+          // Short display code derived from the exam id (e.g. "Kod: 3C1B7394").
+          const code = String(exam._id || "").slice(-8).toUpperCase();
+          // Solid status colour for the pill that sits on top of the cover.
+          const statusSolid = upcoming
+            ? "bg-warning text-white"
+            : ended
+            ? "bg-danger text-white"
+            : "bg-success text-white";
 
           return (
             <div
               key={exam._id}
-              className="flex animate-fade-in flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-soft transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:shadow-lift"
+              className="group flex animate-fade-in flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-soft transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:shadow-lift"
               style={{ animationDelay: `${Math.min(index * 60, 360)}ms` }}
             >
-              {/* Cover banner */}
-              {exam.coverImage && (
-                <div className="relative h-36 w-full shrink-0 overflow-hidden">
-                  <img src={exam.coverImage} alt="" className="h-full w-full object-cover" />
-                </div>
-              )}
-
-              <div className="flex flex-1 flex-col p-6">
-              {/* Status + price */}
-              <div className="mb-4 flex items-center justify-between gap-2">
-                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold ${status.cls}`}>
-                  {status.label}
-                </span>
-                <div className="flex items-center gap-1.5">
-                  {exam.hidden && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-warning/15 px-2 py-1 text-xs font-semibold text-warning">
-                      <FiEyeOff /> Gizli
-                    </span>
-                  )}
-                  <span
-                    className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                      free ? "bg-success/15 text-success" : "bg-accent2/15 text-accent2"
-                    }`}
-                  >
-                    {free ? "PULSUZ" : `${exam.price} AZN`}
-                  </span>
-                </div>
-              </div>
-
-              {/* Name + code/category */}
-              <div className="flex min-w-0 items-start gap-3.5">
-                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-primary/12 text-primary ring-1 ring-inset ring-primary/15">
-                  <FiFileText className="text-[24px]" />
-                </span>
-                <div className="min-w-0">
-                  <h3 className="line-clamp-2 font-display text-lg font-bold leading-tight text-text">
-                    {exam.name}
-                  </h3>
-                  {category && <p className="mt-1 text-xs text-muted">{category}</p>}
-                </div>
-              </div>
-
-              {/* Registration + end date */}
-              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-                {!ended ? (
-                  <span className="inline-flex items-center gap-1.5 font-medium text-success">
-                    <span className="h-1.5 w-1.5 rounded-full bg-success" /> Qeydiyyat açıqdır
-                  </span>
+              {/* Cover banner with status + price overlaid */}
+              <div className="relative h-44 w-full shrink-0 overflow-hidden">
+                {exam.coverImage ? (
+                  <img
+                    src={exam.coverImage}
+                    alt=""
+                    className="h-full w-full object-cover transition-transform duration-300 ease-out-quint group-hover:scale-[1.03]"
+                  />
                 ) : (
-                  <span className="font-medium text-muted">Qeydiyyat bağlanıb</span>
-                )}
-                {exam.endDate && (
-                  <span className="inline-flex items-center gap-1.5 text-muted">
-                    <FiCalendar className="text-[13px]" /> Son tarix: {fmtDate(exam.endDate)}
-                  </span>
-                )}
-              </div>
-
-              {/* Stats: Sual / Dəq / Bal */}
-              <div className="mt-4 grid grid-cols-3 divide-x divide-line overflow-hidden rounded-2xl border border-line bg-surface2/40">
-                <Stat value={exam.questionCount ?? "—"} label="Sual" cls="text-primary" />
-                <Stat value={Math.round((exam.duration || 0) / 60)} label="Dəq" cls="text-success" />
-                <Stat value={exam.totalMarks ?? "—"} label="Bal" cls="text-accent2" />
-              </div>
-
-              {/* Footer: owner tools + action button(s) */}
-              <div className="mt-auto pt-5">
-                {canManage(exam) && (
-                  <div className="mb-4 flex items-center justify-end gap-1.5 border-t border-line pt-4">
-                    <ExamAction onClick={() => handleToggleHidden(exam)} label={exam.hidden ? "Göstər" : "Gizlət"}>
-                      {exam.hidden ? <FiEye className="text-[17px]" /> : <FiEyeOff className="text-[17px]" />}
-                    </ExamAction>
-                    <ExamAction to={`/exam/${exam._id}/resultsByExam`} label="Nəticələr">
-                      <FiBarChart2 className="text-[17px]" />
-                    </ExamAction>
-                    <ExamAction
-                      to={exam.mode === "structured" ? `/exam/${exam._id}/build` : `/exam/${exam._id}/addQuestion`}
-                      label="Sual əlavə et"
-                    >
-                      <AiOutlinePlus className="text-[17px]" />
-                    </ExamAction>
-                    <ExamAction to={`/exam/edit/${exam._id}`} label="Redaktə et">
-                      <MdOutlineModeEditOutline className="text-[17px]" />
-                    </ExamAction>
-                    <ExamAction onClick={() => setConfirmExam(exam)} label="Sil" tone="danger">
-                      <AiFillDelete className="text-[17px]" />
-                    </ExamAction>
+                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary via-primary to-accent2">
+                    <FiFileText className="text-6xl text-white/25" />
                   </div>
                 )}
-
-                {taken ? (
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <Button
-                      to={`/exam/${exam._id}/result`}
-                      size="lg"
-                      className="w-full bg-success text-white hover:brightness-105"
-                    >
-                      <FiBarChart2 /> Nəticəni gör
-                    </Button>
-                    {/* Always offer a look at the exam when a result exists —
-                        including ended exams (review what you took). */}
-                    <Button to={`/exam/details/${exam._id}`} variant="outline" size="lg" className="w-full">
-                      İmtahana bax
-                    </Button>
-                  </div>
-                ) : upcoming ? (
-                  <Button disabled size="lg" className="w-full">
-                    <FiClock /> Tezliklə · {fmtDate(exam.startDate)}
-                  </Button>
-                ) : ended ? (
-                  <Button disabled size="lg" className="w-full">
-                    İmtahan bitib
-                  </Button>
-                ) : owned ? (
-                  <Button to={`/exam/details/${exam._id}`} size="lg" className="w-full">
-                    İmtahana başla <FiArrowRight />
-                  </Button>
-                ) : (
-                  <Button onClick={(e) => addExam(e, exam)} size="lg" className="w-full">
-                    {free ? (
-                      <>
-                        <FiCheckCircle /> Pulsuz əldə et
-                      </>
+                {/* Top shade so the pills stay readable on bright photos. */}
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/30 to-transparent" />
+                <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-2">
+                  <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold shadow-sm ${statusSolid}`}>
+                    {upcoming ? (
+                      <FiClock className="text-[13px]" />
                     ) : (
-                      `Ödəniş et və qoşul · ${exam.price} AZN`
+                      <span className="h-1.5 w-1.5 rounded-full bg-white" />
                     )}
-                  </Button>
-                )}
+                    {status.label}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {exam.hidden && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-warning px-2.5 py-1 text-xs font-bold text-white shadow-sm">
+                        <FiEyeOff /> Gizli
+                      </span>
+                    )}
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold shadow-sm ${
+                        free ? "bg-success text-white" : "bg-accent2 text-white"
+                      }`}
+                    >
+                      <FiGift className="text-[13px]" /> {free ? "Pulsuz" : `${exam.price} ₼`}
+                    </span>
+                  </div>
+                </div>
               </div>
+
+              <div className="flex flex-1 flex-col p-5">
+                {/* Title + code + category */}
+                <h3 className="line-clamp-2 font-display text-lg font-bold leading-snug text-text">
+                  {exam.name}
+                </h3>
+                <p className="mt-1.5 text-xs font-medium tracking-wide text-muted">Kod: {code}</p>
+                {category && <p className="mt-0.5 text-xs text-muted">{category}</p>}
+
+                {/* Stats: Sual / Dəq / Bal */}
+                <div className="mt-5 grid grid-cols-3 gap-2 border-t border-line pt-5 text-center">
+                  <div>
+                    <p className="font-display text-[26px] font-extrabold leading-none text-primary">
+                      {exam.questionCount ?? "—"}
+                    </p>
+                    <p className="mt-1.5 text-xs text-muted">Sual</p>
+                  </div>
+                  <div>
+                    <p className="font-display text-[26px] font-extrabold leading-none text-success">
+                      {Math.round((exam.duration || 0) / 60)}
+                    </p>
+                    <p className="mt-1.5 text-xs text-muted">Dəq</p>
+                  </div>
+                  <div>
+                    <p className="font-display text-[26px] font-extrabold leading-none text-accent2">
+                      {exam.totalMarks ?? "—"}
+                    </p>
+                    <p className="mt-1.5 text-xs text-muted">Bal</p>
+                  </div>
+                </div>
+
+                {/* Footer: owner tools + action button(s) */}
+                <div className="mt-auto pt-5">
+                  {canManage(exam) && (
+                    <div className="mb-4 flex items-center justify-end gap-1.5 border-t border-line pt-4">
+                      <ExamAction onClick={() => handleToggleHidden(exam)} label={exam.hidden ? "Göstər" : "Gizlət"}>
+                        {exam.hidden ? <FiEye className="text-[17px]" /> : <FiEyeOff className="text-[17px]" />}
+                      </ExamAction>
+                      <ExamAction to={`/exam/${exam._id}/resultsByExam`} label="Nəticələr">
+                        <FiBarChart2 className="text-[17px]" />
+                      </ExamAction>
+                      <ExamAction
+                        to={exam.mode === "structured" ? `/exam/${exam._id}/build` : `/exam/${exam._id}/addQuestion`}
+                        label="Sual əlavə et"
+                      >
+                        <AiOutlinePlus className="text-[17px]" />
+                      </ExamAction>
+                      <ExamAction to={`/exam/edit/${exam._id}`} label="Redaktə et">
+                        <MdOutlineModeEditOutline className="text-[17px]" />
+                      </ExamAction>
+                      <ExamAction onClick={() => setConfirmExam(exam)} label="Sil" tone="danger">
+                        <AiFillDelete className="text-[17px]" />
+                      </ExamAction>
+                    </div>
+                  )}
+
+                  {taken ? (
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <Button
+                        to={`/exam/${exam._id}/result`}
+                        size="lg"
+                        className="w-full bg-success text-white hover:brightness-105"
+                      >
+                        <FiBarChart2 /> Nəticəni gör
+                      </Button>
+                      {/* Always offer a look at the exam when a result exists —
+                          including ended exams (review what you took). */}
+                      <Button to={`/exam/details/${exam._id}`} variant="outline" size="lg" className="w-full">
+                        İmtahana bax
+                      </Button>
+                    </div>
+                  ) : upcoming ? (
+                    <Button disabled size="lg" className="w-full">
+                      <FiClock /> Tezliklə · {fmtDate(exam.startDate)}
+                    </Button>
+                  ) : ended ? (
+                    <Button disabled size="lg" className="w-full">
+                      İmtahan bitib
+                    </Button>
+                  ) : owned ? (
+                    <Button to={`/exam/details/${exam._id}`} size="lg" className="w-full">
+                      <FiPlay /> İmtahana başla
+                    </Button>
+                  ) : (
+                    <Button onClick={(e) => addExam(e, exam)} size="lg" className="w-full">
+                      {free ? (
+                        <>
+                          <FiCheckCircle /> Pulsuz əldə et
+                        </>
+                      ) : (
+                        `Ödəniş et və qoşul · ${exam.price} AZN`
+                      )}
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           );
