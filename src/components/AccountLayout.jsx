@@ -10,9 +10,7 @@ import {
   FiBarChart2,
   FiAward,
   FiUser,
-  FiLock,
   FiUsers,
-  FiTag,
   FiStar,
   FiPieChart,
   FiBell,
@@ -23,25 +21,25 @@ import {
   FiChevronRight,
   FiHome,
 } from "react-icons/fi";
+import { LuGraduationCap } from "react-icons/lu";
 
 const navItems = [
   { to: "/dashboard", label: "İcmal", icon: FiGrid, end: true },
-  // /tags shows the category list (category -> class -> exam), so the label
-  // matches the page (titled "Kateqoriyalar"), not "İmtahanlar".
-  { to: "/tags", label: "Kateqoriyalar", icon: FiTag },
+  // Classes are top-level now (no category layer) — /classes lists every
+  // class the user can access; each class opens its exams.
+  { to: "/classes", label: "Siniflər", icon: LuGraduationCap },
   { to: "/myExams", label: "İmtahanlarım", icon: FiAward },
   { to: "/myResults", label: "Nəticələrim", icon: FiBarChart2 },
   // Visible to everyone; only admins/teachers get the add/delete controls
   // (gated inside the page itself).
   { to: "/achievements", label: "Nailiyyətlərimiz", icon: FiStar },
+  // Password change lives inside Profil now (no separate tab).
   { to: "/profile", label: "Profil", icon: FiUser },
-  { to: "/changePassword", label: "Şifrə", icon: FiLock },
 ];
 
-// "Add category" already lives as a button on the Kateqoriyalar page, so the
-// admin nav doesn't repeat it — it only keeps user management here.
+// "Add class" already lives as a button on the Siniflər page, so the admin
+// nav doesn't repeat it — it only keeps user management here.
 const adminNav = [
-  { to: "/myClasses", label: "Siniflərim", icon: FiUsers },
   { to: "/users", label: "İstifadəçilər", icon: FiUsers },
   { to: "/examResults", label: "Nəticələr", icon: FiPieChart },
   { to: "/notifications", label: "Bildirişlər", icon: FiBell },
@@ -51,13 +49,11 @@ const adminNav = [
 // (e.g. Profile) — so the breadcrumb never shows a generic "Səhifə".
 const PATH_LABELS = {
   "/dashboard": "İcmal",
-  "/tags": "Kateqoriyalar",
+  "/classes": "Siniflər",
   "/myExams": "İmtahanlarım",
   "/myResults": "Nəticələrim",
   "/achievements": "Nailiyyətlərimiz",
   "/profile": "Profil",
-  "/changePassword": "Şifrə",
-  "/myClasses": "Siniflərim",
   "/users": "İstifadəçilər",
   "/examResults": "Nəticələr",
   "/notifications": "Bildirişlər",
@@ -71,13 +67,12 @@ const sectionParents = (path) => {
   if (/^\/exam\/[^/]+\/resultsByExam$/.test(path)) return [{ label: "Nəticələr", to: "/examResults" }];
   if (/^\/user\/[^/]+\/details$/.test(path)) return [{ label: "İstifadəçilər", to: "/users" }];
   if (
-    /^\/(classAdd|class|examAdd|exams|tagAdd)\b/.test(path) ||
+    /^\/(classAdd|class|examAdd|exams)\b/.test(path) ||
     /^\/class\/edit\//.test(path) ||
     /^\/exam\/edit\//.test(path) ||
-    /^\/exam\/[^/]+$/.test(path) ||
-    /^\/tag\/edit\//.test(path)
+    /^\/exam\/[^/]+$/.test(path)
   )
-    return [{ label: "Kateqoriyalar", to: "/tags" }];
+    return [{ label: "Siniflər", to: "/classes" }];
   return [];
 };
 
@@ -110,7 +105,7 @@ export default function AccountLayout({ title, subtitle, actions, children }) {
           ...sectionParents(pathname),
           { label: title || PATH_LABELS[pathname] || "Səhifə", current: true },
         ];
-  // Drop a current crumb that just repeats its parent (e.g. /tags).
+  // Drop a current crumb that just repeats its parent (e.g. /classes).
   const crumbs = rawCrumbs.filter(
     (c, i) => !(i > 0 && c.label === rawCrumbs[i - 1].label)
   );
@@ -126,11 +121,13 @@ export default function AccountLayout({ title, subtitle, actions, children }) {
   const SidebarInner = () => (
     <div className="flex h-full flex-col">
       <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-line px-5">
-        <Link to="/dashboard" onClick={close} className="flex items-center gap-2.5">
+        <Link to="/" onClick={close} className="flex items-center gap-2.5">
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary font-display text-lg font-extrabold text-primary-fg shadow-glow">
-            İ
+            B
           </span>
-          <span className="font-display text-xl font-bold tracking-tight text-text">İmtahan</span>
+          <span className="font-display text-xl font-bold tracking-tight text-text">
+            Bunker<span className="text-primary">Math</span>
+          </span>
         </Link>
         <button
           onClick={close}
@@ -231,11 +228,13 @@ export default function AccountLayout({ title, subtitle, actions, children }) {
             >
               <FiMenu className="text-[20px]" />
             </button>
-            <Link to="/dashboard" className="flex items-center gap-2 lg:hidden">
+            <Link to="/" className="flex items-center gap-2 lg:hidden">
               <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary font-display text-base font-extrabold text-primary-fg">
-                İ
+                B
               </span>
-              <span className="font-display text-lg font-bold tracking-tight text-text">İmtahan</span>
+              <span className="font-display text-lg font-bold tracking-tight text-text">
+                Bunker<span className="text-primary">Math</span>
+              </span>
             </Link>
             {/* Desktop: pressable location breadcrumb (the left is otherwise
                 empty here — logo/menu are mobile-only). */}

@@ -92,7 +92,7 @@ const MyExams = () => {
             <p className="mx-auto mt-2 max-w-sm text-muted">
               İmtahanlar bölməsindən sınaq seç və hazırlaşmağa başla.
             </p>
-            <Button to="/tags" className="mt-6">
+            <Button to="/classes" className="mt-6">
               İmtahanlara bax
             </Button>
           </div>

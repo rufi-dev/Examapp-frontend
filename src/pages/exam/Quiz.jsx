@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useDispatch } from "react-redux";
 import { startAttempt, getPdfByExam } from "../../../redux/features/quiz/quizSlice";
-import { reportViolation, getAttemptStatus } from "../../../redux/features/quiz/quizService";
+import { reportViolation, getAttemptStatus, autosaveAnswers } from "../../../redux/features/quiz/quizService";
 import { addResult } from "../../../redux/features/quiz/resultSlice";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -350,6 +350,46 @@ const Quiz = () => {
       /* ignore */
     }
   }, [answers, answersKey]);
+
+  // Autosave the in-progress selections to the SERVER, so the attempt can be
+  // auto-submitted when the timer runs out even if the student never finishes
+  // (closed the tab / lost connection). Stable across renders (reads refs).
+  const saveDraftToServer = useCallback(() => {
+    if (access !== "allowed" || !attempt?.attemptId) return;
+    const latest = answersRef.current || [];
+    const len = questions.length || latest.length;
+    const selectedAnswers = latest.slice(0, len).map((a) => ({
+      type: a?.type,
+      answer: a?.answer,
+      ...(a?.photo ? { photo: a.photo } : {}),
+    }));
+    autosaveAnswers(examId, selectedAnswers, attempt.attemptId).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [access, attempt?.attemptId, examId, questions.length]);
+
+  // Save shortly after EVERY answer change (debounced 2s — works the same for
+  // every question type: closed, multi, open, matching, PDF, AI/structured,
+  // since it just persists the generic {type, answer, photo} array).
+  useEffect(() => {
+    if (access !== "allowed" || !attempt?.attemptId) return;
+    const t = setTimeout(saveDraftToServer, 2000);
+    return () => clearTimeout(t);
+  }, [answers, saveDraftToServer, access, attempt?.attemptId]);
+
+  // Periodic floor (retries after a failed save) + immediate save when the tab
+  // is hidden / backgrounded (best chance to capture before the student leaves).
+  useEffect(() => {
+    if (access !== "allowed" || !attempt?.attemptId) return;
+    const id = setInterval(saveDraftToServer, 25000);
+    const onVis = () => {
+      if (document.visibilityState === "hidden") saveDraftToServer();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [saveDraftToServer, access, attempt?.attemptId]);
 
   // Wall-clock countdown from the SERVER deadline: leaving / sleeping / closing
   // the tab can't pause it, and it can't be extended from localStorage.

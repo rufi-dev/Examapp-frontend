@@ -5,16 +5,21 @@ import { FiLink2, FiCopy, FiUsers } from "react-icons/fi";
 
 // Prominent "share this class" banner shown at the top of a class's exam page.
 // Renders only for the owner/admin (getClass returns the join code to them only),
-// so students/participants never see it.
+// so students/participants never see it. Also hidden for PUBLIC classes — an
+// open class needs no code, so the invite only appears when access is code-only.
 const ClassShareBanner = ({ classId }) => {
   const [code, setCode] = useState(null);
+  const [requireCode, setRequireCode] = useState(null);
 
   useEffect(() => {
     let on = true;
     axios
       .get(`${import.meta.env.VITE_BACKEND_URL}/api/quiz/getClass/${classId}`)
       .then((r) => {
-        if (on) setCode(r.data?.joinCode || null);
+        if (on) {
+          setCode(r.data?.joinCode || null);
+          setRequireCode(r.data?.requireCode);
+        }
       })
       .catch(() => {});
     return () => {
@@ -22,7 +27,8 @@ const ClassShareBanner = ({ classId }) => {
     };
   }, [classId]);
 
-  if (!code) return null;
+  // Public class (requireCode === false) → no code needed, hide the invite.
+  if (!code || requireCode === false) return null;
 
   const link = `${window.location.origin}/join/${code}`;
   const copy = (text, msg) => {

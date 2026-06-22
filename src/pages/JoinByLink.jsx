@@ -21,7 +21,7 @@ const JoinByLink = () => {
 
     const c = String(code || "").trim().toUpperCase();
     if (!c) {
-      navigate("/tags", { replace: true });
+      navigate("/classes", { replace: true });
       return;
     }
 
@@ -30,7 +30,7 @@ const JoinByLink = () => {
         .post(`${import.meta.env.VITE_BACKEND_URL}/api/quiz/enroll`, { code: c })
         .then((res) => toast.success(res.data?.message || "Sinifə qoşuldunuz"))
         .catch((err) => toast.error(err?.response?.data?.message || "Qoşulmaq alınmadı"))
-        .finally(() => navigate("/tags", { replace: true }));
+        .finally(() => navigate("/classes", { replace: true }));
     } else {
       try {
         localStorage.setItem("pendingJoin", c);

@@ -59,6 +59,27 @@ export const getClassesByTag = createAsyncThunk(
   }
 );
 
+// All accessible classes (top-level — categories removed). Stored in `classes`,
+// the same field the by-tag fetch used, so ClassList renders it unchanged.
+export const getAllClasses = createAsyncThunk(
+  "quiz/getAllClasses",
+  async (_, thunkAPI) => {
+    try {
+      return await quizService.getAllClasses();
+    } catch (error) {
+      // 401 just means "not logged in" — stay silent (mirrors getTags).
+      if (error.response && error.response.status === 401) {
+        return thunkAPI.rejectWithValue(null);
+      }
+      const message =
+        (error.response && error.response.data && error.response.data.message) ||
+        error.message ||
+        error.toString();
+      return thunkAPI.rejectWithValue(message);
+    }
+  }
+);
+
 // Get Exams By Tag
 export const getExamsByClass = createAsyncThunk(
   "quiz/getExamsByClass",
@@ -96,12 +117,12 @@ export const addExam = createAsyncThunk(
   }
 );
 
-// Add Class
+// Add Class (top-level — no category/tag)
 export const addClass = createAsyncThunk(
   "quiz/addClass",
-  async ({ tagId, classData }, thunkAPI) => {
+  async ({ classData }, thunkAPI) => {
     try {
-      return await quizService.addClass(classData, tagId);
+      return await quizService.addClass(classData);
     } catch (error) {
       const message =
         (error.response &&
@@ -630,6 +651,22 @@ const quizSlice = createSlice({
         state.message = action.payload;
         state.tags = null;
         toast.error(action.payload);
+      })
+      .addCase(getAllClasses.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(getAllClasses.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isSuccess = true;
+        state.classes = action.payload;
+      })
+      .addCase(getAllClasses.rejected, (state, action) => {
+        state.isLoading = false;
+        state.isError = true;
+        state.message = action.payload;
+        state.classes = null;
+        // payload null on a silent 401 (visitor not logged in) — no toast.
+        if (action.payload) toast.error(action.payload);
       })
       .addCase(clearClasses, (state) => {
         state.classes = null;

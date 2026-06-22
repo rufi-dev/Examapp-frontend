@@ -3,7 +3,7 @@ import axios from "axios";
 import AccountLayout from "../../components/AccountLayout";
 import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser";
 import { useDispatch, useSelector } from "react-redux";
-import { getTags, getExam, editExam } from "../../../redux/features/quiz/quizSlice";
+import { getExam, editExam } from "../../../redux/features/quiz/quizSlice";
 import { toast } from "react-toastify";
 import { useNavigate, useParams } from "react-router-dom";
 import Button from "../../components/ui/Button";
@@ -50,7 +50,6 @@ const ExamEdit = () => {
 
   useEffect(() => {
     dispatch(getExam(examId));
-    dispatch(getTags());
   }, [dispatch, examId]);
 
   const initialState = {

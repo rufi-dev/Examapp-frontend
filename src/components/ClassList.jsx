@@ -1,15 +1,16 @@
-import { Link, useParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { LuGraduationCap } from "react-icons/lu";
-import { FiArrowUpRight, FiUsers } from "react-icons/fi";
+import { FiArrowUpRight, FiUsers, FiGlobe, FiLock } from "react-icons/fi";
 import { MdOutlineModeEditOutline } from "react-icons/md";
 import { AiFillDelete } from "react-icons/ai";
 import { useDispatch, useSelector } from "react-redux";
-import { getClassesByTag, deleteClass } from "../../redux/features/quiz/quizSlice";
+import { getAllClasses, deleteClass } from "../../redux/features/quiz/quizSlice";
 import { selectUser } from "../../redux/features/auth/authSlice";
 import CenterLoader from "./ui/CenterLoader";
 import ConfirmDialog from "./ui/ConfirmDialog";
 import ClassRoster from "./ClassRoster";
+import Badge from "./ui/Badge";
 
 const levelLabel = (level) =>
   [1, 2].includes(Number(level)) ? `${level} ci qrup` : `${level} sinif`;
@@ -24,7 +25,6 @@ const ClassList = () => {
   const me = useSelector(selectUser);
   const canManage = (item) =>
     me?.role === "admin" || (item?.owner && String(item.owner) === String(me?._id));
-  const { tagId } = useParams();
   const [loadedOnce, setLoadedOnce] = useState(false);
   const [confirmClass, setConfirmClass] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -34,13 +34,13 @@ const ClassList = () => {
     let active = true;
     // Fast fetch in the background; don't gate on isLoading so cached classes
     // render instantly. New data swaps in when it arrives.
-    Promise.resolve(dispatch(getClassesByTag(tagId))).finally(() => {
+    Promise.resolve(dispatch(getAllClasses())).finally(() => {
       if (active) setLoadedOnce(true);
     });
     return () => {
       active = false;
     };
-  }, [dispatch, tagId]);
+  }, [dispatch]);
 
   const hasClasses = classes && classes.length > 0;
 
@@ -50,7 +50,7 @@ const ClassList = () => {
     try {
       await dispatch(deleteClass(confirmClass._id)).unwrap();
       setConfirmClass(null);
-      dispatch(getClassesByTag(tagId));
+      dispatch(getAllClasses());
     } catch {
       /* error toast handled by the slice */
     } finally {
@@ -82,18 +82,22 @@ const ClassList = () => {
           >
             {canManage(_class) && (
               <div className="absolute right-3 top-3 z-10 flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setRosterClass(_class);
-                  }}
-                  title="Qoşulan tələbələr"
-                  className="inline-flex h-8 items-center gap-1 rounded-lg border border-line bg-surface px-2 text-xs font-bold text-text transition-colors hover:border-primary hover:text-primary"
-                >
-                  <FiUsers className="text-primary" /> {_class.students ?? 0}
-                </button>
+                {/* Roster only for code-only classes — an open class needs no
+                    membership management (everyone already has access). */}
+                {_class.requireCode !== false && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setRosterClass(_class);
+                    }}
+                    title="Qoşulan tələbələr"
+                    className="inline-flex h-8 items-center gap-1 rounded-lg border border-line bg-surface px-2 text-xs font-bold text-text transition-colors hover:border-primary hover:text-primary"
+                  >
+                    <FiUsers className="text-primary" /> {_class.students ?? 0}
+                  </button>
+                )}
                 <Link
                   to={`/class/edit/${_class._id}`}
                   className="grid h-8 w-8 place-items-center rounded-lg border border-line bg-surface text-muted transition-colors hover:text-primary"
@@ -115,9 +119,28 @@ const ClassList = () => {
               <span className="grid h-12 w-12 place-items-center rounded-xl bg-primary/12 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-fg">
                 <LuGraduationCap className="text-[22px]" />
               </span>
-              <div className="flex w-full items-center justify-between gap-3">
-                <h3 className="font-display text-lg font-bold text-text">{classLabel(_class)}</h3>
-                <FiArrowUpRight className="shrink-0 text-xl text-muted transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary" />
+              <div className="w-full">
+                <div className="flex w-full items-center justify-between gap-3">
+                  <h3 className="font-display text-lg font-bold text-text">{classLabel(_class)}</h3>
+                  <FiArrowUpRight className="shrink-0 text-xl text-muted transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary" />
+                </div>
+                {/* Visibility chip — only the managing teacher/admin needs it. */}
+                {canManage(_class) && (
+                  <Badge
+                    tone={_class.requireCode === false ? "success" : "neutral"}
+                    className="mt-3"
+                  >
+                    {_class.requireCode === false ? (
+                      <>
+                        <FiGlobe /> Açıq
+                      </>
+                    ) : (
+                      <>
+                        <FiLock /> Kodla
+                      </>
+                    )}
+                  </Badge>
+                )}
               </div>
             </Link>
           </div>
@@ -129,7 +152,7 @@ const ClassList = () => {
           classObj={rosterClass}
           label={classLabel(rosterClass)}
           onClose={() => setRosterClass(null)}
-          onChange={() => dispatch(getClassesByTag(tagId))}
+          onChange={() => dispatch(getAllClasses())}
         />
       )}
 

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { FiUser, FiLock, FiLogOut, FiChevronDown, FiSun, FiMoon } from "react-icons/fi";
+import { FiUser, FiLogOut, FiChevronDown, FiSun, FiMoon } from "react-icons/fi";
 import { useTheme } from "./ui/ThemeToggle";
 
 // Header avatar with a dropdown (profile / password / logout).
@@ -57,9 +57,6 @@ const UserMenu = ({ user, onLogout }) => {
           <div className="p-1.5">
             <Link to="/profile" onClick={() => setOpen(false)} className={`${item} text-text hover:bg-surface2`}>
               <FiUser /> Profil
-            </Link>
-            <Link to="/changePassword" onClick={() => setOpen(false)} className={`${item} text-text hover:bg-surface2`}>
-              <FiLock /> Şifrə
             </Link>
             <button
               type="button"

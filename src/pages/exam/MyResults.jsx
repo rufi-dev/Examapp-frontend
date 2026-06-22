@@ -69,7 +69,7 @@ const MyResults = () => {
             <p className="mx-auto mt-2 max-w-sm text-muted">
               İlk sınaq imtahanını həll et və nəticən burada görünsün.
             </p>
-            <Button to="/tags" className="mt-6">
+            <Button to="/classes" className="mt-6">
               İmtahanlara bax
             </Button>
           </div>

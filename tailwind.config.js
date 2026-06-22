@@ -23,13 +23,19 @@ export default {
           fg: token('--primary-fg'),
         },
         accent2: token('--accent-2'),
+        // BunkerMath "Mathematical Blueprint" accents (themed under .blueprint).
+        cyan: token('--accent-2'),
+        advanced: token('--advanced'),
+        navy: token('--navy'),
         success: token('--success'),
         warning: token('--warning'),
         danger: token('--danger'),
         ring: token('--ring'),
       },
       fontFamily: {
-        display: ['"Bricolage Grotesque"', 'Fraunces', 'system-ui', 'sans-serif'],
+        // Token-driven so the public ".blueprint" scope can swap the display
+        // family (Plus Jakarta Sans) while the dashboard keeps its own.
+        display: ['var(--font-display)', '"Bricolage Grotesque"', 'system-ui', 'sans-serif'],
         sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
       },
       borderRadius: {

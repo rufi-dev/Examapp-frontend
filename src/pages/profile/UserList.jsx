@@ -177,7 +177,7 @@ const UserList = () => {
                       <td className="px-4 py-4">
                         <div className="flex items-center justify-end gap-2">
                           {/* Admin only: full role control + delete. Teachers manage
-                              students per-class from Siniflərim (remove from class). */}
+                              students per-class from the class edit page. */}
                           <ChangeRole _id={user._id} email={user.email} />
                           <button
                             onClick={() => setConfirmUser(user)}

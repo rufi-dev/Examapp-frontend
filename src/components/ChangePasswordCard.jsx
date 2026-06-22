@@ -1,17 +1,15 @@
 import { useEffect, useState } from "react";
-import AccountLayout from "../../components/AccountLayout";
 import { BsEye, BsEyeSlash } from "react-icons/bs";
 import { FiCheck, FiX } from "react-icons/fi";
-import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { RESET, changePassword, logout } from "../../../redux/features/auth/authSlice";
-import { validatePassword } from "../../../redux/features/auth/authService";
+import { RESET, changePassword, logout } from "../../redux/features/auth/authSlice";
+import { validatePassword } from "../../redux/features/auth/authService";
 import { toast } from "react-toastify";
-import Spinner from "../../components/Spinner";
-import { sendAutomatedEmail } from "../../../redux/features/mail/emailSlice";
-import Button from "../../components/ui/Button";
-import { Field } from "../../components/ui/Field";
+import Spinner from "./Spinner";
+import { sendAutomatedEmail } from "../../redux/features/mail/emailSlice";
+import Button from "./ui/Button";
+import { Field } from "./ui/Field";
 
 const initialState = {
   oldPassword: "",
@@ -32,8 +30,10 @@ const Req = ({ ok, children }) => (
   </li>
 );
 
-const ChangePassword = () => {
-  useRedirectLoggedOutUser("/login");
+// Password change as an embedded section of the profile page (no separate tab).
+// On success the user is logged out and sent to /login — a fresh sign-in with
+// the new password.
+const ChangePasswordCard = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -110,30 +110,35 @@ const ChangePassword = () => {
   );
 
   return (
-    <AccountLayout title="Şifrəni dəyiş" subtitle="Təhlükəsizlik üçün güclü bir şifrə seç.">
-      <div className="max-w-xl">
-        <div className="rounded-3xl border border-line bg-surface p-6 shadow-soft sm:p-8">
-          <form onSubmit={updatePassword} className="flex flex-col gap-5">
-              <Field label="Cari şifrə">{pwInput("oldPassword", "Cari şifrə")}</Field>
-              <Field label="Yeni şifrə">{pwInput("password", "Yeni şifrə")}</Field>
-
-              <ul className="grid gap-2.5 rounded-xl border border-line bg-surface2/40 p-4 text-sm sm:grid-cols-2">
-                <Req ok={uCase}>Böyük və kiçik hərf</Req>
-                <Req ok={num}>Rəqəm (0-9)</Req>
-                <Req ok={sChar}>Xüsusi simvol (!@#$%)</Req>
-                <Req ok={passLength}>Ən azı 6 simvol</Req>
-              </ul>
-
-              <Field label="Yeni şifrəni təsdiqlə">{pwInput("password2", "Yeni şifrəni təsdiqlə")}</Field>
-
-              <Button type="submit" disabled={isLoading} className="mt-2 w-full">
-                {isLoading ? <Spinner /> : "Şifrəni dəyiş"}
-              </Button>
-          </form>
+    <div className="mt-6 rounded-3xl border border-line bg-surface p-6 shadow-soft sm:p-8">
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+        <div>
+          <h2 className="font-display text-lg font-bold text-text">Şifrəni dəyiş</h2>
+          <p className="mt-2 text-sm leading-relaxed text-muted">
+            Təhlükəsizlik üçün güclü bir şifrə seçin. Şifrəni dəyişdikdən sonra yenidən daxil
+            olmanız tələb olunacaq.
+          </p>
         </div>
+        <form onSubmit={updatePassword} className="flex flex-col gap-5">
+          <Field label="Cari şifrə">{pwInput("oldPassword", "Cari şifrə")}</Field>
+          <Field label="Yeni şifrə">{pwInput("password", "Yeni şifrə")}</Field>
+
+          <ul className="grid gap-2.5 rounded-xl border border-line bg-surface2/40 p-4 text-sm sm:grid-cols-2">
+            <Req ok={uCase}>Böyük və kiçik hərf</Req>
+            <Req ok={num}>Rəqəm (0-9)</Req>
+            <Req ok={sChar}>Xüsusi simvol (!@#$%)</Req>
+            <Req ok={passLength}>Ən azı 6 simvol</Req>
+          </ul>
+
+          <Field label="Yeni şifrəni təsdiqlə">{pwInput("password2", "Yeni şifrəni təsdiqlə")}</Field>
+
+          <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
+            {isLoading ? <Spinner /> : "Şifrəni dəyiş"}
+          </Button>
+        </form>
       </div>
-    </AccountLayout>
+    </div>
   );
 };
 
-export default ChangePassword;
+export default ChangePasswordCard;

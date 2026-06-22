@@ -26,3 +26,6 @@ dist_*
 *.njsproj
 *.sln
 *.sw?
+
+# Vite transient config transpile artifact
+vite.config.js.timestamp-*

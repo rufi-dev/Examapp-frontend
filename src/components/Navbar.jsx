@@ -1,35 +1,41 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { RxHamburgerMenu } from "react-icons/rx";
 import { GrClose } from "react-icons/gr";
-import { FiLogOut } from "react-icons/fi";
+import { FiLogOut, FiArrowRight } from "react-icons/fi";
 import { useDispatch } from "react-redux";
 import { RESET, logout } from "../../redux/features/auth/authSlice";
 import { ShowOnLogin, ShowOnLogout } from "./protect/hiddenLink";
 import { UserName } from "../pages/profile/Profile";
 import ThemeToggle from "./ui/ThemeToggle";
 import Button from "./ui/Button";
+import BunkerMathLogo from "./blueprint/BunkerMathLogo";
+import { MathGridBackground } from "./blueprint/MathVisuals";
 
+// Mövzular / Sınaqlar scroll to home sections (in-page anchors); the rest are
+// real routes.
 const links = [
-  { hash: "#features", label: "Üstünlüklər" },
-  { hash: "#how", label: "Necə işləyir" },
-  { to: "/ourSuccess", label: "Uğurlarımız" },
+  { to: "/", label: "Ana səhifə", end: true },
+  { hash: "#topics", label: "Mövzular" },
+  { hash: "#exam-preview", label: "Sınaqlar" },
+  { to: "/about", label: "Haqqımızda" },
+  { to: "/contact", label: "Əlaqə" },
 ];
-
-const Brand = ({ onClick }) => (
-  <Link to="/" onClick={onClick} className="flex shrink-0 items-center gap-2.5">
-    <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary font-display text-lg font-extrabold text-primary-fg shadow-glow">
-      İ
-    </span>
-    <span className="font-display text-xl font-bold tracking-tight text-text">İmtahan</span>
-  </Link>
-);
 
 const Navbar = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const close = () => setOpen(false);
+
+  // Transparent over the hero; solid with a border once scrolled.
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const handleLogout = async () => {
     dispatch(RESET());
@@ -37,32 +43,38 @@ const Navbar = () => {
     navigate("/");
   };
 
+  // Active route link → a small cobalt "graph segment" underline.
   const desktopLink = ({ isActive }) =>
-    `text-[15px] font-medium transition-colors ${
-      isActive ? "text-text" : "text-muted hover:text-text"
+    `relative text-[15px] font-medium transition-colors after:absolute after:-bottom-1.5 after:left-0 after:h-[2.5px] after:rounded-full after:bg-primary after:transition-all after:duration-300 ${
+      isActive ? "text-text after:w-5" : "text-muted hover:text-text after:w-0 hover:after:w-5"
     }`;
 
+  const anchorLink =
+    "text-[15px] font-medium text-muted transition-colors hover:text-text";
   const mobileLinkCls =
     "block rounded-xl px-4 py-3.5 text-lg font-semibold text-text transition-colors hover:bg-surface2";
 
   return (
     <>
-      <header className="sticky top-0 z-[900] border-b border-line/70 bg-bg/80 backdrop-blur-xl">
+      <header
+        className={`sticky top-0 z-[900] bg-surface transition-shadow duration-300 ${
+          scrolled ? "border-b border-line shadow-soft" : "border-b border-transparent"
+        }`}
+      >
         <nav className="container-app flex h-16 items-center justify-between gap-4">
-          <Brand />
+          <Link to="/" aria-label="BunkerMath — ana səhifə">
+            <BunkerMathLogo />
+          </Link>
 
-          <ul className="hidden items-center gap-9 lg:flex">
+          <ul className="hidden items-center gap-8 lg:flex">
             {links.map((l) => (
               <li key={l.label}>
                 {l.to ? (
-                  <NavLink to={l.to} className={desktopLink}>
+                  <NavLink to={l.to} end={l.end} className={desktopLink}>
                     {l.label}
                   </NavLink>
                 ) : (
-                  <a
-                    href={l.hash}
-                    className="text-[15px] font-medium text-muted transition-colors hover:text-text"
-                  >
+                  <a href={l.hash} className={anchorLink}>
                     {l.label}
                   </a>
                 )}
@@ -78,13 +90,10 @@ const Navbar = () => {
                   Daxil ol
                 </Button>
                 <Button to="/register" variant="primary" size="sm">
-                  Qeydiyyat
+                  Sınağa başla <FiArrowRight />
                 </Button>
               </ShowOnLogout>
               <ShowOnLogin>
-                <Button to="/dashboard" variant="primary" size="sm">
-                  İcmal
-                </Button>
                 <span className="text-sm font-semibold text-text">
                   <UserName />
                 </span>
@@ -110,19 +119,18 @@ const Navbar = () => {
         </nav>
       </header>
 
-      {/*
-        Full-screen mobile menu. Rendered OUTSIDE <header> on purpose: the
-        header's backdrop-blur would otherwise become the containing block for
-        these fixed elements and clip them to the 64px header box.
-      */}
+      {/* Full-screen mobile menu (rendered outside header to escape backdrop-blur). */}
       <div
         className={`fixed inset-0 z-[1300] bg-bg transition-[transform,opacity] duration-300 ease-out-quint lg:hidden ${
           open ? "translate-x-0 opacity-100" : "pointer-events-none translate-x-full opacity-0"
         }`}
       >
-        <div className="flex h-full flex-col">
+        <MathGridBackground variant="graph" fade />
+        <div className="relative flex h-full flex-col">
           <div className="flex h-16 shrink-0 items-center justify-between border-b border-line/70 px-5 sm:px-8">
-            <Brand onClick={close} />
+            <Link to="/" onClick={close}>
+              <BunkerMathLogo />
+            </Link>
             <div className="flex items-center gap-2.5">
               <ThemeToggle />
               <button
@@ -140,7 +148,7 @@ const Navbar = () => {
               {links.map((l) => (
                 <li key={l.label}>
                   {l.to ? (
-                    <NavLink to={l.to} onClick={close} className={mobileLinkCls}>
+                    <NavLink to={l.to} end={l.end} onClick={close} className={mobileLinkCls}>
                       {l.label}
                     </NavLink>
                   ) : (
@@ -158,16 +166,16 @@ const Navbar = () => {
                   Daxil ol
                 </Button>
                 <Button to="/register" variant="primary" onClick={close} size="lg" className="w-full">
-                  Qeydiyyat
+                  Sınağa başla <FiArrowRight />
                 </Button>
               </ShowOnLogout>
               <ShowOnLogin>
-                <div className="rounded-xl border border-line bg-surface px-4 py-3 text-sm font-semibold text-text">
+                <div
+                  onClick={close}
+                  className="rounded-xl border border-line bg-surface px-4 py-3 text-sm font-semibold text-text"
+                >
                   <UserName />
                 </div>
-                <Button to="/dashboard" variant="primary" onClick={close} size="lg" className="w-full">
-                  İcmal
-                </Button>
                 <Button
                   variant="secondary"
                   size="lg"

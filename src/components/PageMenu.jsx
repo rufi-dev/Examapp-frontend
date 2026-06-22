@@ -6,12 +6,11 @@ const items = [
   { to: "/profile", label: "Haqqımda" },
   { to: "/myResults", label: "Nəticələrim" },
   { to: "/myExams", label: "İmtahanlarım" },
-  { to: "/changePassword", label: "Şifrəni dəyiş" },
 ];
 
 const adminItems = [
   { to: "/users", label: "İstifadəçilər" },
-  { to: "/tagAdd", label: "İmtahan kateqoriyası" },
+  { to: "/classAdd", label: "Sinif əlavə et" },
 ];
 
 // Admin-only (teachers don't see these).

@@ -33,7 +33,7 @@ const PendingJoinHandler = () => {
       .post(`${import.meta.env.VITE_BACKEND_URL}/api/quiz/enroll`, { code })
       .then((res) => {
         toast.success(res.data?.message || "Sinifə qoşuldunuz");
-        navigate("/tags", { replace: true });
+        navigate("/classes", { replace: true });
       })
       .catch((err) => {
         toast.error(err?.response?.data?.message || "Qoşulmaq alınmadı");

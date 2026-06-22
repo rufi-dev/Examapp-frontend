@@ -12,6 +12,7 @@ import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
 import Spinner from "../../components/Spinner";
 import TelegramNotifications from "../../components/TelegramNotifications";
+import ChangePasswordCard from "../../components/ChangePasswordCard";
 import { Field, inputClass, textareaClass } from "../../components/ui/Field";
 
 const cloud_name = import.meta.env.VITE_CLOUD_NAME;
@@ -197,11 +198,13 @@ const Profile = () => {
                 <Button type="submit" disabled={isLoading}>
                   {isLoading ? <Spinner /> : "Yadda saxla"}
                 </Button>
-                <Button to="/tags" variant="soft">
+                <Button to="/classes" variant="soft">
                   İmtahanlar
                 </Button>
               </div>
             </form>
+
+            <ChangePasswordCard />
 
             {(role === "teacher" || role === "admin") && <TelegramNotifications />}
           </>
@@ -217,7 +220,7 @@ export const UserName = () => {
     `flex items-center transition-colors ${isActive ? "text-primary" : "text-text hover:text-primary"}`;
 
   return (
-    <NavLink to={"/profile"} className={activeLink}>
+    <NavLink to={"/dashboard"} className={activeLink}>
       Salam, {shortenText(username, 15)}
       <span className="text-[26px]">
         <RiArrowDropDownLine />

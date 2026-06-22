@@ -12,6 +12,11 @@ const getClassesByTag = async (tagId) => {
     const response = await axios.get(API_URL + "getClassesByTag/"+tagId)
     return response.data
 }
+// All classes the user can access (categories removed — classes are top-level).
+const getAllClasses = async () => {
+    const response = await axios.get(API_URL + "getClasses")
+    return response.data
+}
 //Get Exams
 const getExamsByClass = async (id) => {
     const response = await axios.get(API_URL + "getExamsByClass/" + id)
@@ -78,9 +83,9 @@ const setExamHidden = async (examId, hidden) => {
     return response.data.message
 }
 
-//Add Class
-const addClass = async (classData, tagId) => {
-    const response = await axios.post(API_URL + "addClass/" + tagId, classData)
+//Add Class (top-level — no category/tag)
+const addClass = async (classData) => {
+    const response = await axios.post(API_URL + "addClass", classData)
     return response.data.message
 }
 
@@ -157,6 +162,16 @@ export const getAttemptStatus = async (examId, counts) => {
     const response = await axios.get(
         API_URL + "exam/" + examId + "/attemptStatus" + (counts ? "?counts=1" : "")
     )
+    return response.data
+}
+
+// Autosave the in-progress selections onto the active attempt, so the server
+// can auto-submit them if the student never finishes (timer safety net).
+export const autosaveAnswers = async (examId, selectedAnswers, attemptId) => {
+    const response = await axios.post(API_URL + "exam/" + examId + "/autosave", {
+        selectedAnswers,
+        attemptId,
+    })
     return response.data
 }
 
@@ -267,6 +282,7 @@ const quizService = {
     addClass,
     getExamTagandClass,
     getClassesByTag,
+    getAllClasses,
     addPhotoToResult,
     getResultsByExam
 }

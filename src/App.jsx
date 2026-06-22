@@ -43,24 +43,21 @@ const Reset = lazy(() => import("./pages/auth/Reset"));
 const LoginWithCode = lazy(() => import("./pages/auth/LoginWithCode"));
 const Verify = lazy(() => import("./pages/auth/Verify"));
 const Profile = lazy(() => import("./pages/profile/Profile"));
-const ChangePassword = lazy(() => import("./pages/auth/ChangePassword"));
 const UserList = lazy(() => import("./pages/profile/UserList"));
-const Tags = lazy(() => import("./pages/Tags"));
 const Classes = lazy(() => import("./pages/Classes"));
 const Exams = lazy(() => import("./pages/Exams"));
 const Overview = lazy(() => import("./pages/Overview"));
 const OurSuccess = lazy(() => import("./pages/OurSuccess"));
+const About = lazy(() => import("./pages/About"));
+const Contact = lazy(() => import("./pages/Contact"));
 const ExamAdd = lazy(() => import("./pages/admin/ExamAdd"));
-const TagAdd = lazy(() => import("./pages/admin/TagAdd"));
 const ClassAdd = lazy(() => import("./pages/admin/ClassAdd"));
 const ClassEdit = lazy(() => import("./pages/admin/ClassEdit"));
 const ExamEdit = lazy(() => import("./pages/admin/ExamEdit"));
 const QuestionAdd = lazy(() => import("./pages/admin/QuestionAdd"));
 const StructuredBuilder = lazy(() => import("./pages/admin/StructuredBuilder"));
-const TagEdit = lazy(() => import("./pages/admin/TagEdit"));
 const UserDetails = lazy(() => import("./pages/admin/UserDetails"));
 const AiUsage = lazy(() => import("./pages/admin/AiUsage"));
-const MyClasses = lazy(() => import("./pages/admin/MyClasses"));
 const ExamResults = lazy(() => import("./pages/admin/ExamResults"));
 const Notifications = lazy(() => import("./pages/admin/Notifications"));
 const ExamInstructions = lazy(() => import("./pages/exam/ExamInstructions"));
@@ -177,7 +174,7 @@ function App() {
             <Route path="/loginWithCode/:email" element={<LoginWithCode />} />
             <Route path="/verify/:verificationToken" element={<Verify />} />
 
-            {/* Public marketing page (open to everyone) */}
+            {/* Public marketing pages (open to everyone) */}
             <Route
               path="/ourSuccess"
               element={
@@ -186,15 +183,29 @@ function App() {
                 </Layout>
               }
             />
+            <Route
+              path="/about"
+              element={
+                <Layout>
+                  <About />
+                </Layout>
+              }
+            />
+            <Route
+              path="/contact"
+              element={
+                <Layout>
+                  <Contact />
+                </Layout>
+              }
+            />
 
             {/* Dashboard area (logged-in only) */}
             <Route element={<RequireAuth />}>
               <Route path="/dashboard" element={<Overview />} />
               <Route path="/profile" element={<Profile />} />
-              <Route path="/changePassword" element={<ChangePassword />} />
               <Route path="/users" element={<UserList />} />
               <Route path="/aiUsage" element={<AiUsage />} />
-              <Route path="/myClasses" element={<MyClasses />} />
               <Route path="/examResults" element={<ExamResults />} />
               <Route path="/notifications" element={<Notifications />} />
               {/* Achievements manager inside the dashboard shell (the public
@@ -210,15 +221,12 @@ function App() {
               <Route path="/myResults" element={<MyResults />} />
               <Route path="/myExams" element={<MyExams />} />
               <Route path="/user/:id/details" element={<UserDetails />} />
-              <Route path="/tagAdd" element={<TagAdd />} />
-              <Route path="/classAdd/:tagId" element={<ClassAdd />} />
+              <Route path="/classAdd" element={<ClassAdd />} />
               <Route path="/class/edit/:classId" element={<ClassEdit />} />
               <Route path="/examAdd/:classId" element={<ExamAdd />} />
               <Route path="/exam/edit/:examId" element={<ExamEdit />} />
-              <Route path="/tag/edit/:tagId" element={<TagEdit />} />
 
-              <Route path="/tags" element={<Tags />} />
-              <Route path="/class/:tagId" element={<Classes />} />
+              <Route path="/classes" element={<Classes />} />
               <Route path="/exam/:classId" element={<Exams />} />
               <Route path="/exams/:id" element={<Exams />} />
               <Route path="/exam/details/:examId" element={<ExamInstructions />} />

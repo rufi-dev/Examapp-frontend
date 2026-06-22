@@ -110,7 +110,7 @@ const Overview = () => {
             <h2 className="font-display text-lg font-bold text-text">Son əlavə olunan imtahanlar</h2>
             <p className="text-sm text-muted">Yeni imtahanı tez tap və başla.</p>
           </div>
-          <Link to="/tags" className="shrink-0 text-sm font-semibold text-primary hover:underline">
+          <Link to="/classes" className="shrink-0 text-sm font-semibold text-primary hover:underline">
             Hamısı
           </Link>
         </div>
@@ -122,9 +122,9 @@ const Overview = () => {
             </span>
             <p className="mt-3 font-display text-lg font-bold text-text">Hələ imtahan yoxdur</p>
             <p className="mx-auto mt-1 max-w-sm text-sm text-muted">
-              Sinifə qoşul və ya kateqoriyalardan imtahanlara bax.
+              Sinifə qoşul və ya siniflərdən imtahanlara bax.
             </p>
-            <Button to="/tags" className="mt-5">
+            <Button to="/classes" className="mt-5">
               İmtahanlara bax <FiArrowRight />
             </Button>
           </div>
@@ -211,9 +211,9 @@ const Overview = () => {
         <div className="flex items-center justify-between gap-4 rounded-3xl border border-line bg-surface p-6 shadow-soft">
           <div>
             <h3 className="font-display text-lg font-bold text-text">İmtahanlara bax</h3>
-            <p className="mt-1 text-sm text-muted">Kateqoriyalardan sınaq seç və başla.</p>
+            <p className="mt-1 text-sm text-muted">Siniflərdən sınaq seç və başla.</p>
           </div>
-          <Button to="/tags" size="sm">
+          <Button to="/classes" size="sm">
             <FiBookOpen /> Bax
           </Button>
         </div>
@@ -276,7 +276,7 @@ const Overview = () => {
             <p className="mx-auto mt-2 max-w-sm text-muted">
               İlk sınaq imtahanını həll et və nəticən burada görünsün.
             </p>
-            <Button to="/tags" className="mt-6">
+            <Button to="/classes" className="mt-6">
               İmtahanlara bax
             </Button>
           </div>

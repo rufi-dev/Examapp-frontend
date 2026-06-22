@@ -1,4 +1,3 @@
-import { useParams } from "react-router-dom";
 import { AdminTeacherLink } from "../components/protect/hiddenLink";
 import ClassList from "../components/ClassList";
 import useRedirectLoggedOutUser from "../customHook/useRedirectLoggedOutUser";
@@ -8,15 +7,14 @@ import { FiPlus } from "react-icons/fi";
 
 const Classes = () => {
   useRedirectLoggedOutUser("/login");
-  const { tagId } = useParams();
 
   return (
     <AccountLayout
       title="Siniflər"
-      subtitle="Sinif və ya qrup seç, sonra imtahanlara bax."
+      subtitle="Sinif seç və imtahanlara bax."
       actions={
         <AdminTeacherLink>
-          <Button to={`/classAdd/${tagId}`} variant="secondary" size="sm">
+          <Button to="/classAdd" variant="secondary" size="sm">
             <FiPlus /> Sinif əlavə et
           </Button>
         </AdminTeacherLink>

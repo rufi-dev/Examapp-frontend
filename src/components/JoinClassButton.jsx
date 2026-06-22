@@ -3,7 +3,7 @@ import axios from "axios";
 import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
 import { FiLogIn, FiX } from "react-icons/fi";
-import { getTags } from "../../redux/features/quiz/quizSlice";
+import { getAllClasses } from "../../redux/features/quiz/quizSlice";
 import Button from "./ui/Button";
 import Spinner from "./Spinner";
 
@@ -28,7 +28,7 @@ const JoinClassButton = ({ onJoined }) => {
       setOpen(false);
       setCode("");
       if (res.data?.status === "approved") {
-        dispatch(getTags());
+        dispatch(getAllClasses());
         onJoined?.();
       }
     } catch (err) {

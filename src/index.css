@@ -20,6 +20,10 @@
     --danger: 0.58 0.2 25;
     --ring: 0.55 0.185 270;
     --shadow: 0.2 0.03 268;
+    /* Defaults so `advanced`/`navy` classes resolve outside .blueprint too. */
+    --advanced: 0.66 0.155 292;
+    --navy: 0.32 0.06 268;
+    --font-display: "Bricolage Grotesque", Fraunces, system-ui, sans-serif;
     color-scheme: light;
   }
 
@@ -39,7 +43,58 @@
     --danger: 0.66 0.19 27;
     --ring: 0.62 0.17 272;
     --shadow: 0.03 0.02 268;
+    --advanced: 0.7 0.14 292;
+    --navy: 0.28 0.05 268;
     color-scheme: dark;
+  }
+
+  /* ──────────────────────────────────────────────────────────────────────
+     "Mathematical Blueprint" — BunkerMath PUBLIC theme.
+     Scoped to the public <Layout> root only (class="blueprint"), so the
+     authenticated dashboard / auth shells keep the existing Calm Indigo
+     tokens untouched. Re-maps the same token names → BunkerMath palette, so
+     every token-based component re-themes automatically inside this subtree.
+     ────────────────────────────────────────────────────────────────────── */
+  .blueprint {
+    --bg: 0.975 0.006 250;          /* #F7F9FC paper */
+    --surface: 0.999 0.002 250;     /* #FFFFFF card */
+    --surface-2: 0.955 0.009 250;   /* #EEF3FA soft */
+    --border: 0.915 0.012 252;
+    --text: 0.28 0.05 258;          /* #10233E */
+    --text-muted: 0.5 0.032 252;    /* #52657A */
+    --primary: 0.53 0.19 264;       /* #2457E6 cobalt */
+    --primary-hover: 0.48 0.2 264;
+    --primary-fg: 0.995 0.004 250;
+    --accent-2: 0.71 0.11 200;      /* #15B8C8 cyan */
+    --advanced: 0.52 0.21 293;      /* #6D3DE8 purple */
+    --navy: 0.32 0.11 264;          /* #12306B deep navy */
+    --success: 0.55 0.14 152;       /* #15803D */
+    --warning: 0.68 0.16 60;        /* #D97706 */
+    --danger: 0.55 0.19 27;         /* #C62828 */
+    --ring: 0.53 0.19 264;
+    --shadow: 0.28 0.07 262;
+    --font-display: "Plus Jakarta Sans", Inter, system-ui, sans-serif;
+  }
+
+  /* Dark public theme = the navy "mathematical workspace". */
+  .dark .blueprint {
+    --bg: 0.215 0.028 258;          /* #0D1B2A workspace */
+    --surface: 0.265 0.038 258;     /* #12253D panel */
+    --surface-2: 0.31 0.042 258;
+    --border: 0.36 0.04 258;
+    --text: 0.96 0.006 250;
+    --text-muted: 0.72 0.02 250;
+    --primary: 0.62 0.17 264;
+    --primary-hover: 0.68 0.16 264;
+    --primary-fg: 0.16 0.03 260;
+    --accent-2: 0.74 0.11 200;
+    --advanced: 0.64 0.18 293;
+    --navy: 0.215 0.028 258;
+    --success: 0.7 0.14 154;
+    --warning: 0.78 0.14 62;
+    --danger: 0.66 0.18 27;
+    --ring: 0.62 0.17 264;
+    --shadow: 0.02 0.02 258;
   }
 
   *,
@@ -85,13 +140,43 @@
 
 @layer components {
   .container-app {
-    @apply mx-auto w-full max-w-[1200px] px-5 sm:px-8;
+    @apply mx-auto w-full max-w-[1280px] px-5 sm:px-8 lg:px-16;
   }
 
   /* Subtle cool dot texture for hero + section backgrounds */
   .bg-grid {
     background-image: radial-gradient(oklch(var(--text) / 0.05) 1px, transparent 1px);
     background-size: 22px 22px;
+  }
+
+  /* ── Mathematical Blueprint backgrounds (graph paper / axes / dots) ──
+     Token-driven, kept faint (≤6%) so they never hurt text contrast. */
+  .bg-graph {
+    background-image: linear-gradient(oklch(var(--text) / 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(var(--text) / 0.05) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .bg-graph-fine {
+    background-image: linear-gradient(oklch(var(--text) / 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(var(--text) / 0.04) 1px, transparent 1px);
+    background-size: 16px 16px;
+  }
+  .bg-dots {
+    background-image: radial-gradient(oklch(var(--text) / 0.06) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+  /* Light grid for use ON dark navy sections (white lines instead of ink). */
+  .bg-graph-on-dark {
+    background-image: linear-gradient(oklch(1 0 0 / 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(1 0 0 / 0.06) 1px, transparent 1px);
+    background-size: 30px 30px;
+  }
+  /* Always-dark "mathematical workspace" marketing section. Authored CSS (not a
+     config token) so it renders correctly even before a Tailwind config reload.
+     Reads the scoped --navy var, so it still adapts between light/dark theme. */
+  .section-navy {
+    background-color: oklch(var(--navy) / 1);
+    color: #fff;
   }
 }
 
