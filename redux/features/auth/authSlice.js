@@ -461,7 +461,7 @@ const authSlice = createSlice({
                 state.isSuccess = true;
                 state.isLoggedIn = true;
                 state.user = action.payload
-                toast.success("User Updated")
+                // The calling component shows its own (Azerbaijani) toast.
             })
             .addCase(updateUser.rejected, (state, action) => {
                 state.isLoading = false;

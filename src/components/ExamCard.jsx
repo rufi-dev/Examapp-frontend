@@ -79,7 +79,7 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
       className="group flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:shadow-lift"
     >
       {/* Cover banner with status + price overlaid */}
-      <div className="relative h-28 w-full shrink-0 overflow-hidden sm:h-32">
+      <div className="relative h-36 w-full shrink-0 overflow-hidden sm:h-40">
         {exam.coverImage ? (
           <img
             src={exam.coverImage}

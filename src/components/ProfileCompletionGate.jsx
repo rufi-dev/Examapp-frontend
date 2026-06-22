@@ -66,8 +66,8 @@ const ProfileCompletionGate = () => {
   useEffect(() => {
     if (!isLoggedIn || !user) return setStep(null);
     if (needsCompletion(user)) return setStep("form");
-    const needGroup =
-      user.role === "student" && !!inviteLink && !localStorage.getItem(groupKey(user));
+    // Prompt to join the WhatsApp group once (per device) — for any role.
+    const needGroup = !!inviteLink && !localStorage.getItem(groupKey(user));
     setStep(needGroup ? "group" : null);
   }, [isLoggedIn, user, inviteLink]);
 
