@@ -9,34 +9,10 @@ import { getResultsByUser } from "../../redux/features/quiz/resultSlice";
 import AccountLayout from "../components/AccountLayout";
 import Spinner from "../components/Spinner";
 import Button from "../components/ui/Button";
-import {
-  FiEye,
-  FiBookOpen,
-  FiArrowRight,
-  FiClock,
-  FiCalendar,
-  FiPlus,
-} from "react-icons/fi";
-import ExamCoverFallback from "../components/ExamCoverFallback";
-import ExamAdminActions from "../components/ExamAdminActions";
+import { FiEye, FiBookOpen, FiArrowRight, FiPlus } from "react-icons/fi";
+import ExamCard from "../components/ExamCard";
 
 const API = `${import.meta.env.VITE_BACKEND_URL}/api/quiz`;
-
-const fmtDate = (d) => {
-  if (!d) return "";
-  const x = new Date(d);
-  const p = (n) => String(n).padStart(2, "0");
-  return `${p(x.getDate())}.${p(x.getMonth() + 1)}.${x.getFullYear()}`;
-};
-
-// Active / ended / upcoming pill for an exam.
-const statusInfo = (exam, now) => {
-  const s = exam.startDate ? new Date(exam.startDate).getTime() : null;
-  const e = exam.endDate ? new Date(exam.endDate).getTime() : null;
-  if (s && now < s) return { label: "Gələcək", cls: "bg-warning/15 text-warning" };
-  if (e && now > e) return { label: "Bitib", cls: "bg-danger/15 text-danger" };
-  return { label: "Aktiv", cls: "bg-success/15 text-success" };
-};
 
 const Overview = () => {
   useRedirectLoggedOutUser("/login");
@@ -76,8 +52,6 @@ const Overview = () => {
   const firstName = user?.name?.split(" ")[0] || "";
   // Teachers/admins create exams; students browse them — drives the quick link.
   const isStaff = user?.role === "admin" || user?.role === "teacher";
-  const now = Date.now();
-  const isNew = (d) => d && now - new Date(d).getTime() < 3 * 24 * 60 * 60 * 1000;
 
   if (!loaded) {
     return (
@@ -120,104 +94,10 @@ const Overview = () => {
             </Button>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {latest.map((exam) => {
-              const st = statusInfo(exam, now);
-              // Solid pill colour so the status reads on top of the cover banner.
-              const stSolid =
-                st.label === "Gələcək"
-                  ? "bg-warning text-white"
-                  : st.label === "Bitib"
-                  ? "bg-danger text-white"
-                  : "bg-success text-white";
-              const category =
-                exam.class?.name ||
-                (exam.class?.level != null ? `${exam.class.level} sinif` : null);
-              return (
-                <div
-                  key={exam._id}
-                  className="group flex flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-soft transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:shadow-lift"
-                >
-                  <Link to={`/exam/details/${exam._id}`} className="flex flex-1 flex-col">
-                  <div className="relative h-32 w-full shrink-0 overflow-hidden">
-                    {exam.coverImage ? (
-                      <img
-                        src={exam.coverImage}
-                        alt=""
-                        className="h-full w-full object-cover transition-transform duration-300 ease-out-quint group-hover:scale-[1.03]"
-                      />
-                    ) : (
-                      <ExamCoverFallback
-                        seed={exam._id}
-                        className="transition-transform duration-300 ease-out-quint group-hover:scale-[1.03]"
-                      />
-                    )}
-                    <div className="pointer-events-none absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-black/25 to-transparent" />
-                    <div className="absolute right-2.5 top-2.5 flex items-center gap-1.5">
-                      {isNew(exam.createdAt) && (
-                        <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-primary-fg shadow-soft">
-                          Yeni
-                        </span>
-                      )}
-                      <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold shadow-soft ${stSolid}`}>
-                        {st.label}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-1 flex-col p-5">
-                    <h3 className="line-clamp-2 font-display text-base font-bold leading-tight text-text">
-                      {exam.name}
-                    </h3>
-                    {category && <p className="mt-1 text-xs text-muted">{category}</p>}
-
-                    <div className="mt-4 grid grid-cols-3 divide-x divide-line overflow-hidden rounded-xl border border-line bg-surface2/40 text-center">
-                      <div className="py-2">
-                        <p className="font-display text-base font-bold text-primary">
-                          {exam.questionCount ?? "—"}
-                        </p>
-                        <p className="text-[10px] text-muted">Sual</p>
-                      </div>
-                      <div className="py-2">
-                        <p className="font-display text-base font-bold text-success">
-                          {Math.round((exam.duration || 0) / 60)}
-                        </p>
-                        <p className="text-[10px] text-muted">Dəq</p>
-                      </div>
-                      <div className="py-2">
-                        <p className="font-display text-base font-bold text-accent2">
-                          {exam.totalMarks ?? "—"}
-                        </p>
-                        <p className="text-[10px] text-muted">Bal</p>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 flex items-center justify-between border-t border-line pt-3 text-xs text-muted">
-                      <span className="inline-flex items-center gap-1.5">
-                        {exam.endDate ? (
-                          <>
-                            <FiCalendar /> {fmtDate(exam.endDate)}
-                          </>
-                        ) : (
-                          <>
-                            <FiClock /> Həmişə aktiv
-                          </>
-                        )}
-                      </span>
-                      <span className="inline-flex items-center gap-1 font-semibold text-primary transition-transform group-hover:translate-x-0.5">
-                        Aç <FiArrowRight />
-                      </span>
-                    </div>
-                  </div>
-                  </Link>
-                  <ExamAdminActions
-                    exam={exam}
-                    onChanged={loadLatest}
-                    className="border-t border-line px-5 py-3"
-                  />
-                </div>
-              );
-            })}
+          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+            {latest.map((exam) => (
+              <ExamCard key={exam._id} exam={exam} onChanged={loadLatest} />
+            ))}
           </div>
         )}
       </div>
