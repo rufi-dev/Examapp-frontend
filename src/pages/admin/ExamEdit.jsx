@@ -70,6 +70,7 @@ const ExamEdit = () => {
     password: "",
     wrongPerPenalty: 3,
     correctPerPenalty: 1,
+    negMarkUntil: 0,
   };
   const [examForm, setExamForm] = useState(initialState);
   const {
@@ -90,6 +91,7 @@ const ExamEdit = () => {
     password,
     wrongPerPenalty,
     correctPerPenalty,
+    negMarkUntil,
   } = examForm;
 
   const handleInputChange = (e) => {
@@ -118,6 +120,7 @@ const ExamEdit = () => {
         password: singleExam.password || "",
         wrongPerPenalty: singleExam.wrongPerPenalty || 3,
         correctPerPenalty: singleExam.correctPerPenalty || 1,
+        negMarkUntil: singleExam.negMarkUntil || 0,
       });
       setPasswordEnabled(!!singleExam.password);
       setMaxTryEnabled((singleExam.maxTry || 0) > 0);
@@ -215,6 +218,7 @@ const ExamEdit = () => {
         negativeMarking: negEnabled,
         wrongPerPenalty,
         correctPerPenalty,
+        negMarkUntil: negEnabled ? Number(negMarkUntil) || 0 : 0,
         antiCheat: antiEnabled,
         partialCredit: partialEnabled,
         shuffleOptions: shuffleEnabled,
@@ -383,6 +387,7 @@ const ExamEdit = () => {
             enabled={negEnabled}
             wrong={wrongPerPenalty}
             correct={correctPerPenalty}
+            until={negMarkUntil}
             onToggle={setNegEnabled}
             onChange={handleInputChange}
           />

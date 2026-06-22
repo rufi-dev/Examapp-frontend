@@ -8,7 +8,7 @@ const num = (v) => (v == null ? null : Number(v));
 const hasKey = (v) => v != null && v !== "" && !(Array.isArray(v) && v.length === 0);
 
 // Class-level stats for an exam from its results.
-export function examStats(results, passingMarks) {
+export function examStats(results, passingMarks, total = 100) {
   const list = Array.isArray(results) ? results.filter(Boolean) : [];
   const scored = list
     .map((r) => num(r.earnPoints))
@@ -28,10 +28,12 @@ export function examStats(results, passingMarks) {
   const passCount = pm ? scored.filter((s) => s >= pm).length : 0;
   const passRate = pm && n ? Math.round((passCount / n) * 100) : null;
 
-  // Five buckets: 0-20, 20-40, 40-60, 60-80, 80-100.
+  // Five buckets by PERCENT of the exam total (0-20, 20-40, ... 80-100%), so a
+  // 150-point preset exam histograms correctly.
+  const denom = Number(total) > 0 ? Number(total) : 100;
   const buckets = [0, 0, 0, 0, 0];
   scored.forEach((s) => {
-    const b = Math.min(4, Math.max(0, Math.floor(s / 20)));
+    const b = Math.min(4, Math.max(0, Math.floor(((s / denom) * 100) / 20)));
     buckets[b] += 1;
   });
 

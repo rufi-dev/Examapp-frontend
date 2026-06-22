@@ -68,10 +68,15 @@ const Result = () => {
   const correct = correctAnswers.filter((a, i) =>
     isSelectionCorrect(a?.answer, selectedAnswers[i]?.answer, a?.type)
   ).length;
-  // The ring shows the actual SCORE (earnPoints is out of 100, after weighting
-  // and negative marking) so the visual can never disagree with the bal shown.
+  // Score denominator: preset exams (e.g. Blok = 150) are out of their own total;
+  // legacy/custom exams stay out of 100 (questionPoints), regardless of a
+  // possibly mis-set totalMarks — so existing results never shift.
+  const scoreTotal =
+    lastResult.examId?.preset && Number(lastResult.examId?.totalMarks)
+      ? Number(lastResult.examId.totalMarks)
+      : 100;
   const scorePct = canScore
-    ? Math.max(0, Math.min(100, Math.round(lastResult.earnPoints)))
+    ? Math.max(0, Math.min(100, Math.round((lastResult.earnPoints / scoreTotal) * 100)))
     : 0;
 
   return (
@@ -109,6 +114,7 @@ const Result = () => {
                 <p className="text-sm text-muted">Nəticə (bal)</p>
                 <p className="font-display text-3xl font-extrabold text-primary">
                   {lastResult.earnPoints}
+                  <span className="text-lg font-bold text-muted"> / {scoreTotal}</span>
                 </p>
               </div>
             </div>

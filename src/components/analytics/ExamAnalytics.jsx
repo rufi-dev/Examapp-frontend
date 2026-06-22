@@ -54,7 +54,11 @@ const ScoreHistogram = ({ buckets }) => {
 
 // Full per-exam analytics from its results array.
 const ExamAnalytics = ({ results = [], passingMarks }) => {
-  const stats = examStats(results, passingMarks);
+  // Preset exams (e.g. Blok = 150) histogram by % of their own total; legacy
+  // exams stay out of 100.
+  const ex = results[0]?.examId;
+  const scoreTotal = ex?.preset && Number(ex?.totalMarks) ? Number(ex.totalMarks) : 100;
+  const stats = examStats(results, passingMarks, scoreTotal);
   const items = itemAnalysis(results);
 
   if (stats.scoredCount === 0) {

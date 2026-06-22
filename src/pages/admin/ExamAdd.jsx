@@ -20,6 +20,7 @@ import AntiCheatField from "../../components/ui/AntiCheatField";
 import SolutionPhotosField from "../../components/ui/SolutionPhotosField";
 import StructuredGradingFields from "../../components/ui/StructuredGradingFields";
 import { toUtcIso } from "../../helper/datetime";
+import { PRESETS, presetOptions } from "../../helper/examPresets";
 
 const fileInputClass =
   "block w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-text file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:font-semibold file:text-primary-fg hover:file:bg-primary-hover";
@@ -33,6 +34,8 @@ const ExamAdd = () => {
   // "pdf" = upload a question PDF (legacy). "structured" = write native
   // questions in the in-app builder after the exam is created.
   const [source, setSource] = useState("pdf");
+  // Exam preset (structured only) — seeds question structure + scoring + neg-mark.
+  const [preset, setPreset] = useState("");
   const [passwordEnabled, setPasswordEnabled] = useState(false);
   const [maxTryEnabled, setMaxTryEnabled] = useState(false);
   const [priceEnabled, setPriceEnabled] = useState(false);
@@ -62,6 +65,7 @@ const ExamAdd = () => {
     password: "",
     wrongPerPenalty: 3,
     correctPerPenalty: 1,
+    negMarkUntil: 0,
     pdfPath: null,
   };
   const [examForm, setExamForm] = useState(initialState);
@@ -80,8 +84,28 @@ const ExamAdd = () => {
     revealAfterEnd,
     wrongPerPenalty,
     correctPerPenalty,
+    negMarkUntil,
     password,
   } = examForm;
+
+  // Selecting a preset pre-fills total marks + negative-marking from its config.
+  const applyPreset = (id) => {
+    setPreset(id);
+    const p = PRESETS[id];
+    if (!p) return;
+    setExamForm((f) => ({
+      ...f,
+      totalMarks: p.totalMarks,
+      ...(p.negativeMarking
+        ? {
+            wrongPerPenalty: p.negativeMarking.wrongPerPenalty,
+            correctPerPenalty: p.negativeMarking.correctPerPenalty,
+            negMarkUntil: p.negativeMarking.untilQuestion,
+          }
+        : {}),
+    }));
+    if (p.negativeMarking?.enabled) setNegEnabled(true);
+  };
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -133,6 +157,8 @@ const ExamAdd = () => {
       examData.append("negativeMarking", negEnabled);
       examData.append("wrongPerPenalty", wrongPerPenalty);
       examData.append("correctPerPenalty", correctPerPenalty);
+      examData.append("negMarkUntil", negEnabled ? Number(negMarkUntil) || 0 : 0);
+      examData.append("preset", isStructured ? preset : "");
       examData.append("antiCheat", antiEnabled);
       examData.append("mode", isStructured ? "structured" : "pdf");
       examData.append("shuffleOptions", isStructured && shuffleEnabled);
@@ -203,6 +229,27 @@ const ExamAdd = () => {
                 </div>
               </Field>
 
+              {source === "structured" && (
+                <Field
+                  label="İmtahan presetı"
+                  htmlFor="preset"
+                  hint="Sual strukturu, bal və neqativ qiymətləndirməni avtomatik qurur"
+                >
+                  <select
+                    id="preset"
+                    value={preset}
+                    onChange={(e) => applyPreset(e.target.value)}
+                    className={inputClass}
+                  >
+                    {presetOptions.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              )}
+
               {source === "pdf" ? (
                 <Field label="PDF fayl" htmlFor="pdf" required hint="İmtahan sualları (PDF)">
                   <input type="file" id="pdf" name="pdf" accept="application/pdf" onChange={handlePdfChange} className={fileInputClass} />
@@ -253,6 +300,7 @@ const ExamAdd = () => {
             enabled={negEnabled}
             wrong={wrongPerPenalty}
             correct={correctPerPenalty}
+            until={negMarkUntil}
             onToggle={setNegEnabled}
             onChange={handleInputChange}
           />

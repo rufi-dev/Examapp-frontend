@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import axios from "axios";
 import { addQuestion, getExam } from "../../../redux/features/quiz/quizSlice";
+import { PRESETS, presetTypes } from "../../helper/examPresets";
 import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser";
 import Spinner from "../../components/Spinner";
 import Button from "../../components/ui/Button";
@@ -466,6 +467,10 @@ const StructuredBuilder = () => {
                 : [emptyPair(), emptyPair()],
             explanation: q.explanation || "",
           }));
+        } else if (exam?.preset && PRESETS[exam.preset]) {
+          // Brand-new exam created with a preset → seed the question slots
+          // (types in order, e.g. 22 closed, 4 open, matching at #27, 3 open).
+          serverQs = presetTypes(PRESETS[exam.preset]).map((t) => newQuestion(t));
         }
       } catch (error) {
         console.error("Error fetching exam data:", error);
