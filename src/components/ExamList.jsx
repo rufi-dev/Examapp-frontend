@@ -8,7 +8,7 @@ import {
 import { getResultsByUser } from "../../redux/features/quiz/resultSlice";
 import { useNavigate } from "react-router-dom";
 import Loader from "./Loader";
-import { FiClock, FiBarChart2, FiGift, FiPlay, FiCheckCircle } from "react-icons/fi";
+import { FiClock, FiBarChart2, FiEyeOff, FiGift, FiPlay, FiCheckCircle } from "react-icons/fi";
 import ExamCoverFallback from "./ExamCoverFallback";
 import ExamAdminActions from "./ExamAdminActions";
 import { payExam } from "../../redux/features/stripe/stripeSlice";
