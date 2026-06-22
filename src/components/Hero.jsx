@@ -1,4 +1,4 @@
-import { FiArrowRight, FiCheckCircle, FiTrendingUp, FiTarget } from "react-icons/fi";
+import { FiArrowRight, FiCheckCircle, FiTrendingUp, FiTarget, FiAward } from "react-icons/fi";
 import Button from "./ui/Button";
 import { MathGridBackground } from "./blueprint/MathVisuals";
 
@@ -26,12 +26,15 @@ const Hero = () => (
           nəticələrinə uyğun hazırlan.
         </p>
 
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
           <Button to="/register" size="lg">
             Sınağa başla <FiArrowRight className="text-[18px]" />
           </Button>
           <Button href="#topics" size="lg" variant="secondary">
             Mövzulara bax
+          </Button>
+          <Button to="/ourSuccess" size="lg" variant="soft">
+            <FiAward className="text-[18px]" /> Uğurlarımız
           </Button>
         </div>
 
