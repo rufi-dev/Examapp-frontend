@@ -115,7 +115,7 @@ const Home = () => {
 
       {/* 3.5 — LATEST OPEN EXAMS (real content from public classes) */}
       {publicExams.length > 0 && (
-        <section className="container-app pb-4">
+        <section className="container-app pb-16 sm:pb-24">
           <SectionTitle
             eyebrow="Açıq sınaqlar"
             title="Son əlavə olunan sınaqlar"

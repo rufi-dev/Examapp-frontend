@@ -59,7 +59,7 @@ const Hero = () => (
         />
 
         {/* floating stat cards */}
-        <div className="animate-float absolute -left-3 top-8 z-20 hidden items-center gap-2.5 rounded-2xl border border-line bg-surface px-3.5 py-2.5 shadow-lift sm:flex">
+        <div className="animate-float absolute -left-4 top-[42%] z-20 hidden items-center gap-2.5 rounded-2xl border border-line bg-surface px-3.5 py-2.5 shadow-lift sm:flex">
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-success/12 text-success">
             <FiTrendingUp />
           </span>
