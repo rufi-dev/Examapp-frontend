@@ -12,6 +12,7 @@ import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
 import Spinner from "../../components/Spinner";
 import TelegramNotifications from "../../components/TelegramNotifications";
+import WhatsAppNotifications from "../../components/WhatsAppNotifications";
 import ChangePasswordCard from "../../components/ChangePasswordCard";
 import { Field, inputClass, textareaClass } from "../../components/ui/Field";
 
@@ -228,7 +229,12 @@ const Profile = () => {
 
             <ChangePasswordCard />
 
-            {(role === "teacher" || role === "admin") && <TelegramNotifications />}
+            {(role === "teacher" || role === "admin") && (
+              <>
+                <TelegramNotifications />
+                <WhatsAppNotifications />
+              </>
+            )}
           </>
         )}
     </AccountLayout>
