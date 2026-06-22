@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { toast } from "react-toastify";
 import { HiOutlinePhotograph } from "react-icons/hi";
-import { FiX } from "react-icons/fi";
+import { FiX, FiRefreshCw } from "react-icons/fi";
 import { uploadImage } from "../../helper/cloudinary";
 import Spinner from "../Spinner";
 import { Field } from "./Field";
@@ -32,16 +32,32 @@ const CoverImageField = ({ value, onChange }) => {
   return (
     <Field label="Üz qabığı şəkli" hint="Kartın yuxarısında görünən banner (istəyə bağlı)">
       {value ? (
-        <div className="group relative overflow-hidden rounded-xl border border-line">
+        <div className="relative overflow-hidden rounded-xl border border-line">
           <img src={value} alt="" className="h-40 w-full object-cover" />
-          <button
-            type="button"
-            onClick={() => onChange("")}
-            aria-label="Şəkli sil"
-            className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-lg bg-black/55 text-white transition-colors hover:bg-danger"
-          >
-            <FiX />
-          </button>
+          {busy && (
+            <div className="absolute inset-0 grid place-items-center bg-black/40">
+              <Spinner size={22} className="text-white" />
+            </div>
+          )}
+          <div className="absolute right-2 top-2 flex items-center gap-1.5">
+            {/* Replace: re-open the picker and swap the image in place. */}
+            <label
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-black/55 px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-primary"
+              title="Şəkli dəyiş"
+            >
+              <FiRefreshCw className="text-[13px]" /> Dəyiş
+              <input type="file" accept="image/*" className="hidden" onChange={onFile} disabled={busy} />
+            </label>
+            <button
+              type="button"
+              onClick={() => onChange("")}
+              aria-label="Şəkli sil"
+              disabled={busy}
+              className="grid h-8 w-8 place-items-center rounded-lg bg-black/55 text-white transition-colors hover:bg-danger"
+            >
+              <FiX />
+            </button>
+          </div>
         </div>
       ) : (
         <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-line bg-surface2/40 px-4 py-8 text-sm font-semibold text-muted transition-colors hover:border-primary/50 hover:text-primary">
