@@ -11,12 +11,14 @@ import {
 } from "../../../redux/features/auth/authSlice";
 import { useGoogleLogin } from "@react-oauth/google";
 import { FcGoogle } from "react-icons/fc";
-import { FiUser, FiMail, FiLock, FiEye, FiEyeOff } from "react-icons/fi";
+import { FiUser, FiMail, FiLock, FiEye, FiEyeOff, FiPhone } from "react-icons/fi";
+import { PiStudentBold } from "react-icons/pi";
 import AuthLayout from "../../components/AuthLayout";
 import Button from "../../components/ui/Button";
 import Spinner from "../../components/Spinner";
+import { GRADES, gradeLabel } from "../../helper/grades";
 
-const initialState = { name: "", email: "", password: "" };
+const initialState = { name: "", email: "", password: "", phone: "+994 ", grade: "" };
 
 // Master switch (mirrors backend EMAIL_ENABLED). While off, skip the
 // verification email so no email toast/error appears on sign-up.
@@ -31,7 +33,7 @@ const Register = () => {
   const { isLoading, isLoggedIn, isSuccess } = useSelector((state) => state.auth);
 
   const [userData, setUserData] = useState(initialState);
-  const { name, email, password } = userData;
+  const { name, email, password, phone, grade } = userData;
   const [showPassword, setShowPassword] = useState(false);
 
   const handleInputChange = (e) =>
@@ -39,13 +41,17 @@ const Register = () => {
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    if (!name || !password || !email) return toast.error("Bütün xanaları doldurun!");
+    if (!name || !password || !email || !grade || !phone)
+      return toast.error("Bütün xanaları doldurun!");
     if (!validatePassword(password)) {
       return toast.error("Şifrə ən azı bir rəqəmdən ibarət olmalıdır.");
     }
     if (!validateEmail(email)) return toast.error("Email yanlış formatdadır");
+    // Need a real number, not just the "+994" prefix.
+    if (phone.replace(/\D/g, "").length < 9)
+      return toast.error("Düzgün telefon nömrəsi yazın");
 
-    await dispatch(register({ name, email, password }));
+    await dispatch(register({ name, email, password, phone: phone.trim(), grade }));
     if (EMAIL_ENABLED) await dispatch(sendVerificationEmail());
   };
 
@@ -99,6 +105,41 @@ const Register = () => {
             placeholder="Email"
             className={inputCls}
           />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="relative">
+            <PiStudentBold className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+            <select
+              name="grade"
+              value={grade}
+              onChange={handleInputChange}
+              className={`${inputCls} appearance-none pr-9 ${grade ? "" : "text-muted/60"}`}
+            >
+              <option value="" disabled>
+                Sinif
+              </option>
+              {GRADES.map((g) => (
+                <option key={g} value={g} className="text-text">
+                  {gradeLabel(g)}
+                </option>
+              ))}
+            </select>
+            <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-muted">▾</span>
+          </div>
+
+          <div className="relative">
+            <FiPhone className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+            <input
+              name="phone"
+              value={phone}
+              onChange={handleInputChange}
+              type="tel"
+              inputMode="tel"
+              placeholder="+994 50 123 45 67"
+              className={inputCls}
+            />
+          </div>
         </div>
 
         <div className="relative">

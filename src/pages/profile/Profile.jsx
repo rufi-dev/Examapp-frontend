@@ -15,6 +15,7 @@ import TelegramNotifications from "../../components/TelegramNotifications";
 import WhatsAppNotifications from "../../components/WhatsAppNotifications";
 import ChangePasswordCard from "../../components/ChangePasswordCard";
 import { Field, inputClass, textareaClass } from "../../components/ui/Field";
+import { GRADES, gradeLabel } from "../../helper/grades";
 
 const cloud_name = import.meta.env.VITE_CLOUD_NAME;
 const upload_preset = import.meta.env.VITE_UPLAD_PRESET;
@@ -49,12 +50,13 @@ const Profile = () => {
     photo: user?.photo || "",
     isVerified: user?.isVerified || false,
     whatsappOptIn: user?.whatsappOptIn ?? true,
+    grade: user?.grade || "",
   };
   const [profileData, setProfileData] = useState(initialState);
   const [profileImage, setProfileImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
 
-  const { name, email, phone, bio, role, isVerified, whatsappOptIn } = profileData;
+  const { name, email, phone, bio, role, isVerified, whatsappOptIn, grade } = profileData;
 
   const handleImageChange = (e) => {
     setProfileImage(e.target.files[0]);
@@ -104,6 +106,7 @@ const Profile = () => {
         bio: profileData.bio,
         photo: imageUrl,
         whatsappOptIn: profileData.whatsappOptIn,
+        ...(profileData.grade ? { grade: profileData.grade } : {}),
       };
       await dispatch(updateUser(userData));
       toast.success("Profil yeniləndi");
@@ -124,6 +127,7 @@ const Profile = () => {
         photo: user.photo,
         isVerified: user.isVerified,
         whatsappOptIn: user.whatsappOptIn ?? true,
+        grade: user.grade || "",
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -193,6 +197,20 @@ const Profile = () => {
                 <Field label="Telefon" htmlFor="phone">
                   <input id="phone" name="phone" value={phone} onChange={handleInputChange} className={inputClass} />
                 </Field>
+                {role === "student" && (
+                  <Field label="Sinif" htmlFor="grade">
+                    <select id="grade" name="grade" value={grade} onChange={handleInputChange} className={inputClass}>
+                      <option value="" disabled>
+                        Sinif seç
+                      </option>
+                      {GRADES.map((g) => (
+                        <option key={g} value={g}>
+                          {gradeLabel(g)}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                )}
                 <Field label="Haqqımda" htmlFor="bio">
                   <textarea id="bio" name="bio" value={bio} onChange={handleInputChange} className={textareaClass} />
                 </Field>

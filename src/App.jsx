@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom
 import Layout from "./components/Layout";
 import ScrollToTop from "./components/ScrollToTop";
 import PendingJoinHandler from "./components/PendingJoinHandler";
+import ProfileCompletionGate from "./components/ProfileCompletionGate";
 import axios from "axios";
 import { ToastContainer, Slide } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -129,6 +130,7 @@ function App() {
     <BrowserRouter>
       <ScrollToTop />
       <PendingJoinHandler />
+      <ProfileCompletionGate />
       <Wrapper>
         <ToastContainer
           position="top-right"
