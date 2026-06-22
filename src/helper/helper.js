@@ -54,7 +54,21 @@ export function isSelectionCorrect(correct, selected, type) {
   const n = (v) => String(v ?? "").trim();
   const isMap = (v) => v && typeof v === "object" && !Array.isArray(v);
   if (selected == null) return false;
-  // Matching.
+  // Correspondence (Cmu): selection is a {leftIdx: [indices]} map; correct is
+  // [[indices], …] per number. Set-equality per number, all-or-nothing,
+  // letters reusable. (Must precede the generic map branch below.)
+  if (type === "Cmu") {
+    if (!isMap(selected) || !Array.isArray(correct) || !correct.length) return false;
+    const setEq = (x, y) => {
+      const xs = (Array.isArray(x) ? x : []).map(Number);
+      const ys = (Array.isArray(y) ? y : []).map(Number);
+      if (xs.length !== ys.length) return false;
+      const s = new Set(xs);
+      return ys.every((v) => s.has(v));
+    };
+    return correct.every((arr, k) => setEq(selected[k], arr));
+  }
+  // Matching (Cma).
   if (type === "Cma" || isMap(selected)) {
     if (!isMap(selected) || !Array.isArray(correct) || !correct.length) return false;
     return correct.every((r, k) => n(selected[k]) === n(r));

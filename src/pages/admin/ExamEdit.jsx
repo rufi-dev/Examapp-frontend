@@ -19,6 +19,7 @@ import NegativeMarkingField from "../../components/ui/NegativeMarkingField";
 import AntiCheatField from "../../components/ui/AntiCheatField";
 import SolutionPhotosField from "../../components/ui/SolutionPhotosField";
 import StructuredGradingFields from "../../components/ui/StructuredGradingFields";
+import CoverImageField from "../../components/ui/CoverImageField";
 import { toLocalInput, toUtcIso } from "../../helper/datetime";
 import { HiOutlinePhotograph } from "react-icons/hi";
 import { FiX, FiFileText } from "react-icons/fi";
@@ -57,6 +58,7 @@ const ExamEdit = () => {
     duration: 0,
     price: 0,
     videoLink: null,
+    coverImage: "",
     pdfPath: null,
     totalMarks: 0,
     passingMarks: 0,
@@ -78,6 +80,7 @@ const ExamEdit = () => {
     duration,
     videoLink,
     price,
+    coverImage,
     startDate,
     endDate,
     pdfPath,
@@ -107,6 +110,7 @@ const ExamEdit = () => {
         duration: singleExam.duration || 0,
         price: singleExam.price || 0,
         videoLink: singleExam.videoLink || "",
+        coverImage: singleExam.coverImage || "",
         startDate: toLocalInput(singleExam.startDate),
         endDate: toLocalInput(singleExam.endDate),
         pdfPath: singleExam.pdf?.path || null,
@@ -203,6 +207,7 @@ const ExamEdit = () => {
         // Off = free / no video.
         price: priceEnabled ? Number(price) || 0 : 0,
         videoLink: videoEnabled ? videoLink : "",
+        coverImage: coverImage || "",
         startDate: toUtcIso(startDate),
         endDate: toUtcIso(endDate),
         passingMarks,
@@ -271,6 +276,7 @@ const ExamEdit = () => {
               <Field label="İmtahan adı" htmlFor="name" required>
                 <input value={name} onChange={handleInputChange} type="text" name="name" id="name" className={inputClass} />
               </Field>
+              <CoverImageField value={coverImage} onChange={(url) => setField("coverImage", url)} />
               {isStructured ? (
                 <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-surface2/40 px-3.5 py-3 text-sm">
                   <span className="font-medium text-text">Variantlı (manual) imtahan</span>

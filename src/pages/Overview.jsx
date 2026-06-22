@@ -8,19 +8,15 @@ import { getExamsByUser } from "../../redux/features/quiz/quizSlice";
 import { getResultsByUser } from "../../redux/features/quiz/resultSlice";
 import AccountLayout from "../components/AccountLayout";
 import Spinner from "../components/Spinner";
-import InfoBox from "../components/InfoBox";
 import Button from "../components/ui/Button";
 import {
-  FiAward,
-  FiBarChart2,
-  FiTrendingUp,
-  FiTarget,
   FiEye,
   FiBookOpen,
   FiArrowRight,
   FiClock,
   FiFileText,
   FiCalendar,
+  FiPlus,
 } from "react-icons/fi";
 
 const API = `${import.meta.env.VITE_BACKEND_URL}/api/quiz`;
@@ -45,7 +41,6 @@ const Overview = () => {
   useRedirectLoggedOutUser("/login");
   const dispatch = useDispatch();
   const { user } = useSelector((s) => s.auth);
-  const { myExams } = useSelector((s) => s.quiz);
   const { result } = useSelector((s) => s.result);
   const [latest, setLatest] = useState([]);
   const [loaded, setLoaded] = useState(false);
@@ -69,15 +64,10 @@ const Overview = () => {
   }, [dispatch]);
 
   const results = result || [];
-  const examsCount = myExams?.length || 0;
-  const resultsCount = results.length;
-  const scored = results.filter((r) => r.earnPoints != null);
-  const avg = scored.length
-    ? Math.round(scored.reduce((a, r) => a + r.earnPoints, 0) / scored.length)
-    : 0;
-  const best = scored.length ? Math.max(...scored.map((r) => r.earnPoints)) : 0;
   const recent = [...results].slice(-5).reverse();
   const firstName = user?.name?.split(" ")[0] || "";
+  // Teachers/admins create exams; students browse them — drives the quick link.
+  const isStaff = user?.role === "admin" || user?.role === "teacher";
   const now = Date.now();
   const isNew = (d) => d && now - new Date(d).getTime() < 3 * 24 * 60 * 60 * 1000;
 
@@ -96,15 +86,8 @@ const Overview = () => {
       title={`Salam, ${firstName} 👋`}
       subtitle="Hesabının icmalı və ən son imtahanlar."
     >
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <InfoBox icon={<FiAward />} title="İmtahanlarım" count={examsCount} tone="primary" />
-        <InfoBox icon={<FiBarChart2 />} title="Cəhdlər" count={resultsCount} tone="success" />
-        <InfoBox icon={<FiTrendingUp />} title="Orta bal" count={avg} tone="muted" />
-        <InfoBox icon={<FiTarget />} title="Ən yüksək" count={best} tone="primary" />
-      </div>
-
       {/* Latest exams — the dashboard shortcut to a just-published exam. */}
-      <div className="mt-8">
+      <div>
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <h2 className="font-display text-lg font-bold text-text">Son əlavə olunan imtahanlar</h2>
@@ -139,65 +122,89 @@ const Overview = () => {
                 <Link
                   key={exam._id}
                   to={`/exam/details/${exam._id}`}
-                  className="group flex flex-col rounded-3xl border border-line bg-surface p-5 shadow-soft transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:shadow-lift"
+                  className="group flex flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-soft transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:shadow-lift"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="grid h-11 w-11 place-items-center rounded-2xl bg-primary/12 text-primary ring-1 ring-inset ring-primary/15">
-                      <FiFileText className="text-[21px]" />
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      {isNew(exam.createdAt) && (
-                        <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-primary-fg">
-                          Yeni
+                  {exam.coverImage && (
+                    <div className="relative h-32 w-full shrink-0 overflow-hidden">
+                      <img
+                        src={exam.coverImage}
+                        alt=""
+                        className="h-full w-full object-cover transition-transform duration-300 ease-out-quint group-hover:scale-[1.03]"
+                      />
+                      <div className="absolute right-2.5 top-2.5 flex items-center gap-1.5">
+                        {isNew(exam.createdAt) && (
+                          <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-primary-fg shadow-soft">
+                            Yeni
+                          </span>
+                        )}
+                        <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold shadow-soft ${st.cls}`}>
+                          {st.label}
                         </span>
-                      )}
-                      <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${st.cls}`}>
-                        {st.label}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex flex-1 flex-col p-5">
+                    {!exam.coverImage && (
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="grid h-11 w-11 place-items-center rounded-2xl bg-primary/12 text-primary ring-1 ring-inset ring-primary/15">
+                          <FiFileText className="text-[21px]" />
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          {isNew(exam.createdAt) && (
+                            <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-primary-fg">
+                              Yeni
+                            </span>
+                          )}
+                          <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${st.cls}`}>
+                            {st.label}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    <h3 className={`line-clamp-2 font-display text-base font-bold leading-tight text-text ${exam.coverImage ? "" : "mt-3.5"}`}>
+                      {exam.name}
+                    </h3>
+                    {category && <p className="mt-1 text-xs text-muted">{category}</p>}
+
+                    <div className="mt-4 grid grid-cols-3 divide-x divide-line overflow-hidden rounded-xl border border-line bg-surface2/40 text-center">
+                      <div className="py-2">
+                        <p className="font-display text-base font-bold text-primary">
+                          {exam.questionCount ?? "—"}
+                        </p>
+                        <p className="text-[10px] text-muted">Sual</p>
+                      </div>
+                      <div className="py-2">
+                        <p className="font-display text-base font-bold text-success">
+                          {Math.round((exam.duration || 0) / 60)}
+                        </p>
+                        <p className="text-[10px] text-muted">Dəq</p>
+                      </div>
+                      <div className="py-2">
+                        <p className="font-display text-base font-bold text-accent2">
+                          {exam.totalMarks ?? "—"}
+                        </p>
+                        <p className="text-[10px] text-muted">Bal</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex items-center justify-between border-t border-line pt-3 text-xs text-muted">
+                      <span className="inline-flex items-center gap-1.5">
+                        {exam.endDate ? (
+                          <>
+                            <FiCalendar /> {fmtDate(exam.endDate)}
+                          </>
+                        ) : (
+                          <>
+                            <FiClock /> Həmişə aktiv
+                          </>
+                        )}
+                      </span>
+                      <span className="inline-flex items-center gap-1 font-semibold text-primary transition-transform group-hover:translate-x-0.5">
+                        Aç <FiArrowRight />
                       </span>
                     </div>
-                  </div>
-
-                  <h3 className="mt-3.5 line-clamp-2 font-display text-base font-bold leading-tight text-text">
-                    {exam.name}
-                  </h3>
-                  {category && <p className="mt-1 text-xs text-muted">{category}</p>}
-
-                  <div className="mt-4 grid grid-cols-3 divide-x divide-line overflow-hidden rounded-xl border border-line bg-surface2/40 text-center">
-                    <div className="py-2">
-                      <p className="font-display text-base font-bold text-primary">
-                        {exam.questionCount ?? "—"}
-                      </p>
-                      <p className="text-[10px] text-muted">Sual</p>
-                    </div>
-                    <div className="py-2">
-                      <p className="font-display text-base font-bold text-success">
-                        {Math.round((exam.duration || 0) / 60)}
-                      </p>
-                      <p className="text-[10px] text-muted">Dəq</p>
-                    </div>
-                    <div className="py-2">
-                      <p className="font-display text-base font-bold text-accent2">
-                        {exam.totalMarks ?? "—"}
-                      </p>
-                      <p className="text-[10px] text-muted">Bal</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-between border-t border-line pt-3 text-xs text-muted">
-                    <span className="inline-flex items-center gap-1.5">
-                      {exam.endDate ? (
-                        <>
-                          <FiCalendar /> {fmtDate(exam.endDate)}
-                        </>
-                      ) : (
-                        <>
-                          <FiClock /> Həmişə aktiv
-                        </>
-                      )}
-                    </span>
-                    <span className="inline-flex items-center gap-1 font-semibold text-primary transition-transform group-hover:translate-x-0.5">
-                      Aç <FiArrowRight />
-                    </span>
                   </div>
                 </Link>
               );
@@ -210,11 +217,23 @@ const Overview = () => {
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
         <div className="flex items-center justify-between gap-4 rounded-3xl border border-line bg-surface p-6 shadow-soft">
           <div>
-            <h3 className="font-display text-lg font-bold text-text">İmtahanlara bax</h3>
-            <p className="mt-1 text-sm text-muted">Siniflərdən sınaq seç və başla.</p>
+            <h3 className="font-display text-lg font-bold text-text">
+              {isStaff ? "İmtahan əlavə et" : "İmtahanlara bax"}
+            </h3>
+            <p className="mt-1 text-sm text-muted">
+              {isStaff ? "Sinif seç və yeni imtahan yarat." : "Siniflərdən sınaq seç və başla."}
+            </p>
           </div>
           <Button to="/classes" size="sm">
-            <FiBookOpen /> Bax
+            {isStaff ? (
+              <>
+                <FiPlus /> Əlavə et
+              </>
+            ) : (
+              <>
+                <FiBookOpen /> Bax
+              </>
+            )}
           </Button>
         </div>
         <div className="flex items-center justify-between gap-4 rounded-3xl border border-line bg-surface p-6 shadow-soft">

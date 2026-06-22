@@ -19,6 +19,29 @@ const ResultCard = ({ result }) => {
     return t === "Cm" || t === "Cs";
   };
   const toLetter = (n) => String.fromCharCode(65 + Number(n));
+  // Correspondence (Cmu) cells carry per-number letter sets: the correct key is
+  // an array-of-arrays [[idx,…],…]; the student answer is a map {leftIdx:[idx,…]}.
+  // Render both as "1: a,c · 2: b" with LOWER-case letters (matching the grid).
+  const isCmuCell = (i) => correctAnswers[i]?.type === "Cmu";
+  const cmuLetters = (arr) =>
+    (Array.isArray(arr) ? arr : [])
+      .map(Number)
+      .sort((a, b) => a - b)
+      .map((n) => String.fromCharCode(97 + n))
+      .join(",");
+  const fmtCmu = (val) => {
+    const entries = Array.isArray(val)
+      ? val.map((arr, k) => [k, arr])
+      : val && typeof val === "object"
+      ? Object.keys(val)
+          .sort((a, b) => Number(a) - Number(b))
+          .map((k) => [k, val[k]])
+      : [];
+    const parts = entries
+      .filter(([, arr]) => Array.isArray(arr) && arr.length)
+      .map(([k, arr]) => `${Number(k) + 1}: ${cmuLetters(arr)}`);
+    return parts.length ? parts.join(" · ") : "—";
+  };
   // Render any answer shape (string / index / array / map) to a compact label —
   // never "[object Object]" and never a falsy index-0 dropped to a dash.
   const fmt = (val, indexCell) => {
@@ -70,7 +93,9 @@ const ResultCard = ({ result }) => {
               <td className={rowLabel}>Doğru cavab</td>
               {cells.map((i) => (
                 <td key={i} className="border-l border-line px-3 py-3 text-center text-text">
-                  {fmt(correctAnswers[i]?.answer, isIndexCell(i))}
+                  {isCmuCell(i)
+                    ? fmtCmu(correctAnswers[i]?.answer)
+                    : fmt(correctAnswers[i]?.answer, isIndexCell(i))}
                 </td>
               ))}
             </tr>
@@ -88,7 +113,9 @@ const ResultCard = ({ result }) => {
                     : "text-muted"
                 }`}
               >
-                {fmt(selectedAnswers[i]?.answer, isIndexCell(i))}
+                {isCmuCell(i)
+                  ? fmtCmu(selectedAnswers[i]?.answer)
+                  : fmt(selectedAnswers[i]?.answer, isIndexCell(i))}
               </td>
             ))}
           </tr>

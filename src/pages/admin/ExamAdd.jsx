@@ -21,6 +21,8 @@ import SolutionPhotosField from "../../components/ui/SolutionPhotosField";
 import StructuredGradingFields from "../../components/ui/StructuredGradingFields";
 import { toUtcIso } from "../../helper/datetime";
 import { PRESETS, presetOptions } from "../../helper/examPresets";
+import { uploadImage } from "../../helper/cloudinary";
+import CoverImageField from "../../components/ui/CoverImageField";
 
 const fileInputClass =
   "block w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-text file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:font-semibold file:text-primary-fg hover:file:bg-primary-hover";
@@ -46,6 +48,7 @@ const ExamAdd = () => {
   const [shuffleEnabled, setShuffleEnabled] = useState(false);
   const [partialEnabled, setPartialEnabled] = useState(false);
   const [solutionPhotosEnabled, setSolutionPhotosEnabled] = useState(false);
+  const [coverImage, setCoverImage] = useState("");
 
   const navigate = useNavigate();
   const { classId } = useParams();
@@ -165,6 +168,7 @@ const ExamAdd = () => {
       examData.append("shuffleOptions", isStructured && shuffleEnabled);
       examData.append("partialCredit", isStructured && partialEnabled);
       examData.append("studentSolutionPhotos", solutionPhotosEnabled);
+      examData.append("coverImage", coverImage || "");
       if (!isStructured) examData.append("pdf", pdfUrl);
 
       const addExamData = await dispatch(addExam({ examData, classId }));
@@ -206,6 +210,8 @@ const ExamAdd = () => {
                   placeholder="Məsələn: Buraxılış sınağı #1"
                 />
               </Field>
+
+              <CoverImageField value={coverImage} onChange={setCoverImage} />
 
               <Field label="Sual mənbəyi" hint={source === "pdf" ? "Hazır PDF faylı yüklə" : "Sualları tətbiqdə özün yaz"}>
                 <div className="inline-flex w-full rounded-xl border border-line bg-surface p-1">

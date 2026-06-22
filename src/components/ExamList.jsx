@@ -177,9 +177,17 @@ const ExamList = ({ classId }) => {
           return (
             <div
               key={exam._id}
-              className="flex animate-fade-in flex-col rounded-3xl border border-line bg-surface p-6 shadow-soft transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:shadow-lift"
+              className="flex animate-fade-in flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-soft transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:shadow-lift"
               style={{ animationDelay: `${Math.min(index * 60, 360)}ms` }}
             >
+              {/* Cover banner */}
+              {exam.coverImage && (
+                <div className="relative h-36 w-full shrink-0 overflow-hidden">
+                  <img src={exam.coverImage} alt="" className="h-full w-full object-cover" />
+                </div>
+              )}
+
+              <div className="flex flex-1 flex-col p-6">
               {/* Status + price */}
               <div className="mb-4 flex items-center justify-between gap-2">
                 <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold ${status.cls}`}>
@@ -300,6 +308,7 @@ const ExamList = ({ classId }) => {
                     )}
                   </Button>
                 )}
+              </div>
               </div>
             </div>
           );

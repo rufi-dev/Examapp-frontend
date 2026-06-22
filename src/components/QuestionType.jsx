@@ -3,12 +3,20 @@ import { FiFlag, FiCamera, FiX, FiAlertCircle } from "react-icons/fi";
 import { toast } from "react-toastify";
 import Math, { MathText } from "./Math";
 import MatchingQuestion from "./MatchingQuestion";
+import MatchingGridQuestion from "./MatchingGridQuestion";
 import ZoomableImage from "./ZoomableImage";
 import Spinner from "./Spinner";
 import { uploadImage } from "../helper/cloudinary";
 
-const LABELS = { Cm: "Qapalı sual", Co: "Açıq sual", Cma: "Uyğunluq", Cd: "Ətraflı yazı" };
+const LABELS = {
+  Cm: "Qapalı sual",
+  Co: "Açıq sual",
+  Cma: "Uyğunluq",
+  Cmu: "Uyğunluq",
+  Cd: "Ətraflı yazı",
+};
 const DEFAULT_OPTIONS = ["a", "b", "c", "d", "e"];
+const GRID_LETTERS = "abcdefghijklmnopqrstuvwxyz";
 
 const norm = (v) => String(v ?? "").trim();
 
@@ -220,6 +228,9 @@ const QuestionType = ({
           lefts: q.lefts, // matching: left column (sanitized run payload)
           rights: q.rights, // matching: shuffled right column (run payload)
           pairs: q.pairs, // matching: full pairs (review payload)
+          leftCount: q.leftCount, // Cmu: number of left numbers (run payload)
+          rightCount: q.rightCount, // Cmu: number of right letters (run payload)
+          key: q.key, // Cmu: correct letter indices per number (review only)
         }))
       : countBased();
 
@@ -379,6 +390,68 @@ const QuestionType = ({
     );
   };
 
+  // Correspondence (Cmu): numbers -> letters, one-to-many. RUN: a grid of toggle
+  // buttons. REVIEW: per number, the student's letters vs the correct letters.
+  const renderCorrespondence = (def, i) => {
+    const leftCount = Number(def.leftCount) || 0;
+    const lettersOf = (arr) =>
+      (Array.isArray(arr) ? arr : [])
+        .map(Number)
+        .sort((a, b) => a - b)
+        .map((ri) => GRID_LETTERS[ri] || "?");
+
+    if (isReview) {
+      const chosenMap = isMap(selectedAnswers[i]?.answer) ? selectedAnswers[i].answer : {};
+      const correctArr = Array.isArray(answers[i]?.answer) ? answers[i].answer : [];
+      const rows = leftCount || correctArr.length;
+      const setEq = (x, y) => {
+        const xs = new Set((Array.isArray(x) ? x : []).map(Number));
+        const ys = (Array.isArray(y) ? y : []).map(Number);
+        return xs.size === ys.length && ys.every((v) => xs.has(v));
+      };
+      return (
+        <div className="space-y-2">
+          {Array.from({ length: rows }).map((_, li) => {
+            const chosen = chosenMap[li];
+            const correct = correctArr[li];
+            const ok = setEq(chosen, correct);
+            const chosenL = lettersOf(chosen);
+            const correctL = lettersOf(correct);
+            return (
+              <div
+                key={li}
+                className={`rounded-xl border px-3 py-2 ${
+                  ok ? "border-success bg-success/10" : "border-danger bg-danger/10"
+                }`}
+              >
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                  <span className="font-semibold text-text">{li + 1}.</span>
+                  <span className={ok ? "text-success" : "text-danger"}>
+                    Sənin: {chosenL.length ? chosenL.join(", ") : "—"}
+                  </span>
+                  {!ok && (
+                    <span className="text-success">
+                      Doğru: {correctL.length ? correctL.join(", ") : "—"}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    return (
+      <MatchingGridQuestion
+        leftCount={leftCount}
+        rightCount={Number(def.rightCount) || 0}
+        value={answers[i]?.answer}
+        onChange={(m) => setAnswer(i, m, "Cmu")}
+      />
+    );
+  };
+
   return (
     <div className="flex flex-col gap-5">
       {defs.map((def, i) => {
@@ -415,6 +488,22 @@ const QuestionType = ({
                 {unansweredBadge(i)}
               </div>
               {renderMatching(def, i)}
+              {explanationNote(def)}
+              {photoBlock(i)}
+            </div>
+          );
+        }
+
+        // Correspondence (Cmu): numbers -> letters grid (run) / per-number review.
+        if (def.type === "Cmu") {
+          return (
+            <div key={i} id={`q-${i}`} className="scroll-mt-4">
+              <div className="mb-2.5 flex items-start justify-between gap-2">
+                <Stem def={def} i={i} label={LABELS.Cmu} />
+                {markBtn(i)}
+                {unansweredBadge(i)}
+              </div>
+              {renderCorrespondence(def, i)}
               {explanationNote(def)}
               {photoBlock(i)}
             </div>

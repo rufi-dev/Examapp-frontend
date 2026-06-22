@@ -19,11 +19,17 @@ import { PRESETS, presetTypes, presetPointsPlan, presetTotalMarks } from "../../
 
 // Questions 1-13 default to closed (Cm); 14+ default to open (Co).
 const CLOSED_COUNT = 13;
+const GRID_LETTERS = "abcdefghijklmnopqrstuvwxyz";
 const newQuestion = (type = "Cm") => ({
   type,
   answer: "",
   options: ["a", "b", "c", "d", "e"],
+  // Correspondence (Cmu) defaults: 5 numbers, 5 letters, empty key per number.
+  ...(type === "Cmu"
+    ? { leftCount: 5, rightCount: 5, key: [[], [], [], [], []] }
+    : {}),
 });
+const clampInt = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.round(Number(v) || lo)));
 
 const nextLetter = (options) => {
   const used = new Set(options);
@@ -68,14 +74,27 @@ const QuestionAdd = () => {
               answer: q.answer || "",
               options:
                 q.options && q.options.length ? q.options : ["a", "b", "c", "d", "e"],
+              // Preserve the correspondence grid + answer key (owner payload).
+              ...(q.type === "Cmu"
+                ? {
+                    leftCount: Number(q.leftCount) || 5,
+                    rightCount: Number(q.rightCount) || 5,
+                    key: Array.isArray(q.key) ? q.key : [],
+                  }
+                : {}),
             }))
           );
         } else if (presetId && PRESETS[presetId]) {
-          // Seed the answer key from the preset. PDF mode supports only Cm/Co, so
-          // detailed-open (Cd) and matching (Cma) slots become open (Co). Scoring
-          // is positional, so the result is identical to the structured preset.
+          // Seed the answer key from the preset. PDF mode supports closed (Cm),
+          // open (Co) and correspondence (Cmu); detailed-open (Cd) slots fall back
+          // to open. Scoring is positional, so the result matches the structured
+          // preset. The Blok matching slot (Cma) seeds as a real Uyğunluq (Cmu).
           const types = presetTypes(PRESETS[presetId]);
-          setQuestions(types.map((t) => newQuestion(t === "Cm" ? "Cm" : "Co")));
+          setQuestions(
+            types.map((t) =>
+              newQuestion(t === "Cm" ? "Cm" : t === "Cma" ? "Cmu" : "Co")
+            )
+          );
         }
       } catch (error) {
         console.error("Error fetching exam data:", error);
@@ -103,8 +122,56 @@ const QuestionAdd = () => {
   const update = (i, patch) =>
     setQuestions((prev) => prev.map((q, idx) => (idx === i ? { ...q, ...patch } : q)));
 
-  const setType = (i, type) => update(i, { type, answer: "" });
+  const setType = (i, type) =>
+    update(
+      i,
+      type === "Cmu"
+        ? { type, answer: "", leftCount: 5, rightCount: 5, key: [[], [], [], [], []] }
+        : { type, answer: "" }
+    );
   const setAnswer = (i, answer) => update(i, { answer });
+
+  // --- Correspondence (Cmu) grid editing ---
+  // Resize the number of rows (numbers), keeping existing per-number selections.
+  const setCmuLeft = (i, val) =>
+    setQuestions((prev) =>
+      prev.map((q, idx) => {
+        if (idx !== i) return q;
+        const n = clampInt(val, 2, 15);
+        const key = Array.from({ length: n }, (_, k) =>
+          Array.isArray(q.key?.[k]) ? q.key[k] : []
+        );
+        return { ...q, leftCount: n, key };
+      })
+    );
+  // Resize the number of letters, dropping any now-out-of-range selections.
+  const setCmuRight = (i, val) =>
+    setQuestions((prev) =>
+      prev.map((q, idx) => {
+        if (idx !== i) return q;
+        const m = clampInt(val, 2, 12);
+        const key = (q.key || []).map((arr) =>
+          Array.isArray(arr) ? arr.filter((ri) => ri < m) : []
+        );
+        return { ...q, rightCount: m, key };
+      })
+    );
+  // Toggle one letter for one number (multi-select per number).
+  const toggleCmuKey = (i, li, ri) =>
+    setQuestions((prev) =>
+      prev.map((q, idx) => {
+        if (idx !== i) return q;
+        const n = Number(q.leftCount) || 0;
+        const key = Array.from({ length: n }, (_, k) =>
+          Array.isArray(q.key?.[k]) ? [...q.key[k]] : []
+        );
+        const row = new Set(key[li] || []);
+        if (row.has(ri)) row.delete(ri);
+        else row.add(ri);
+        key[li] = Array.from(row).sort((a, b) => a - b);
+        return { ...q, key };
+      })
+    );
   const addOption = (i) =>
     setQuestions((prev) =>
       prev.map((q, idx) =>
@@ -129,16 +196,34 @@ const QuestionAdd = () => {
   const submit = async (e) => {
     e.preventDefault();
     if (questions.length === 0) return toast.error("Ən azı bir sual əlavə edin");
-    if (questions.some((q) => !q.answer)) {
+    // A Cmu question is "answered" when every number has at least one correct
+    // letter marked; other types just need a non-empty answer.
+    const isAnswered = (q) =>
+      q.type === "Cmu"
+        ? Array.isArray(q.key) &&
+          q.key.length === (Number(q.leftCount) || 0) &&
+          q.key.length > 0 &&
+          q.key.every((arr) => Array.isArray(arr) && arr.length > 0)
+        : !!q.answer;
+    if (questions.some((q) => !isAnswered(q))) {
       return toast.error("Bütün suallara düzgün cavab seçin və ya yazın");
     }
     setLoading(true);
     try {
-      const correctAnswers = questions.map((q) => ({
-        type: q.type,
-        answer: q.answer,
-        ...(q.type === "Cm" ? { options: q.options } : {}),
-      }));
+      const correctAnswers = questions.map((q) =>
+        q.type === "Cmu"
+          ? {
+              type: "Cmu",
+              leftCount: Number(q.leftCount),
+              rightCount: Number(q.rightCount),
+              key: q.key,
+            }
+          : {
+              type: q.type,
+              answer: q.answer,
+              ...(q.type === "Cm" ? { options: q.options } : {}),
+            }
+      );
       // Success/error toasts are handled by the addQuestion slice; unwrap() so
       // we only navigate away when the save actually succeeds.
       await dispatch(addQuestion({ examId, questionData: { correctAnswers } })).unwrap();
@@ -290,6 +375,15 @@ const QuestionAdd = () => {
                           >
                             Açıq
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => setType(i, "Cmu")}
+                            className={`rounded-md px-3 py-1 transition-colors ${
+                              q.type === "Cmu" ? "bg-primary text-primary-fg" : "text-muted"
+                            }`}
+                          >
+                            Uyğunluq
+                          </button>
                         </div>
                         {questions.length > 1 && (
                           <button
@@ -304,7 +398,76 @@ const QuestionAdd = () => {
                       </div>
                     </div>
 
-                    {q.type === "Cm" ? (
+                    {q.type === "Cmu" ? (
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap items-center gap-4">
+                          <label className="flex items-center gap-2 text-xs font-semibold text-muted">
+                            Nömrələr
+                            <input
+                              type="number"
+                              min={2}
+                              max={15}
+                              value={q.leftCount ?? 5}
+                              onChange={(e) => setCmuLeft(i, e.target.value)}
+                              className="w-16 rounded-lg border border-line bg-surface px-2 py-1 text-center text-sm text-text outline-none focus:border-primary"
+                            />
+                          </label>
+                          <label className="flex items-center gap-2 text-xs font-semibold text-muted">
+                            Hərflər
+                            <input
+                              type="number"
+                              min={2}
+                              max={12}
+                              value={q.rightCount ?? 5}
+                              onChange={(e) => setCmuRight(i, e.target.value)}
+                              className="w-16 rounded-lg border border-line bg-surface px-2 py-1 text-center text-sm text-text outline-none focus:border-primary"
+                            />
+                          </label>
+                          <span className="text-xs text-muted">
+                            Hər nömrə üçün düzgün hərf(lər)i seç
+                          </span>
+                        </div>
+                        <div className="space-y-2">
+                          {Array.from({ length: Number(q.leftCount) || 0 }).map((_, li) => {
+                            const row = new Set(
+                              Array.isArray(q.key?.[li]) ? q.key[li].map(Number) : []
+                            );
+                            return (
+                              <div
+                                key={li}
+                                className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface p-2"
+                              >
+                                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/12 text-sm font-bold text-primary">
+                                  {li + 1}
+                                </span>
+                                <span className="text-muted">→</span>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {Array.from({ length: Number(q.rightCount) || 0 }).map(
+                                    (__, ri) => {
+                                      const on = row.has(ri);
+                                      return (
+                                        <button
+                                          key={ri}
+                                          type="button"
+                                          onClick={() => toggleCmuKey(i, li, ri)}
+                                          className={`grid h-8 w-8 place-items-center rounded-lg border text-sm font-bold transition-colors ${
+                                            on
+                                              ? "border-success bg-success text-white"
+                                              : "border-line bg-surface text-muted hover:border-primary/40"
+                                          }`}
+                                        >
+                                          {GRID_LETTERS[ri]}
+                                        </button>
+                                      );
+                                    }
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : q.type === "Cm" ? (
                       <div className="flex flex-wrap items-center gap-2">
                         {q.options.map((opt) => (
                           <div key={opt} className="group relative">
