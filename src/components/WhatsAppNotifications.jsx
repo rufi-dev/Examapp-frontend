@@ -19,6 +19,7 @@ const WhatsAppNotifications = () => {
   const [busy, setBusy] = useState("");
   const [groups, setGroups] = useState([]);
   const [groupId, setGroupId] = useState("");
+  const [inviteLink, setInviteLink] = useState("");
   const [groupsLoaded, setGroupsLoaded] = useState(false);
   const pollRef = useRef(null);
 
@@ -27,10 +28,23 @@ const WhatsAppNotifications = () => {
       const { data } = await axios.get(`${API}/groups`);
       setGroups(Array.isArray(data.groups) ? data.groups : []);
       setGroupId(data.selected || "");
+      setInviteLink(data.inviteLink || "");
     } catch {
       /* ignore */
     } finally {
       setGroupsLoaded(true);
+    }
+  };
+
+  const saveInvite = async () => {
+    setBusy("invite");
+    try {
+      await axios.post(`${API}/group`, { inviteLink });
+      toast.success("Dəvət linki yadda saxlanıldı.");
+    } catch {
+      toast.error("Yadda saxlanmadı");
+    } finally {
+      setBusy("");
     }
   };
 
@@ -180,6 +194,25 @@ const WhatsAppNotifications = () => {
             Qrup tapılmadı. WhatsApp-da qrup yaradın, şagirdləri əlavə edin, sonra “Yenilə”yə basın.
           </p>
         )}
+
+        {/* Group invite link → students are sent here after entering their phone. */}
+        <div className="mt-4 border-t border-line pt-3">
+          <p className="text-xs font-semibold text-text">Qrup dəvət linki</p>
+          <p className="mt-0.5 text-xs text-muted">
+            Şagird telefon nömrəsini yazdıqdan sonra qrupa qoşulmaq üçün bura yönləndirilir.
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2.5">
+            <input
+              value={inviteLink}
+              onChange={(e) => setInviteLink(e.target.value)}
+              placeholder="https://chat.whatsapp.com/..."
+              className="min-w-[12rem] flex-1 rounded-xl border border-line bg-surface px-3 py-2 text-sm text-text outline-none focus:border-primary"
+            />
+            <Button type="button" variant="soft" onClick={saveInvite} disabled={busy === "invite"}>
+              {busy === "invite" ? <Spinner size={16} /> : null} Saxla
+            </Button>
+          </div>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2.5">
