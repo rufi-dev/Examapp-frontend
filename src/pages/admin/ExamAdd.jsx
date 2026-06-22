@@ -34,8 +34,9 @@ const ExamAdd = () => {
   // "pdf" = upload a question PDF (legacy). "structured" = write native
   // questions in the in-app builder after the exam is created.
   const [source, setSource] = useState("pdf");
-  // Exam preset (structured only) — seeds question structure + scoring + neg-mark.
-  const [preset, setPreset] = useState("");
+  // Exam preset — seeds question structure + scoring + neg-mark. Buraxılış is
+  // the default (its 100-pt scoring = the legacy behavior).
+  const [preset, setPreset] = useState("buraxilis");
   const [passwordEnabled, setPasswordEnabled] = useState(false);
   const [maxTryEnabled, setMaxTryEnabled] = useState(false);
   const [priceEnabled, setPriceEnabled] = useState(false);

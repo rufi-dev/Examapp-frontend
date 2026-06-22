@@ -41,8 +41,8 @@ export const presetTypes = (preset) => {
 export const presetCount = (preset) =>
   (preset?.slots || []).reduce((sum, s) => sum + (Number(s.count) || 0), 0);
 
-// Dropdown options for the create-exam form ("" = custom / no preset).
-export const presetOptions = [
-  { value: "", label: "Preset yoxdur (fərdi)" },
-  ...Object.values(PRESETS).map((p) => ({ value: p.id, label: p.label })),
-];
+// Selectable presets for the create-exam form (Buraxılış is the default).
+export const presetOptions = Object.values(PRESETS).map((p) => ({
+  value: p.id,
+  label: p.label,
+}));
