@@ -47,12 +47,13 @@ const Profile = () => {
     role: user?.role || "",
     photo: user?.photo || "",
     isVerified: user?.isVerified || false,
+    whatsappOptIn: user?.whatsappOptIn ?? true,
   };
   const [profileData, setProfileData] = useState(initialState);
   const [profileImage, setProfileImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
 
-  const { name, email, phone, bio, role, isVerified } = profileData;
+  const { name, email, phone, bio, role, isVerified, whatsappOptIn } = profileData;
 
   const handleImageChange = (e) => {
     setProfileImage(e.target.files[0]);
@@ -101,6 +102,7 @@ const Profile = () => {
         phone: profileData.phone,
         bio: profileData.bio,
         photo: imageUrl,
+        whatsappOptIn: profileData.whatsappOptIn,
       };
       await dispatch(updateUser(userData));
       toast.success("Profil yeniləndi");
@@ -120,6 +122,7 @@ const Profile = () => {
         role: user.role,
         photo: user.photo,
         isVerified: user.isVerified,
+        whatsappOptIn: user.whatsappOptIn ?? true,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -193,6 +196,25 @@ const Profile = () => {
                   <textarea id="bio" name="bio" value={bio} onChange={handleInputChange} className={textareaClass} />
                 </Field>
               </div>
+
+              {/* WhatsApp notification opt-in. Requires a phone number on file. */}
+              <label className="mt-6 flex cursor-pointer items-start justify-between gap-4 rounded-2xl border border-line bg-surface2/40 p-4">
+                <span className="min-w-0">
+                  <span className="block font-semibold text-text">WhatsApp bildirişləri</span>
+                  <span className="mt-0.5 block text-sm text-muted">
+                    Yeni imtahan əlavə olunduqda WhatsApp-a avtomatik bildiriş al. Telefon nömrən
+                    beynəlxalq formatda olmalıdır (məs. +99450...).
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={!!whatsappOptIn}
+                  onChange={(e) =>
+                    setProfileData((p) => ({ ...p, whatsappOptIn: e.target.checked }))
+                  }
+                  className="mt-1 h-5 w-5 shrink-0 accent-primary"
+                />
+              </label>
 
               <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
                 <Button type="submit" disabled={isLoading}>
