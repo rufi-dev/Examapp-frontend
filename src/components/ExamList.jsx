@@ -2,29 +2,17 @@ import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   addExamToUser,
-  deleteExam,
-  setExamHidden,
   getExamsByClass,
   getExamsByUser,
 } from "../../redux/features/quiz/quizSlice";
 import { getResultsByUser } from "../../redux/features/quiz/resultSlice";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import Loader from "./Loader";
-import { MdOutlineModeEditOutline } from "react-icons/md";
-import { AiFillDelete, AiOutlinePlus } from "react-icons/ai";
-import {
-  FiClock,
-  FiBarChart2,
-  FiEye,
-  FiEyeOff,
-  FiGift,
-  FiPlay,
-  FiCheckCircle,
-} from "react-icons/fi";
+import { FiClock, FiBarChart2, FiGift, FiPlay, FiCheckCircle } from "react-icons/fi";
 import ExamCoverFallback from "./ExamCoverFallback";
+import ExamAdminActions from "./ExamAdminActions";
 import { payExam } from "../../redux/features/stripe/stripeSlice";
 import Button from "./ui/Button";
-import ConfirmDialog from "./ui/ConfirmDialog";
 import useServerNow from "../customHook/useServerNow";
 
 // dd.mm.yyyy
@@ -45,39 +33,11 @@ const statusInfo = (exam, now) => {
   return { label: "Həmişə aktiv", cls: "bg-success/15 text-success" };
 };
 
-// Admin action button with a hover tooltip so each icon's purpose is clear.
-const ExamAction = ({ to, onClick, label, tone = "primary", children }) => {
-  const toneCls =
-    tone === "danger"
-      ? "hover:border-danger/40 hover:bg-danger/10 hover:text-danger"
-      : "hover:border-primary/40 hover:bg-primary/10 hover:text-primary";
-  const cls = `grid h-9 w-9 place-items-center rounded-xl border border-line bg-surface text-muted transition-colors ${toneCls}`;
-  return (
-    <div className="group/act relative">
-      {to ? (
-        <Link to={to} aria-label={label} className={cls}>
-          {children}
-        </Link>
-      ) : (
-        <button type="button" onClick={onClick} aria-label={label} className={cls}>
-          {children}
-        </button>
-      )}
-      <span className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-text px-2 py-1 text-xs font-semibold text-bg opacity-0 shadow-lift transition-opacity duration-150 group-hover/act:opacity-100">
-        {label}
-      </span>
-    </div>
-  );
-};
-
 const ExamList = ({ classId }) => {
   const dispatch = useDispatch();
   const { exams, myExams } = useSelector((state) => state.quiz);
   const { user } = useSelector((state) => state.auth);
   const { result: userResults } = useSelector((state) => state.result);
-  // Only the owner (or admin) manages an exam — not a participant teacher.
-  const canManage = (exam) =>
-    user?.role === "admin" || (exam?.owner && String(exam.owner) === String(user?._id));
   const navigate = useNavigate();
   const [loadedOnce, setLoadedOnce] = useState(false);
   const now = useServerNow(30000); // shared, low-frequency clock for all cards
@@ -103,32 +63,6 @@ const ExamList = ({ classId }) => {
       active = false;
     };
   }, [dispatch, classId]);
-
-  const [confirmExam, setConfirmExam] = useState(null);
-  const [deletingExam, setDeletingExam] = useState(false);
-
-  const handleDeleteExam = async () => {
-    if (!confirmExam) return;
-    setDeletingExam(true);
-    try {
-      await dispatch(deleteExam(confirmExam._id)).unwrap();
-      setConfirmExam(null);
-      dispatch(getExamsByClass(classId));
-    } catch {
-      /* error toast handled by the slice */
-    } finally {
-      setDeletingExam(false);
-    }
-  };
-
-  const handleToggleHidden = async (exam) => {
-    try {
-      await dispatch(setExamHidden({ examId: exam._id, hidden: !exam.hidden })).unwrap();
-      dispatch(getExamsByClass(classId));
-    } catch {
-      /* error toast handled by the slice */
-    }
-  };
 
   const addExam = async (e, exam) => {
     e.preventDefault();
@@ -250,28 +184,11 @@ const ExamList = ({ classId }) => {
 
                 {/* Footer: owner tools + action button(s) */}
                 <div className="mt-auto pt-5">
-                  {canManage(exam) && (
-                    <div className="mb-4 flex items-center justify-end gap-1.5 border-t border-line pt-4">
-                      <ExamAction onClick={() => handleToggleHidden(exam)} label={exam.hidden ? "Göstər" : "Gizlət"}>
-                        {exam.hidden ? <FiEye className="text-[17px]" /> : <FiEyeOff className="text-[17px]" />}
-                      </ExamAction>
-                      <ExamAction to={`/exam/${exam._id}/resultsByExam`} label="Nəticələr">
-                        <FiBarChart2 className="text-[17px]" />
-                      </ExamAction>
-                      <ExamAction
-                        to={exam.mode === "structured" ? `/exam/${exam._id}/build` : `/exam/${exam._id}/addQuestion`}
-                        label="Sual əlavə et"
-                      >
-                        <AiOutlinePlus className="text-[17px]" />
-                      </ExamAction>
-                      <ExamAction to={`/exam/edit/${exam._id}`} label="Redaktə et">
-                        <MdOutlineModeEditOutline className="text-[17px]" />
-                      </ExamAction>
-                      <ExamAction onClick={() => setConfirmExam(exam)} label="Sil" tone="danger">
-                        <AiFillDelete className="text-[17px]" />
-                      </ExamAction>
-                    </div>
-                  )}
+                  <ExamAdminActions
+                    exam={exam}
+                    onChanged={() => dispatch(getExamsByClass(classId))}
+                    className="mb-4 border-t border-line pt-4"
+                  />
 
                   {taken ? (
                     <div className="flex flex-col gap-2 sm:flex-row">
@@ -317,22 +234,6 @@ const ExamList = ({ classId }) => {
           );
         })}
       </div>
-
-      <ConfirmDialog
-        open={!!confirmExam}
-        onClose={() => setConfirmExam(null)}
-        onConfirm={handleDeleteExam}
-        title="İmtahanı silmək?"
-        confirmLabel="Bəli, sil"
-        cancelLabel="Geri"
-        tone="danger"
-        loading={deletingExam}
-      >
-        <p>
-          <span className="font-semibold text-text">{confirmExam?.name}</span> imtahanı, sualları, PDF-i
-          və bütün nəticələri həmişəlik silinəcək. Bu əməliyyat geri qaytarıla bilməz.
-        </p>
-      </ConfirmDialog>
     </>
   );
 };

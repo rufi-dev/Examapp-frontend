@@ -18,6 +18,7 @@ import {
   FiPlus,
 } from "react-icons/fi";
 import ExamCoverFallback from "../components/ExamCoverFallback";
+import ExamAdminActions from "../components/ExamAdminActions";
 
 const API = `${import.meta.env.VITE_BACKEND_URL}/api/quiz`;
 
@@ -62,6 +63,13 @@ const Overview = () => {
       active = false;
     };
   }, [dispatch]);
+
+  // Re-fetch the latest-exams list after an owner hides/deletes one from a card.
+  const loadLatest = () =>
+    axios
+      .get(`${API}/getLatestExams`)
+      .then((r) => setLatest(Array.isArray(r.data) ? r.data : []))
+      .catch(() => {});
 
   const results = result || [];
   const recent = [...results].slice(-5).reverse();
@@ -126,11 +134,11 @@ const Overview = () => {
                 exam.class?.name ||
                 (exam.class?.level != null ? `${exam.class.level} sinif` : null);
               return (
-                <Link
+                <div
                   key={exam._id}
-                  to={`/exam/details/${exam._id}`}
                   className="group flex flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-soft transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:shadow-lift"
                 >
+                  <Link to={`/exam/details/${exam._id}`} className="flex flex-1 flex-col">
                   <div className="relative h-32 w-full shrink-0 overflow-hidden">
                     {exam.coverImage ? (
                       <img
@@ -201,7 +209,13 @@ const Overview = () => {
                       </span>
                     </div>
                   </div>
-                </Link>
+                  </Link>
+                  <ExamAdminActions
+                    exam={exam}
+                    onChanged={loadLatest}
+                    className="border-t border-line px-5 py-3"
+                  />
+                </div>
               );
             })}
           </div>
