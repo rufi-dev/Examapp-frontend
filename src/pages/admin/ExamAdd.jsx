@@ -231,21 +231,24 @@ const ExamAdd = () => {
 
               <Field
                 label="İmtahan presetı"
-                htmlFor="preset"
                 hint="Bal və neqativ qiymətləndirməni avtomatik qurur; sual strukturunu hazırlayır"
               >
-                <select
-                  id="preset"
-                  value={preset}
-                  onChange={(e) => applyPreset(e.target.value)}
-                  className={inputClass}
-                >
+                <div className="flex flex-wrap gap-2">
                   {presetOptions.map((o) => (
-                    <option key={o.value} value={o.value}>
+                    <button
+                      key={o.value}
+                      type="button"
+                      onClick={() => applyPreset(o.value)}
+                      className={`rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
+                        preset === o.value
+                          ? "border-primary bg-primary text-primary-fg shadow-sm"
+                          : "border-line bg-surface text-text hover:border-primary/50"
+                      }`}
+                    >
                       {o.label}
-                    </option>
+                    </button>
                   ))}
-                </select>
+                </div>
               </Field>
 
               {source === "pdf" ? (
