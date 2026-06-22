@@ -158,7 +158,7 @@ const ExamAdd = () => {
       examData.append("wrongPerPenalty", wrongPerPenalty);
       examData.append("correctPerPenalty", correctPerPenalty);
       examData.append("negMarkUntil", negEnabled ? Number(negMarkUntil) || 0 : 0);
-      examData.append("preset", isStructured ? preset : "");
+      examData.append("preset", preset);
       examData.append("antiCheat", antiEnabled);
       examData.append("mode", isStructured ? "structured" : "pdf");
       examData.append("shuffleOptions", isStructured && shuffleEnabled);
@@ -229,26 +229,24 @@ const ExamAdd = () => {
                 </div>
               </Field>
 
-              {source === "structured" && (
-                <Field
-                  label="İmtahan presetı"
-                  htmlFor="preset"
-                  hint="Sual strukturu, bal və neqativ qiymətləndirməni avtomatik qurur"
+              <Field
+                label="İmtahan presetı"
+                htmlFor="preset"
+                hint="Bal və neqativ qiymətləndirməni avtomatik qurur; sual strukturunu hazırlayır"
+              >
+                <select
+                  id="preset"
+                  value={preset}
+                  onChange={(e) => applyPreset(e.target.value)}
+                  className={inputClass}
                 >
-                  <select
-                    id="preset"
-                    value={preset}
-                    onChange={(e) => applyPreset(e.target.value)}
-                    className={inputClass}
-                  >
-                    {presetOptions.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-              )}
+                  {presetOptions.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
 
               {source === "pdf" ? (
                 <Field label="PDF fayl" htmlFor="pdf" required hint="İmtahan sualları (PDF)">

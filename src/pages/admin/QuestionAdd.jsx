@@ -15,6 +15,7 @@ import Button from "../../components/ui/Button";
 import { inputClass } from "../../components/ui/Field";
 import { FiPlus, FiX } from "react-icons/fi";
 import { questionPoints } from "../../helper/helper";
+import { PRESETS, presetTypes } from "../../helper/examPresets";
 
 // Questions 1-13 default to closed (Cm); 14+ default to open (Co).
 const CLOSED_COUNT = 13;
@@ -57,6 +58,7 @@ const QuestionAdd = () => {
         // so editing is non-destructive (instead of starting from blanks).
         const examAction = await dispatch(getExam(examId));
         const existing = examAction?.payload?.questions?.correctAnswers;
+        const presetId = examAction?.payload?.preset;
         if (existing && existing.length) {
           setQuestions(
             existing.map((q) => ({
@@ -66,6 +68,12 @@ const QuestionAdd = () => {
                 q.options && q.options.length ? q.options : ["a", "b", "c", "d", "e"],
             }))
           );
+        } else if (presetId && PRESETS[presetId]) {
+          // Seed the answer key from the preset. PDF mode supports only Cm/Co, so
+          // detailed-open (Cd) and matching (Cma) slots become open (Co). Scoring
+          // is positional, so the result is identical to the structured preset.
+          const types = presetTypes(PRESETS[presetId]);
+          setQuestions(types.map((t) => newQuestion(t === "Cm" ? "Cm" : "Co")));
         }
       } catch (error) {
         console.error("Error fetching exam data:", error);
