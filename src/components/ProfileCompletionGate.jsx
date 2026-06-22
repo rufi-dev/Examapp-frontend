@@ -12,6 +12,7 @@ import {
   RESET,
 } from "../../redux/features/auth/authSlice";
 import { GRADES, gradeLabel } from "../helper/grades";
+import Select from "./ui/Select";
 import Button from "./ui/Button";
 import Spinner from "./Spinner";
 
@@ -20,13 +21,15 @@ const inputCls =
 
 const isPhoneValid = (p) => String(p || "").replace(/\D/g, "").length >= 9;
 
-// Students must have a grade ("Sinif") + a real phone number. Anyone who signed
-// up before this (or via Google, which skips those fields) is asked to fill them
-// before they can use the app.
-const needsCompletion = (user) =>
-  !!user &&
-  user.role === "student" &&
-  (!isPhoneValid(user.phone) || !String(user.grade || "").trim());
+// EVERYONE needs a real phone number; STUDENTS additionally need a grade
+// ("Sinif"). Anyone who signed up before this (or via Google, which skips those
+// fields) is asked to fill them before they can use the app.
+const needsCompletion = (user) => {
+  if (!user) return false;
+  const noPhone = !isPhoneValid(user.phone);
+  const noGrade = user.role === "student" && !String(user.grade || "").trim();
+  return noPhone || noGrade;
+};
 
 const ProfileCompletionGate = () => {
   const dispatch = useDispatch();
@@ -45,13 +48,15 @@ const ProfileCompletionGate = () => {
 
   if (!isLoggedIn || !needsCompletion(user)) return null;
 
+  const isStudent = user.role === "student";
+
   const submit = async (e) => {
     e.preventDefault();
-    if (!grade) return toast.error("Sinfi seçin");
+    if (isStudent && !grade) return toast.error("Sinfi seçin");
     if (!isPhoneValid(phone)) return toast.error("Düzgün telefon nömrəsi yazın");
     setSaving(true);
     try {
-      await dispatch(updateUser({ phone: phone.trim(), grade }));
+      await dispatch(updateUser({ phone: phone.trim(), ...(isStudent ? { grade } : {}) }));
       await dispatch(getUser());
       toast.success("Profil tamamlandı 🎉");
     } catch {
@@ -75,31 +80,22 @@ const ProfileCompletionGate = () => {
           </span>
           <h2 className="mt-4 font-display text-xl font-bold text-text">Profilini tamamla</h2>
           <p className="mt-1.5 text-sm text-muted">
-            Davam etmək üçün sinfini və telefon nömrəni daxil et.
+            {isStudent
+              ? "Davam etmək üçün sinfini və telefon nömrəni daxil et."
+              : "Davam etmək üçün telefon nömrəni daxil et."}
           </p>
         </div>
 
         <form onSubmit={submit} className="mt-6 flex flex-col gap-4">
-          <div className="relative">
-            <PiStudentBold className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
-            <select
+          {isStudent && (
+            <Select
               value={grade}
-              onChange={(e) => setGrade(e.target.value)}
-              className={`${inputCls} appearance-none pr-9 ${grade ? "" : "text-muted/60"}`}
-            >
-              <option value="" disabled>
-                Sinif seç
-              </option>
-              {GRADES.map((g) => (
-                <option key={g} value={g} className="text-text">
-                  {gradeLabel(g)}
-                </option>
-              ))}
-            </select>
-            <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-muted">
-              ▾
-            </span>
-          </div>
+              onChange={setGrade}
+              options={GRADES.map((g) => ({ value: g, label: gradeLabel(g) }))}
+              placeholder="Sinif seç"
+              icon={<PiStudentBold />}
+            />
+          )}
 
           <div className="relative">
             <FiPhone className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />

@@ -15,6 +15,7 @@ import TelegramNotifications from "../../components/TelegramNotifications";
 import WhatsAppNotifications from "../../components/WhatsAppNotifications";
 import ChangePasswordCard from "../../components/ChangePasswordCard";
 import { Field, inputClass, textareaClass } from "../../components/ui/Field";
+import Select from "../../components/ui/Select";
 import { GRADES, gradeLabel } from "../../helper/grades";
 
 const cloud_name = import.meta.env.VITE_CLOUD_NAME;
@@ -198,17 +199,13 @@ const Profile = () => {
                   <input id="phone" name="phone" value={phone} onChange={handleInputChange} className={inputClass} />
                 </Field>
                 {role === "student" && (
-                  <Field label="Sinif" htmlFor="grade">
-                    <select id="grade" name="grade" value={grade} onChange={handleInputChange} className={inputClass}>
-                      <option value="" disabled>
-                        Sinif seç
-                      </option>
-                      {GRADES.map((g) => (
-                        <option key={g} value={g}>
-                          {gradeLabel(g)}
-                        </option>
-                      ))}
-                    </select>
+                  <Field label="Sinif">
+                    <Select
+                      value={grade}
+                      onChange={(v) => setProfileData((p) => ({ ...p, grade: v }))}
+                      options={GRADES.map((g) => ({ value: g, label: gradeLabel(g) }))}
+                      placeholder="Sinif seç"
+                    />
                   </Field>
                 )}
                 <Field label="Haqqımda" htmlFor="bio">

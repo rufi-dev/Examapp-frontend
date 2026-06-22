@@ -16,6 +16,7 @@ import { PiStudentBold } from "react-icons/pi";
 import AuthLayout from "../../components/AuthLayout";
 import Button from "../../components/ui/Button";
 import Spinner from "../../components/Spinner";
+import Select from "../../components/ui/Select";
 import { GRADES, gradeLabel } from "../../helper/grades";
 
 const initialState = { name: "", email: "", password: "", phone: "+994 ", grade: "" };
@@ -108,25 +109,13 @@ const Register = () => {
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <div className="relative">
-            <PiStudentBold className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
-            <select
-              name="grade"
-              value={grade}
-              onChange={handleInputChange}
-              className={`${inputCls} appearance-none pr-9 ${grade ? "" : "text-muted/60"}`}
-            >
-              <option value="" disabled>
-                Sinif
-              </option>
-              {GRADES.map((g) => (
-                <option key={g} value={g} className="text-text">
-                  {gradeLabel(g)}
-                </option>
-              ))}
-            </select>
-            <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-muted">▾</span>
-          </div>
+          <Select
+            value={grade}
+            onChange={(v) => setUserData((d) => ({ ...d, grade: v }))}
+            options={GRADES.map((g) => ({ value: g, label: gradeLabel(g) }))}
+            placeholder="Sinif"
+            icon={<PiStudentBold />}
+          />
 
           <div className="relative">
             <FiPhone className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
