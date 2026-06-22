@@ -165,9 +165,6 @@ const ExamList = ({ classId }) => {
           const ended = eTime && now > eTime;
           const taken = takenIds.has(String(exam._id));
           const free = !exam.price || Number(exam.price) === 0;
-          const category = exam.class?.name || (exam.class?.level != null ? `${exam.class.level} sinif` : null);
-          // Short display code derived from the exam id (e.g. "Kod: 3C1B7394").
-          const code = String(exam._id || "").slice(-8).toUpperCase();
           // Solid status colour for the pill that sits on top of the cover.
           const statusSolid = upcoming
             ? "bg-warning text-white"
@@ -224,15 +221,13 @@ const ExamList = ({ classId }) => {
               </div>
 
               <div className="flex flex-1 flex-col p-5">
-                {/* Title + code + category */}
+                {/* Title */}
                 <h3 className="line-clamp-2 font-display text-lg font-bold leading-snug text-text">
                   {exam.name}
                 </h3>
-                <p className="mt-1.5 text-xs font-medium tracking-wide text-muted">Kod: {code}</p>
-                {category && <p className="mt-0.5 text-xs text-muted">{category}</p>}
 
                 {/* Stats: Sual / Dəq / Bal */}
-                <div className="mt-5 grid grid-cols-3 gap-2 border-t border-line pt-5 text-center">
+                <div className="mt-4 grid grid-cols-3 gap-2 border-t border-line pt-5 text-center">
                   <div>
                     <p className="font-display text-[26px] font-extrabold leading-none text-primary">
                       {exam.questionCount ?? "—"}
