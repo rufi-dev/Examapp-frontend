@@ -14,10 +14,10 @@ import {
   FiBookOpen,
   FiArrowRight,
   FiClock,
-  FiFileText,
   FiCalendar,
   FiPlus,
 } from "react-icons/fi";
+import ExamCoverFallback from "../components/ExamCoverFallback";
 
 const API = `${import.meta.env.VITE_BACKEND_URL}/api/quiz`;
 
@@ -115,6 +115,13 @@ const Overview = () => {
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {latest.map((exam) => {
               const st = statusInfo(exam, now);
+              // Solid pill colour so the status reads on top of the cover banner.
+              const stSolid =
+                st.label === "Gələcək"
+                  ? "bg-warning text-white"
+                  : st.label === "Bitib"
+                  ? "bg-danger text-white"
+                  : "bg-success text-white";
               const category =
                 exam.class?.name ||
                 (exam.class?.level != null ? `${exam.class.level} sinif` : null);
@@ -124,46 +131,34 @@ const Overview = () => {
                   to={`/exam/details/${exam._id}`}
                   className="group flex flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-soft transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:shadow-lift"
                 >
-                  {exam.coverImage && (
-                    <div className="relative h-32 w-full shrink-0 overflow-hidden">
+                  <div className="relative h-32 w-full shrink-0 overflow-hidden">
+                    {exam.coverImage ? (
                       <img
                         src={exam.coverImage}
                         alt=""
                         className="h-full w-full object-cover transition-transform duration-300 ease-out-quint group-hover:scale-[1.03]"
                       />
-                      <div className="absolute right-2.5 top-2.5 flex items-center gap-1.5">
-                        {isNew(exam.createdAt) && (
-                          <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-primary-fg shadow-soft">
-                            Yeni
-                          </span>
-                        )}
-                        <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold shadow-soft ${st.cls}`}>
-                          {st.label}
+                    ) : (
+                      <ExamCoverFallback
+                        seed={exam._id}
+                        className="transition-transform duration-300 ease-out-quint group-hover:scale-[1.03]"
+                      />
+                    )}
+                    <div className="pointer-events-none absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-black/25 to-transparent" />
+                    <div className="absolute right-2.5 top-2.5 flex items-center gap-1.5">
+                      {isNew(exam.createdAt) && (
+                        <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-primary-fg shadow-soft">
+                          Yeni
                         </span>
-                      </div>
+                      )}
+                      <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold shadow-soft ${stSolid}`}>
+                        {st.label}
+                      </span>
                     </div>
-                  )}
+                  </div>
 
                   <div className="flex flex-1 flex-col p-5">
-                    {!exam.coverImage && (
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="grid h-11 w-11 place-items-center rounded-2xl bg-primary/12 text-primary ring-1 ring-inset ring-primary/15">
-                          <FiFileText className="text-[21px]" />
-                        </span>
-                        <div className="flex items-center gap-1.5">
-                          {isNew(exam.createdAt) && (
-                            <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-primary-fg">
-                              Yeni
-                            </span>
-                          )}
-                          <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${st.cls}`}>
-                            {st.label}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-
-                    <h3 className={`line-clamp-2 font-display text-base font-bold leading-tight text-text ${exam.coverImage ? "" : "mt-3.5"}`}>
+                    <h3 className="line-clamp-2 font-display text-base font-bold leading-tight text-text">
                       {exam.name}
                     </h3>
                     {category && <p className="mt-1 text-xs text-muted">{category}</p>}

@@ -15,13 +15,13 @@ import { AiFillDelete, AiOutlinePlus } from "react-icons/ai";
 import {
   FiClock,
   FiBarChart2,
-  FiFileText,
   FiEye,
   FiEyeOff,
   FiGift,
   FiPlay,
   FiCheckCircle,
 } from "react-icons/fi";
+import ExamCoverFallback from "./ExamCoverFallback";
 import { payExam } from "../../redux/features/stripe/stripeSlice";
 import Button from "./ui/Button";
 import ConfirmDialog from "./ui/ConfirmDialog";
@@ -190,9 +190,10 @@ const ExamList = ({ classId }) => {
                     className="h-full w-full object-cover transition-transform duration-300 ease-out-quint group-hover:scale-[1.03]"
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary via-primary to-accent2">
-                    <FiFileText className="text-6xl text-white/25" />
-                  </div>
+                  <ExamCoverFallback
+                    seed={exam._id}
+                    className="transition-transform duration-300 ease-out-quint group-hover:scale-[1.03]"
+                  />
                 )}
                 {/* Top shade so the pills stay readable on bright photos. */}
                 <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/30 to-transparent" />
