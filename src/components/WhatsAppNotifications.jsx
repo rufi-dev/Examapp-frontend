@@ -17,7 +17,48 @@ const WhatsAppNotifications = () => {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState("");
+  const [groups, setGroups] = useState([]);
+  const [groupId, setGroupId] = useState("");
+  const [groupsLoaded, setGroupsLoaded] = useState(false);
   const pollRef = useRef(null);
+
+  const loadGroups = async () => {
+    try {
+      const { data } = await axios.get(`${API}/groups`);
+      setGroups(Array.isArray(data.groups) ? data.groups : []);
+      setGroupId(data.selected || "");
+    } catch {
+      /* ignore */
+    } finally {
+      setGroupsLoaded(true);
+    }
+  };
+
+  const saveGroup = async (id) => {
+    setGroupId(id);
+    setBusy("group");
+    try {
+      await axios.post(`${API}/group`, { groupId: id });
+      toast.success(id ? "Bildiriş qrupu yadda saxlanıldı." : "Qrup söndürüldü (fərdi göndəriş).");
+    } catch {
+      toast.error("Yadda saxlanmadı");
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const testGroup = async () => {
+    setBusy("grouptest");
+    try {
+      const { data } = await axios.post(`${API}/group/test`);
+      if (data?.ok) toast.success("Qrupa test mesajı göndərildi.");
+      else toast.error(data?.message || "Göndərilmədi");
+    } catch (e) {
+      toast.error(e?.response?.data?.message || "Göndərilmədi");
+    } finally {
+      setBusy("");
+    }
+  };
 
   const loadStatus = async (withQr) => {
     try {
@@ -54,6 +95,12 @@ const WhatsAppNotifications = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // Once linked, load the account's groups so a notification group can be picked.
+  useEffect(() => {
+    if (open && status?.ready) loadGroups();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, status?.ready]);
 
   const onTest = async () => {
     setBusy("test");
@@ -97,6 +144,44 @@ const WhatsAppNotifications = () => {
       <div className="flex items-center gap-2 rounded-xl border border-success/30 bg-success/10 px-4 py-3 text-sm font-semibold text-success">
         <FiCheckCircle /> WhatsApp qoşuludur — yeni imtahanlar avtomatik göndəriləcək.
       </div>
+
+      {/* Notification group: send one message to a group instead of many. */}
+      <div className="rounded-2xl border border-line bg-surface2/40 p-4">
+        <p className="font-semibold text-text">Bildiriş qrupu (tövsiyə olunur)</p>
+        <p className="mt-1 text-xs text-muted">
+          Bütün imtahan bildirişləri tək mesajla seçilmiş qrupa göndərilir — şagirdlər sadəcə
+          qrupa qoşulur, nömrə lazım deyil. (Qrup seçilməsə, hər kəsə ayrıca göndərilir.)
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2.5">
+          <select
+            value={groupId}
+            onChange={(e) => saveGroup(e.target.value)}
+            disabled={busy === "group"}
+            className="min-w-[12rem] flex-1 rounded-xl border border-line bg-surface px-3 py-2 text-sm text-text outline-none focus:border-primary"
+          >
+            <option value="">— Qrupsuz (hər kəsə ayrıca) —</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name}
+              </option>
+            ))}
+          </select>
+          <Button type="button" variant="soft" onClick={loadGroups} disabled={busy === "group"}>
+            Yenilə
+          </Button>
+          {groupId && (
+            <Button type="button" variant="soft" onClick={testGroup} disabled={busy === "grouptest"}>
+              {busy === "grouptest" ? <Spinner size={16} /> : <FiSend />} Qrupa test
+            </Button>
+          )}
+        </div>
+        {groupsLoaded && groups.length === 0 && (
+          <p className="mt-2 text-xs text-warning">
+            Qrup tapılmadı. WhatsApp-da qrup yaradın, şagirdləri əlavə edin, sonra “Yenilə”yə basın.
+          </p>
+        )}
+      </div>
+
       <div className="flex flex-wrap gap-2.5">
         <Button type="button" variant="soft" onClick={onTest} disabled={busy === "test"}>
           {busy === "test" ? <Spinner size={16} /> : <FiSend />} Test mesajı (özümə)
