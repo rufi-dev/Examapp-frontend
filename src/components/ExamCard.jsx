@@ -31,7 +31,7 @@ const statusInfo = (exam, now) => {
 // viewer's acquired exams / results from the store and renders the right CTA
 // + owner tools itself. `onChanged` is called after an owner hides/deletes so
 // the host can refetch its list.
-const ExamCard = ({ exam, onChanged }) => {
+const ExamCard = ({ exam, onChanged, publicView = false }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { myExams } = useSelector((s) => s.quiz);
@@ -144,9 +144,15 @@ const ExamCard = ({ exam, onChanged }) => {
         {/* Footer: owner tools + action button(s). Stop card navigation so these
             controls do their own thing. */}
         <div className="mt-auto pt-5" onClick={(e) => e.stopPropagation()}>
-          <ExamAdminActions exam={exam} onChanged={onChanged} className="mb-4 border-t border-line pt-4" />
+          {!publicView && (
+            <ExamAdminActions exam={exam} onChanged={onChanged} className="mb-4 border-t border-line pt-4" />
+          )}
 
-          {taken ? (
+          {publicView ? (
+            <Button to={`/exam/details/${exam._id}`} size="lg" className="w-full">
+              <FiPlay /> Başla
+            </Button>
+          ) : taken ? (
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button to={`/exam/${exam._id}/result`} size="lg" className="w-full bg-success text-white hover:brightness-105">
                 <FiBarChart2 /> Nəticəni gör

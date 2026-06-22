@@ -30,8 +30,8 @@ const Hero = () => (
           <Button to="/register" size="lg">
             Sınağa başla <FiArrowRight className="text-[18px]" />
           </Button>
-          <Button href="#topics" size="lg" variant="secondary">
-            Mövzulara bax
+          <Button href="#sinaqlar" size="lg" variant="secondary">
+            Sınaqlara bax
           </Button>
           <Button to="/ourSuccess" size="lg" variant="soft">
             <FiAward className="text-[18px]" /> Uğurlarımız

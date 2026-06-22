@@ -8,8 +8,8 @@ const WHATSAPP = "994773999966";
 
 const navCol = [
   { label: "Ana səhifə", to: "/" },
-  { label: "Mövzular", href: "#topics" },
-  { label: "Sınaqlar", href: "#exam-preview" },
+  { label: "Sınaqlar", href: "#sinaqlar" },
+  { label: "İmtahan mühiti", href: "#exam-preview" },
   { label: "Haqqımızda", to: "/about" },
   { label: "Əlaqə", to: "/contact" },
 ];
