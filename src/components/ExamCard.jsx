@@ -76,10 +76,10 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
   return (
     <div
       onClick={() => navigate(`/exam/details/${exam._id}`)}
-      className="group flex h-full cursor-pointer flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-soft transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:shadow-lift"
+      className="group flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:shadow-lift"
     >
       {/* Cover banner with status + price overlaid */}
-      <div className="relative h-44 w-full shrink-0 overflow-hidden">
+      <div className="relative h-28 w-full shrink-0 overflow-hidden sm:h-32">
         {exam.coverImage ? (
           <img
             src={exam.coverImage}
@@ -115,66 +115,66 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col p-5">
+      <div className="flex flex-1 flex-col p-4">
         {/* Title */}
-        <h3 className="line-clamp-2 font-display text-lg font-bold leading-snug text-text">
+        <h3 className="line-clamp-2 font-display text-[15px] font-bold leading-snug text-text">
           {exam.name}
         </h3>
 
         {/* Stats: Sual / Dəq / Bal */}
-        <div className="mt-4 grid grid-cols-3 gap-2 border-t border-line pt-5 text-center">
+        <div className="mt-3 grid grid-cols-3 gap-2 border-t border-line pt-3.5 text-center">
           <div>
-            <p className="font-display text-[26px] font-extrabold leading-none text-primary">{qCount}</p>
-            <p className="mt-1.5 text-xs text-muted">Sual</p>
+            <p className="font-display text-xl font-extrabold leading-none text-primary">{qCount}</p>
+            <p className="mt-1 text-[11px] text-muted">Sual</p>
           </div>
           <div>
-            <p className="font-display text-[26px] font-extrabold leading-none text-success">
+            <p className="font-display text-xl font-extrabold leading-none text-success">
               {Math.round((exam.duration || 0) / 60)}
             </p>
-            <p className="mt-1.5 text-xs text-muted">Dəq</p>
+            <p className="mt-1 text-[11px] text-muted">Dəq</p>
           </div>
           <div>
-            <p className="font-display text-[26px] font-extrabold leading-none text-accent2">
+            <p className="font-display text-xl font-extrabold leading-none text-accent2">
               {exam.totalMarks ?? "—"}
             </p>
-            <p className="mt-1.5 text-xs text-muted">Bal</p>
+            <p className="mt-1 text-[11px] text-muted">Bal</p>
           </div>
         </div>
 
         {/* Footer: owner tools + action button(s). Stop card navigation so these
             controls do their own thing. */}
-        <div className="mt-auto pt-5" onClick={(e) => e.stopPropagation()}>
+        <div className="mt-auto pt-4" onClick={(e) => e.stopPropagation()}>
           {!publicView && (
-            <ExamAdminActions exam={exam} onChanged={onChanged} className="mb-4 border-t border-line pt-4" />
+            <ExamAdminActions exam={exam} onChanged={onChanged} className="mb-3 border-t border-line pt-3" />
           )}
 
           {publicView ? (
-            <Button to={`/exam/details/${exam._id}`} size="lg" className="w-full">
+            <Button to={`/exam/details/${exam._id}`} size="md" className="w-full">
               <FiPlay /> Başla
             </Button>
           ) : taken ? (
             <div className="flex flex-col gap-2 sm:flex-row">
-              <Button to={`/exam/${exam._id}/result`} size="lg" className="w-full bg-success text-white hover:brightness-105">
+              <Button to={`/exam/${exam._id}/result`} size="md" className="w-full bg-success text-white hover:brightness-105">
                 <FiBarChart2 /> Nəticəni gör
               </Button>
-              <Button to={`/exam/details/${exam._id}`} variant="outline" size="lg" className="w-full">
+              <Button to={`/exam/details/${exam._id}`} variant="outline" size="md" className="w-full">
                 İmtahana bax
               </Button>
             </div>
           ) : upcoming ? (
-            <Button disabled size="lg" className="w-full">
+            <Button disabled size="md" className="w-full">
               <FiClock /> Tezliklə · {fmtDate(exam.startDate)}
             </Button>
           ) : ended ? (
-            <Button disabled size="lg" className="w-full">
+            <Button disabled size="md" className="w-full">
               İmtahan bitib
             </Button>
           ) : owned ? (
-            <Button to={`/exam/details/${exam._id}`} size="lg" className="w-full">
+            <Button to={`/exam/details/${exam._id}`} size="md" className="w-full">
               <FiPlay /> İmtahana başla
             </Button>
           ) : (
-            <Button onClick={buy} size="lg" className="w-full">
+            <Button onClick={buy} size="md" className="w-full">
               {free ? (
                 <>
                   <FiCheckCircle /> Pulsuz əldə et

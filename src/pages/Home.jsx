@@ -156,34 +156,34 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 5 — FINAL CTA (bright primary band — separates the two navy sections) */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-cyan text-white">
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-graph-on-dark [mask-image:radial-gradient(ellipse_at_center,black,transparent_80%)]" />
+      {/* 5 — FINAL CTA (white band — separates the navy preview from the footer) */}
+      <section className="relative overflow-hidden bg-bg">
+        <div aria-hidden className="pointer-events-none absolute inset-0 bg-graph [mask-image:radial-gradient(ellipse_at_center,black,transparent_72%)]" />
         <div className="container-app relative pb-12 pt-20 text-center sm:pb-16 sm:pt-28">
-          <h2 className="mx-auto max-w-2xl font-display text-3xl font-extrabold tracking-tight sm:text-5xl">
+          <h2 className="mx-auto max-w-2xl font-display text-3xl font-extrabold tracking-tight text-text sm:text-5xl">
             Növbəti imtahana daha hazırlıqlı gir.
           </h2>
-          <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-white/85">
+          <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-muted">
             Bu gün sınağa başla və riyaziyyat nəticəni sistemli şəkildə yüksəlt.
           </p>
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
               to="/register"
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-white px-7 text-base font-semibold text-primary shadow-lift transition-transform hover:-translate-y-0.5"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-7 text-base font-semibold text-primary-fg shadow-glow transition-transform hover:-translate-y-0.5"
             >
               İlk sınağa başla <FiArrowRight />
             </Link>
             <a
               href="#sinaqlar"
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-white/50 px-7 text-base font-semibold text-white transition-colors hover:bg-white/15"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-line bg-surface px-7 text-base font-semibold text-text transition-colors hover:border-primary/50"
             >
               Sınaqlara bax
             </a>
           </div>
-          <ul className="mx-auto mt-9 flex max-w-md flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-white/85">
-            <li className="flex items-center gap-2"><FiCheckCircle /> Pulsuz başla</li>
-            <li className="flex items-center gap-2"><FiCheckCircle /> Real imtahan formatı</li>
-            <li className="flex items-center gap-2"><FiCheckCircle /> Nəticə analizi</li>
+          <ul className="mx-auto mt-9 flex max-w-md flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted">
+            <li className="flex items-center gap-2"><FiCheckCircle className="text-primary" /> Pulsuz başla</li>
+            <li className="flex items-center gap-2"><FiCheckCircle className="text-primary" /> Real imtahan formatı</li>
+            <li className="flex items-center gap-2"><FiCheckCircle className="text-primary" /> Nəticə analizi</li>
           </ul>
         </div>
       </section>
