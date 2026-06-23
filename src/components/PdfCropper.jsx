@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 // `?url` makes Vite hand back a real, served URL for the worker in BOTH the dev
 // server and the production build. The bare `new URL(..., import.meta.url)` form
@@ -36,9 +36,23 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
   const [ready, setReady] = useState(false);
   const [loadErr, setLoadErr] = useState(null);
   const [zoom, setZoom] = useState(1);
+  const [preview, setPreview] = useState(null); // data URL of the pending crop
   const wrapRef = useRef(null);
   const drag = useRef(null);
   const pdfRef = useRef(null); // the loaded pdf.js document (for fresh crops)
+
+  // If the parent hands us a different PDF while this stays mounted, follow it —
+  // otherwise we'd keep cropping the PREVIOUS document the user can't see.
+  useEffect(() => {
+    if (file) {
+      setSrc(file);
+      pdfRef.current = null;
+      setReady(false);
+      setSel(null);
+      setPreview(null);
+      setPage(1);
+    }
+  }, [file]);
 
   const renderW = Math.round(PAGE_W * zoom);
   // Changing zoom resizes the page, so the old selection box no longer lines up
@@ -47,6 +61,7 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
   const changeZoom = (z) => {
     setZoom(clamp(z, MIN_ZOOM, MAX_ZOOM));
     setSel(null);
+    setPreview(null);
   };
 
   const pos = (e) => {
@@ -59,6 +74,7 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
     const p = pos(e);
     drag.current = p;
     setSel({ x: p.x, y: p.y, w: 0, h: 0 });
+    setPreview(null);
     wrapRef.current.setPointerCapture?.(e.pointerId);
   };
   const onMove = (e) => {
@@ -74,12 +90,51 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
   };
   const onUp = () => {
     drag.current = null;
+    // Build a live preview of the pending crop so the teacher SEES exactly what
+    // will be added (and which page it comes from) before committing.
+    makePreview();
   };
 
   const goPage = (d) => {
     setPage((p) => clamp(p + d, 1, numPages || 1));
     setSel(null);
+    setPreview(null);
     setReady(false);
+  };
+
+  // Re-render THIS page fresh from pdf.js (never read the displayed canvas,
+  // which can be stale/from the wrong page) and crop the exact selected region.
+  // The page is rendered at 2x the on-screen width for a crisp figure. Returns
+  // the cropped canvas, or null if not ready / selection too small.
+  const cropToCanvas = async (s) => {
+    const pdf = pdfRef.current;
+    if (!pdf || !s || s.w < 8 || s.h < 8) return null;
+    const pg = await pdf.getPage(page);
+    const base = pg.getViewport({ scale: 1 });
+    const scale = (renderW * 2) / base.width;
+    const vp = pg.getViewport({ scale });
+    const full = document.createElement("canvas");
+    full.width = Math.ceil(vp.width);
+    full.height = Math.ceil(vp.height);
+    await pg.render({ canvasContext: full.getContext("2d"), viewport: vp }).promise;
+    // s is CSS px relative to the page (rendered at renderW); map to device px.
+    const k = vp.width / renderW;
+    const out = document.createElement("canvas");
+    out.width = Math.max(1, Math.round(s.w * k));
+    out.height = Math.max(1, Math.round(s.h * k));
+    out
+      .getContext("2d")
+      .drawImage(full, s.x * k, s.y * k, s.w * k, s.h * k, 0, 0, out.width, out.height);
+    return out;
+  };
+
+  const makePreview = async () => {
+    try {
+      const out = await cropToCanvas(sel);
+      setPreview(out ? out.toDataURL("image/png") : null);
+    } catch {
+      setPreview(null);
+    }
   };
 
   const apply = async () => {
@@ -87,36 +142,14 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
       toast.error("Şəkil sahəsini seçin (kursoru sürüşdürün)");
       return;
     }
-    const pdf = pdfRef.current;
-    if (!pdf) {
+    if (!pdfRef.current) {
       toast.error("Səhifə hələ hazır deyil");
       return;
     }
     setBusy(true);
     try {
-      // Re-render THIS page fresh from pdf.js (don't read the displayed canvas,
-      // which can be stale/wrong), then crop the exact selected region. The page
-      // is rendered at 2x the on-screen width for a crisp figure.
-      const pg = await pdf.getPage(page);
-      const base = pg.getViewport({ scale: 1 });
-      const scale = (renderW * 2) / base.width;
-      const vp = pg.getViewport({ scale });
-      const full = document.createElement("canvas");
-      full.width = Math.ceil(vp.width);
-      full.height = Math.ceil(vp.height);
-      await pg.render({ canvasContext: full.getContext("2d"), viewport: vp }).promise;
-
-      // sel is in CSS px relative to the page (rendered at renderW). Map to the
-      // fresh canvas's device pixels.
-      const k = vp.width / renderW;
-      const out = document.createElement("canvas");
-      out.width = Math.max(1, Math.round(sel.w * k));
-      out.height = Math.max(1, Math.round(sel.h * k));
-      out
-        .getContext("2d")
-        .drawImage(full, sel.x * k, sel.y * k, sel.w * k, sel.h * k, 0, 0, out.width, out.height);
-
-      const blob = await new Promise((res) => out.toBlob(res, "image/png"));
+      const out = await cropToCanvas(sel);
+      const blob = out && (await new Promise((res) => out.toBlob(res, "image/png")));
       if (!blob) {
         toast.error("Kəsmə alınmadı");
         return;
@@ -294,6 +327,22 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
                 )}
               </div>
             </Document>
+          </div>
+        )}
+
+        {/* Live preview of the pending crop — exactly what "Kəs və əlavə et" will
+            add, taken from THIS page. If you don't see this panel after dragging,
+            you're on an old cached build (hard-refresh / reinstall the app). */}
+        {preview && (
+          <div className="pointer-events-none fixed bottom-4 right-4 z-[1610] w-52 rounded-2xl border border-primary/40 bg-surface p-2.5 shadow-lift">
+            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-primary">
+              Önizləmə · səhifə {page}
+            </p>
+            <img
+              src={preview}
+              alt="Kəsiləcək sahənin önizləməsi"
+              className="max-h-48 w-full rounded-lg border border-line bg-white object-contain"
+            />
           </div>
         )}
       </div>
