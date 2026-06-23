@@ -848,6 +848,9 @@ const StructuredBuilder = () => {
           ? `${mapped.length} sual əlavə edildi — düzgün cavabları yoxlayın.`
           : `${mapped.length} sual idxal edildi — düzgün cavabları yoxlayın.`
       );
+      if (res.data?.fellBack) {
+        toast.info("Gemini məşğul idi — bu çıxarış Claude ilə emal olundu.");
+      }
       const figs = aiQs.filter((q) => q.hasFigure).length;
       if (figs) toast.info(`${figs} sualda şəkil var — şəkilləri əl ilə əlavə edin.`);
       const noKey = mapped.filter(
