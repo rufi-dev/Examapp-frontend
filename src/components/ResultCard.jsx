@@ -29,7 +29,9 @@ const ResultCard = ({ result }) => {
       .sort((a, b) => a - b)
       .map((n) => String.fromCharCode(97 + n))
       .join(",");
-  const fmtCmu = (val) => {
+  // Render a Cmu answer as a compact vertical mini-list (one "N: letters" per
+  // line) so it never wraps char-by-char and breaks the table row height.
+  const renderCmu = (val) => {
     const entries = Array.isArray(val)
       ? val.map((arr, k) => [k, arr])
       : val && typeof val === "object"
@@ -40,7 +42,16 @@ const ResultCard = ({ result }) => {
     const parts = entries
       .filter(([, arr]) => Array.isArray(arr) && arr.length)
       .map(([k, arr]) => `${Number(k) + 1}: ${cmuLetters(arr)}`);
-    return parts.length ? parts.join(" · ") : "—";
+    if (!parts.length) return "—";
+    return (
+      <span className="inline-flex flex-col items-start gap-0.5 text-left leading-tight">
+        {parts.map((p, idx) => (
+          <span key={idx} className="whitespace-nowrap">
+            {p}
+          </span>
+        ))}
+      </span>
+    );
   };
   // Render any answer shape (string / index / array / map) to a compact label —
   // never "[object Object]" and never a falsy index-0 dropped to a dash.
@@ -82,7 +93,7 @@ const ResultCard = ({ result }) => {
             {cells.map((i) => (
               <td
                 key={i}
-                className="border-l border-line px-3 py-3 text-center font-semibold text-muted"
+                className="min-w-[3rem] whitespace-nowrap border-l border-line px-3 py-3 text-center font-semibold text-muted"
               >
                 {i + 1}
               </td>
@@ -92,9 +103,12 @@ const ResultCard = ({ result }) => {
             <tr className="border-b border-line">
               <td className={rowLabel}>Doğru cavab</td>
               {cells.map((i) => (
-                <td key={i} className="border-l border-line px-3 py-3 text-center text-text">
+                <td
+                  key={i}
+                  className="min-w-[3rem] whitespace-nowrap border-l border-line px-3 py-3 text-center align-middle text-text"
+                >
                   {isCmuCell(i)
-                    ? fmtCmu(correctAnswers[i]?.answer)
+                    ? renderCmu(correctAnswers[i]?.answer)
                     : fmt(correctAnswers[i]?.answer, isIndexCell(i))}
                 </td>
               ))}
@@ -105,7 +119,7 @@ const ResultCard = ({ result }) => {
             {cells.map((i) => (
               <td
                 key={i}
-                className={`border-l border-line px-3 py-3 text-center font-medium ${
+                className={`min-w-[3rem] whitespace-nowrap border-l border-line px-3 py-3 text-center align-middle font-medium ${
                   showMark(i)
                     ? isCorrect(i)
                       ? "bg-success/15 text-success"
@@ -114,7 +128,7 @@ const ResultCard = ({ result }) => {
                 }`}
               >
                 {isCmuCell(i)
-                  ? fmtCmu(selectedAnswers[i]?.answer)
+                  ? renderCmu(selectedAnswers[i]?.answer)
                   : fmt(selectedAnswers[i]?.answer, isIndexCell(i))}
               </td>
             ))}
@@ -123,7 +137,7 @@ const ResultCard = ({ result }) => {
             <tr>
               <td className={rowLabel}>Nəticə</td>
               {cells.map((i) => (
-                <td key={i} className="border-l border-line px-3 py-3 text-center">
+                <td key={i} className="min-w-[3rem] whitespace-nowrap border-l border-line px-3 py-3 text-center align-middle">
                   {isCorrect(i) ? (
                     <span className="font-bold text-success">✓</span>
                   ) : (
