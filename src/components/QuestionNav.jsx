@@ -14,6 +14,7 @@ const QuestionNav = ({
   onJump,
   onFinish,
   finishing = false,
+  lockBefore = 0,
 }) => {
   const [open, setOpen] = useState(false);
   if (!total) return null;
@@ -65,6 +66,7 @@ const QuestionNav = ({
               answers={answers}
               marked={marked}
               activeRange={activeRange}
+              lockBefore={lockBefore}
               onJump={(i) => {
                 onJump?.(i);
                 setOpen(false);

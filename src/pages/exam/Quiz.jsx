@@ -158,10 +158,13 @@ const Quiz = () => {
     []
   );
   const jumpToQuestion = useCallback((i) => {
-    setMobileView("answers"); // on mobile, make the answer sheet visible first
     // When paginated, switch to the page that holds this question first.
-    const { perPage, pageSize } = pagingRef.current;
-    if (perPage > 0) setExamPage(Math.floor(i / pageSize));
+    const { perPage, pageSize, forwardOnly, page } = pagingRef.current;
+    const target = perPage > 0 ? Math.floor(i / pageSize) : 0;
+    // Linear mode: ignore any jump to an earlier page (no going back).
+    if (perPage > 0 && forwardOnly && target < page) return;
+    setMobileView("answers"); // on mobile, make the answer sheet visible first
+    if (perPage > 0) setExamPage(target);
     // Small delay so the target page renders before we scroll to it.
     setTimeout(() => {
       const el = document.getElementById(`q-${i}`);
@@ -215,6 +218,8 @@ const Quiz = () => {
   // Structured pagination: split the question sheet into pages of N (0 = all on
   // one page, the default). Indices stay global; we just window the render.
   const examPerPage = structured ? Number(attempt?.questionsPerPage || 0) : 0;
+  // Linear mode: no going back to earlier pages/questions (only matters when paged).
+  const forwardOnly = !!attempt?.forwardOnly && examPerPage > 0;
   const examPageSize = examPerPage > 0 ? examPerPage : Math.max(1, totalCount);
   const examPageCount = Math.max(1, Math.ceil(Math.max(1, totalCount) / examPageSize));
   const safeExamPage = Math.min(Math.max(0, examPage), examPageCount - 1);
@@ -222,7 +227,12 @@ const Quiz = () => {
     examPerPage > 0
       ? { start: safeExamPage * examPageSize, end: safeExamPage * examPageSize + examPageSize }
       : null;
-  pagingRef.current = { perPage: examPerPage, pageSize: examPageSize };
+  pagingRef.current = {
+    perPage: examPerPage,
+    pageSize: examPageSize,
+    forwardOnly,
+    page: safeExamPage,
+  };
 
   // Start (or resume) the attempt. The server gates access (verification,
   // window, max tries, AND the exam password) and returns the questions without
@@ -889,6 +899,7 @@ const Quiz = () => {
                 answers={answers}
                 marked={marked}
                 activeRange={examRange}
+                lockBefore={forwardOnly ? safeExamPage * examPageSize : 0}
                 onJump={jumpToQuestion}
                 onFinish={structured ? () => setConfirmFinish(true) : undefined}
                 finishing={isSubmitting}
@@ -943,6 +954,7 @@ const Quiz = () => {
                 answers={answers}
                 marked={marked}
                 activeRange={examRange}
+                lockBefore={forwardOnly ? safeExamPage * examPageSize : 0}
                 onJump={jumpToQuestion}
                 onFinish={() => setConfirmFinish(true)}
                 finishing={isSubmitting}
@@ -985,14 +997,18 @@ const Quiz = () => {
               <div className="mx-auto w-full max-w-2xl">
                 {examPerPage > 0 ? (
                   <div className="flex items-center justify-between gap-3">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setExamPage((p) => Math.max(0, p - 1))}
-                      disabled={safeExamPage <= 0}
-                    >
-                      ← Əvvəlki
-                    </Button>
+                    {forwardOnly ? (
+                      <span aria-hidden />
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setExamPage((p) => Math.max(0, p - 1))}
+                        disabled={safeExamPage <= 0}
+                      >
+                        ← Əvvəlki
+                      </Button>
+                    )}
                     <span className="hidden text-sm font-semibold text-muted sm:block">
                       {safeExamPage + 1} / {examPageCount}
                     </span>

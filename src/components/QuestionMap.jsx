@@ -17,6 +17,7 @@ const QuestionMap = ({
   onFinish,
   finishing = false,
   dense = false,
+  lockBefore = 0, // forward-only mode: questions before this index aren't reachable
 }) => {
   if (!total) return null;
   const answered = answers.slice(0, total).filter(hasAnswer).length;
@@ -42,14 +43,20 @@ const QuestionMap = ({
             const a = hasAnswer(answers[i]);
             const m = !!marked[i];
             const active = isActive(i);
+            const locked = i < lockBefore;
             return (
               <button
                 key={i}
                 type="button"
+                disabled={locked}
                 onClick={() => onJump?.(i)}
-                title={`Sual ${i + 1}${a ? " — cavablandı" : ""}${m ? " — işarələnib" : ""}`}
+                title={`Sual ${i + 1}${a ? " — cavablandı" : ""}${m ? " — işarələnib" : ""}${
+                  locked ? " — geri qayıtmaq olmaz" : ""
+                }`}
                 className={`relative grid h-9 place-items-center rounded-lg border text-sm font-bold transition-colors ${
-                  a
+                  locked
+                    ? "cursor-not-allowed border-line bg-surface2 text-muted/40"
+                    : a
                     ? "border-primary bg-primary text-primary-fg"
                     : "border-line bg-surface text-muted hover:border-primary/40"
                 } ${

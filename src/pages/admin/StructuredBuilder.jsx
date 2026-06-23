@@ -392,6 +392,8 @@ const StructuredBuilder = () => {
   const [explEnabled, setExplEnabled] = useState(false);
   // Display paging: how many questions per page (default all).
   const [perPage, setPerPage] = useState("all");
+  // Linear mode: student can only go forward (no going back to earlier pages).
+  const [forwardOnly, setForwardOnly] = useState(false);
   const [page, setPage] = useState(0);
 
   // Cycle the AI loader status lines while an extraction runs.
@@ -413,11 +415,13 @@ const StructuredBuilder = () => {
   const serverQsRef = useRef(null);
   const savedJsonRef = useRef(""); // JSON of the last server-saved questions
   const savedPerPageRef = useRef(0); // last server-saved questionsPerPage (0 = all)
+  const savedForwardOnlyRef = useRef(false); // last server-saved forwardOnly
   // "all" -> 0; otherwise the numeric per-page count.
   const perPageNum = perPage === "all" ? 0 : Number(perPage);
   const dirty =
     JSON.stringify(questions) !== savedJsonRef.current ||
-    perPageNum !== savedPerPageRef.current;
+    perPageNum !== savedPerPageRef.current ||
+    forwardOnly !== savedForwardOnlyRef.current;
 
   // Pre-load existing structured questions so editing is non-destructive.
   useEffect(() => {
@@ -432,6 +436,8 @@ const StructuredBuilder = () => {
         const qpp = Number(exam?.questionsPerPage || 0);
         savedPerPageRef.current = qpp;
         setPerPage(qpp > 0 ? String(qpp) : "all");
+        savedForwardOnlyRef.current = !!exam?.forwardOnly;
+        setForwardOnly(!!exam?.forwardOnly);
         const existing = exam?.questions?.correctAnswers;
         const isStructured =
           Array.isArray(existing) &&
@@ -984,10 +990,14 @@ const StructuredBuilder = () => {
     setLoading(true);
     try {
       await dispatch(
-        addQuestion({ examId, questionData: { correctAnswers, questionsPerPage: perPageNum } })
+        addQuestion({
+          examId,
+          questionData: { correctAnswers, questionsPerPage: perPageNum, forwardOnly },
+        })
       ).unwrap();
       savedJsonRef.current = JSON.stringify(questions);
       savedPerPageRef.current = perPageNum;
+      savedForwardOnlyRef.current = forwardOnly;
       try {
         localStorage.removeItem(draftKey);
       } catch {
@@ -1147,9 +1157,15 @@ const StructuredBuilder = () => {
           <Switch checked={explEnabled} onChange={setExplEnabled} label="İzah" hint="Cavaba izah göstər" />
         </div>
 
-        <div className="space-y-1.5 border-t border-line pt-3">
+        <div className="space-y-2 border-t border-line pt-3">
           <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">Səhifədə sual sayı</span>
           <Dropdown value={perPage} options={PAGE_OPTIONS} onChange={setPageCount} />
+          <Switch
+            checked={forwardOnly}
+            onChange={setForwardOnly}
+            label="Yalnız irəli"
+            hint="Şagird geri qayıda bilməz — yalnız növbəti səhifəyə keçir"
+          />
         </div>
 
         <div className="border-t border-line pt-3 text-xs text-muted">{total} sual · {totalBal} bal</div>
