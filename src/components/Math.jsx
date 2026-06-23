@@ -93,11 +93,14 @@ export const MathText = ({ text, className = "" }) => {
   const str = String(text ?? "");
   const segments = useMemo(() => parseMathSegments(str), [str]);
   if (!str) return null;
+  // `whitespace-pre-line` honours newlines authored in the text (so a question
+  // written across multiple lines / with blank lines renders the same way),
+  // while still collapsing ordinary runs of spaces and wrapping normally.
   if (!segments.some((s) => s.math)) {
-    return <span className={className}>{str}</span>;
+    return <span className={`whitespace-pre-line ${className}`}>{str}</span>;
   }
   return (
-    <span className={className}>
+    <span className={`whitespace-pre-line ${className}`}>
       {segments.map((s, k) =>
         s.math ? (
           <Math key={k} latex={s.value} display={s.display} />
