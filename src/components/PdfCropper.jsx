@@ -38,6 +38,7 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
   const [zoom, setZoom] = useState(1);
   const wrapRef = useRef(null);
   const drag = useRef(null);
+  const pdfRef = useRef(null); // the loaded pdf.js document (for fresh crops)
 
   const renderW = Math.round(PAGE_W * zoom);
   // Changing zoom resizes the page, so the old selection box no longer lines up
@@ -81,48 +82,54 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
     setReady(false);
   };
 
-  const apply = () => {
+  const apply = async () => {
     if (!sel || sel.w < 8 || sel.h < 8) {
       toast.error("Şəkil sahəsini seçin (kursoru sürüşdürün)");
       return;
     }
-    const canvas = wrapRef.current?.querySelector("canvas.react-pdf__Page__canvas");
-    if (!canvas) {
+    const pdf = pdfRef.current;
+    if (!pdf) {
       toast.error("Səhifə hələ hazır deyil");
       return;
     }
-    // Map CSS-pixel selection to the canvas's device pixels.
-    const sX = canvas.width / canvas.clientWidth;
-    const sY = canvas.height / canvas.clientHeight;
-    const out = document.createElement("canvas");
-    out.width = Math.max(1, Math.round(sel.w * sX));
-    out.height = Math.max(1, Math.round(sel.h * sY));
-    out
-      .getContext("2d")
-      .drawImage(
-        canvas,
-        sel.x * sX,
-        sel.y * sY,
-        sel.w * sX,
-        sel.h * sY,
-        0,
-        0,
-        out.width,
-        out.height
-      );
     setBusy(true);
-    out.toBlob(
-      (blob) => {
-        if (!blob) {
-          setBusy(false);
-          toast.error("Kəsmə alınmadı");
-          return;
-        }
-        const f = new File([blob], `figure-${page}.png`, { type: "image/png" });
-        Promise.resolve(onCrop(f)).finally(() => setBusy(false));
-      },
-      "image/png"
-    );
+    try {
+      // Re-render THIS page fresh from pdf.js (don't read the displayed canvas,
+      // which can be stale/wrong), then crop the exact selected region. The page
+      // is rendered at 2x the on-screen width for a crisp figure.
+      const pg = await pdf.getPage(page);
+      const base = pg.getViewport({ scale: 1 });
+      const scale = (renderW * 2) / base.width;
+      const vp = pg.getViewport({ scale });
+      const full = document.createElement("canvas");
+      full.width = Math.ceil(vp.width);
+      full.height = Math.ceil(vp.height);
+      await pg.render({ canvasContext: full.getContext("2d"), viewport: vp }).promise;
+
+      // sel is in CSS px relative to the page (rendered at renderW). Map to the
+      // fresh canvas's device pixels.
+      const k = vp.width / renderW;
+      const out = document.createElement("canvas");
+      out.width = Math.max(1, Math.round(sel.w * k));
+      out.height = Math.max(1, Math.round(sel.h * k));
+      out
+        .getContext("2d")
+        .drawImage(full, sel.x * k, sel.y * k, sel.w * k, sel.h * k, 0, 0, out.width, out.height);
+
+      const blob = await new Promise((res) => out.toBlob(res, "image/png"));
+      if (!blob) {
+        toast.error("Kəsmə alınmadı");
+        return;
+      }
+      const f = new File([blob], `figure-${page}.png`, { type: "image/png" });
+      await onCrop(f);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error("[PdfCropper] crop failed:", e);
+      toast.error("Kəsmə alınmadı");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -229,6 +236,7 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
               file={src}
               onLoadSuccess={(pdf) => {
                 setLoadErr(null);
+                pdfRef.current = pdf;
                 setNumPages(pdf.numPages);
               }}
               onLoadError={(e) => {
