@@ -542,6 +542,54 @@ const Quiz = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [access, examId]);
 
+  // Screenshot / copy DETERRENTS — active for EVERY exam, even when anti-cheat is
+  // OFF. ⚠️ Browsers cannot truly block OS / phone screenshots (no web API can);
+  // this disables right-click, copy/cut, text selection and dragging, blocks the
+  // common copy/save/print/view-source shortcuts, and clears the clipboard + warns
+  // on PrintScreen (which on Windows copies the screen to the clipboard). It is a
+  // strong deterrent, not a hard guarantee.
+  useEffect(() => {
+    if (access !== "allowed") return;
+    const block = (e) => e.preventDefault();
+    const clearClip = () => {
+      try {
+        navigator.clipboard?.writeText(" ");
+      } catch {
+        /* ignore */
+      }
+    };
+    const onKey = (e) => {
+      const k = (e.key || "").toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && ["c", "x", "s", "u", "p", "a"].includes(k)) {
+        e.preventDefault();
+      }
+      if (e.key === "PrintScreen" || e.keyCode === 44) {
+        clearClip();
+        toast.warn("Ekran şəkli çəkmək imtahan zamanı qadağandır.");
+      }
+    };
+    const onKeyUp = (e) => {
+      if (e.key === "PrintScreen" || e.keyCode === 44) clearClip();
+    };
+    document.addEventListener("contextmenu", block);
+    document.addEventListener("copy", block);
+    document.addEventListener("cut", block);
+    document.addEventListener("dragstart", block);
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("keyup", onKeyUp);
+    const prevSelect = document.body.style.userSelect;
+    document.body.style.userSelect = "none";
+    return () => {
+      document.removeEventListener("contextmenu", block);
+      document.removeEventListener("copy", block);
+      document.removeEventListener("cut", block);
+      document.removeEventListener("dragstart", block);
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("keyup", onKeyUp);
+      document.body.style.userSelect = prevSelect;
+    };
+  }, [access]);
+
   // Anti-cheat: when the exam enables it, lock the page down and log leaving.
   // A violation is counted when the page is hidden (minimize / tab switch) OR
   // the window loses focus to another window/app. To dodge the false positives
@@ -616,25 +664,11 @@ const Quiz = () => {
     };
     const onFs = () => setIsFs(!!document.fullscreenElement);
     setIsFs(!!document.fullscreenElement);
-    const block = (e) => e.preventDefault();
-    const onKey = (e) => {
-      const k = (e.key || "").toLowerCase();
-      if ((e.ctrlKey || e.metaKey) && ["c", "v", "x", "p", "s", "u", "a"].includes(k)) {
-        e.preventDefault();
-      }
-    };
 
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("blur", onBlur);
     window.addEventListener("focus", onFocus);
     document.addEventListener("fullscreenchange", onFs);
-    document.addEventListener("contextmenu", block);
-    document.addEventListener("copy", block);
-    document.addEventListener("cut", block);
-    document.addEventListener("paste", block);
-    document.addEventListener("keydown", onKey);
-    const prevSelect = document.body.style.userSelect;
-    document.body.style.userSelect = "none";
 
     return () => {
       if (blurTimer) clearTimeout(blurTimer);
@@ -642,12 +676,6 @@ const Quiz = () => {
       window.removeEventListener("blur", onBlur);
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("fullscreenchange", onFs);
-      document.removeEventListener("contextmenu", block);
-      document.removeEventListener("copy", block);
-      document.removeEventListener("cut", block);
-      document.removeEventListener("paste", block);
-      document.removeEventListener("keydown", onKey);
-      document.body.style.userSelect = prevSelect;
       if (document.fullscreenElement && document.exitFullscreen) {
         document.exitFullscreen().catch(() => {});
       }

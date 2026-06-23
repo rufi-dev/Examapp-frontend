@@ -25,9 +25,23 @@ const getExamsByClass = async (id) => {
 
 // Report one anti-cheat violation against a specific attempt; the server
 // increments + enforces the limit and returns { violations, terminated, limit }.
+// Uses fetch with keepalive so the penalty is delivered the INSTANT the student
+// leaves — even if the tab is backgrounded or closed (a normal axios request can
+// be dropped on unload). keepalive still allows the Authorization header (unlike
+// sendBeacon), so cross-domain auth keeps working.
 export const reportViolation = async (examId, reason, attemptId) => {
-    const response = await axios.post(`${API_URL}exam/${examId}/violation`, { reason, attemptId })
-    return response.data
+    const token = localStorage.getItem("token")
+    const res = await fetch(`${API_URL}exam/${examId}/violation`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: "include",
+        keepalive: true,
+        body: JSON.stringify({ reason, attemptId }),
+    })
+    return res.json()
 }
 
 //getResultsByExam
