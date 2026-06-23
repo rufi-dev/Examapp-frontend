@@ -357,6 +357,8 @@ const StructuredBuilder = () => {
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false); // exam/questions loaded -> show builder
   const [extracting, setExtracting] = useState(false); // AI PDF import running
+  // AI provider for PDF extraction: "gemini" (cheaper, default) or "claude".
+  const [aiProvider, setAiProvider] = useState("gemini");
   const pdfInputRef = useRef(null);
   // PDF import: "append" adds to the end, "replace" overwrites everything. We
   // ask (a 2-button dialog) only when the builder already has real content.
@@ -816,6 +818,7 @@ const StructuredBuilder = () => {
     try {
       const fd = new FormData();
       fd.append("pdf", file);
+      fd.append("provider", aiProvider);
       const res = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/quiz/extractQuestions/${examId}`,
         fd
@@ -1070,20 +1073,43 @@ const StructuredBuilder = () => {
       </button>
     );
     const importBtn = (
-      <button
-        type="button"
-        onClick={startImport}
-        disabled={extracting}
-        title="Süni intellekt PDF-dən sualları avtomatik çıxarır"
-        className={`inline-flex items-center justify-center gap-1.5 rounded-xl border border-primary/40 bg-gradient-to-r from-primary/10 to-accent2/10 px-3 py-2.5 text-sm font-bold text-primary transition-colors hover:from-primary/20 hover:to-accent2/20 disabled:opacity-60 ${
-          vertical ? "w-full" : "shrink-0"
-        }`}
-      >
-        {extracting ? <Spinner size={16} /> : <FiZap />} PDF-dən idxal
-        <span className="rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-primary-fg">
-          AI
-        </span>
-      </button>
+      <div className={`flex flex-col gap-1.5 ${vertical ? "w-full" : "shrink-0"}`}>
+        <button
+          type="button"
+          onClick={startImport}
+          disabled={extracting}
+          title="Süni intellekt PDF-dən sualları avtomatik çıxarır"
+          className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-primary/40 bg-gradient-to-r from-primary/10 to-accent2/10 px-3 py-2.5 text-sm font-bold text-primary transition-colors hover:from-primary/20 hover:to-accent2/20 disabled:opacity-60"
+        >
+          {extracting ? <Spinner size={16} /> : <FiZap />} PDF-dən idxal
+          <span className="rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-primary-fg">
+            AI
+          </span>
+        </button>
+        {/* AI model: Gemini (cheaper) or Claude (more precise). */}
+        <div className="flex items-center gap-0.5 rounded-lg border border-line bg-surface p-0.5 text-[11px] font-semibold">
+          <button
+            type="button"
+            onClick={() => setAiProvider("gemini")}
+            disabled={extracting}
+            className={`flex-1 rounded-md px-2 py-1 transition-colors ${
+              aiProvider === "gemini" ? "bg-primary text-primary-fg" : "text-muted hover:text-text"
+            }`}
+          >
+            Gemini · ucuz
+          </button>
+          <button
+            type="button"
+            onClick={() => setAiProvider("claude")}
+            disabled={extracting}
+            className={`flex-1 rounded-md px-2 py-1 transition-colors ${
+              aiProvider === "claude" ? "bg-primary text-primary-fg" : "text-muted hover:text-text"
+            }`}
+          >
+            Claude · dəqiq
+          </button>
+        </div>
+      </div>
     );
     const undoRedo = (
       <div className="flex items-center gap-1">
