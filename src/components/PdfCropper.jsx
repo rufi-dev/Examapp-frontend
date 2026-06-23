@@ -40,6 +40,7 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
   const wrapRef = useRef(null);
   const drag = useRef(null);
   const pdfRef = useRef(null); // the loaded pdf.js document (for fresh crops)
+  const cropCanvasRef = useRef(null); // the canvas behind the current preview
 
   // If the parent hands us a different PDF while this stays mounted, follow it —
   // otherwise we'd keep cropping the PREVIOUS document the user can't see.
@@ -47,6 +48,7 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
     if (file) {
       setSrc(file);
       pdfRef.current = null;
+      cropCanvasRef.current = null;
       setReady(false);
       setSel(null);
       setPreview(null);
@@ -62,6 +64,7 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
     setZoom(clamp(z, MIN_ZOOM, MAX_ZOOM));
     setSel(null);
     setPreview(null);
+    cropCanvasRef.current = null;
   };
 
   const pos = (e) => {
@@ -75,6 +78,7 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
     drag.current = p;
     setSel({ x: p.x, y: p.y, w: 0, h: 0 });
     setPreview(null);
+    cropCanvasRef.current = null;
     wrapRef.current.setPointerCapture?.(e.pointerId);
   };
   const onMove = (e) => {
@@ -99,6 +103,7 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
     setPage((p) => clamp(p + d, 1, numPages || 1));
     setSel(null);
     setPreview(null);
+    cropCanvasRef.current = null;
     setReady(false);
   };
 
@@ -131,8 +136,10 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
   const makePreview = async () => {
     try {
       const out = await cropToCanvas(sel);
+      cropCanvasRef.current = out; // remember the EXACT canvas the user sees
       setPreview(out ? out.toDataURL("image/png") : null);
     } catch {
+      cropCanvasRef.current = null;
       setPreview(null);
     }
   };
@@ -148,7 +155,9 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
     }
     setBusy(true);
     try {
-      const out = await cropToCanvas(sel);
+      // Upload the SAME canvas that produced the preview — so what's added is
+      // exactly what was shown. Only re-crop if no preview exists yet.
+      const out = cropCanvasRef.current || (await cropToCanvas(sel));
       const blob = out && (await new Promise((res) => out.toBlob(res, "image/png")));
       if (!blob) {
         toast.error("Kəsmə alınmadı");
