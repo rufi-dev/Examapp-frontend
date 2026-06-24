@@ -111,7 +111,24 @@ const TYPES = [
   { key: "Cs", label: "Çox seçim" },
   { key: "Co", label: "Açıq cavab" },
   { key: "Cma", label: "Uyğunlaşdırma" },
+  { key: "Cmu", label: "Uyğunluq" },
 ];
+
+// Correspondence (Cmu): a..z letter labels for the right columns.
+const GRID_LETTERS = "abcdefghijklmnopqrstuvwxyz";
+// Split a "a, d" style answer into single lowercase letters: ["a","d"].
+const splitLetters = (s) =>
+  String(s ?? "")
+    .split(/[,;/|\s]+/)
+    .map((x) => x.trim().toLowerCase())
+    .filter((x) => /^[a-z]$/.test(x));
+// A Cma matching whose RIGHT column is letters (a, "a, d", …) is really a
+// numbers→letters correspondence — convert it to a Cmu grid so each letter is a
+// separate, individually-selectable option (and a number can take several).
+const aiPairsAreLetters = (pairs) =>
+  Array.isArray(pairs) &&
+  pairs.length >= 2 &&
+  pairs.every((p) => splitLetters(p?.right).length >= 1);
 
 const emptyChoice = () => ({ text: "", image: "", latex: "" });
 const emptyPair = () => ({
@@ -131,6 +148,11 @@ const newQuestion = (type = "Cm") => ({
   correct: type === "Cm" ? [0] : [], // indices into choices
   answer: "", // open (Co) correct text
   pairs: [emptyPair(), emptyPair()],
+  // Correspondence (Cmu): numbers 1..leftCount → letters a..rightCount; key[i]
+  // is the array of correct letter indices for number i+1 (one-to-many, reusable).
+  leftCount: 3,
+  rightCount: 5,
+  key: [[], [], []],
   explanation: "", // optional, shown to the student in review
 });
 
@@ -475,6 +497,12 @@ const StructuredBuilder = () => {
                     rightLatex: "",
                   }))
                 : [emptyPair(), emptyPair()],
+            // Correspondence (Cmu): restore the numbers/letters grid + key.
+            leftCount: Number(q.leftCount) || 3,
+            rightCount: Number(q.rightCount) || 5,
+            key: Array.isArray(q.key)
+              ? q.key.map((arr) => (Array.isArray(arr) ? arr.map(Number) : []))
+              : [[], [], []],
             explanation: q.explanation || "",
           }));
         } else if (exam?.preset && PRESETS[exam.preset]) {
@@ -608,7 +636,43 @@ const StructuredBuilder = () => {
     patch(i, (q) => {
       let correct = q.correct;
       if (type === "Cm") correct = q.correct.length ? [q.correct[0]] : [0];
+      // Switching to Cmu: make sure a sane grid exists (key length === leftCount).
+      if (type === "Cmu") {
+        const n = Number(q.leftCount) || 3;
+        const key = Array.from({ length: n }, (k) =>
+          Array.isArray(q.key?.[k]) ? q.key[k] : []
+        );
+        return { ...q, type, leftCount: n, rightCount: Number(q.rightCount) || 5, key };
+      }
       return { ...q, type, correct };
+    });
+
+  // --- Correspondence (Cmu) grid editing ---
+  const setCmuLeft = (i, val) =>
+    patch(i, (q) => {
+      const n = Math.max(2, Math.min(15, Number(val) || 0));
+      const key = Array.from({ length: n }, (k) => (Array.isArray(q.key?.[k]) ? q.key[k] : []));
+      return { ...q, leftCount: n, key };
+    });
+  const setCmuRight = (i, val) =>
+    patch(i, (q) => {
+      const n = Math.max(2, Math.min(26, Number(val) || 0));
+      const key = (q.key || []).map((arr) =>
+        (Array.isArray(arr) ? arr : []).filter((ri) => ri < n)
+      );
+      return { ...q, rightCount: n, key };
+    });
+  const toggleCmuKey = (i, li, ri) =>
+    patch(i, (q) => {
+      const n = Number(q.leftCount) || 0;
+      const key = Array.from({ length: n }, (k) =>
+        Array.isArray(q.key?.[k]) ? [...q.key[k]] : []
+      );
+      const row = new Set(key[li] || []);
+      if (row.has(ri)) row.delete(ri);
+      else row.add(ri);
+      key[li] = Array.from(row).sort((a, b) => a - b);
+      return { ...q, key };
     });
 
   const toggleCorrect = (i, ci) =>
@@ -709,6 +773,9 @@ const StructuredBuilder = () => {
           latex: norm(p.rightLatex) || undefined,
           image: p.rightImage || undefined,
         }));
+      } else if (q.type === "Cmu") {
+        d.leftCount = Number(q.leftCount) || 0;
+        d.rightCount = Number(q.rightCount) || 0;
       }
       return d;
     });
@@ -745,6 +812,29 @@ const StructuredBuilder = () => {
   // ---- AI import from PDF ----------------------------------------------------
   // Map one AI-extracted question into the builder's working shape.
   const fromAi = (q) => {
+    // A matching question whose answers are letters → a Cmu correspondence grid,
+    // so each letter is its own selectable option (a number may match several).
+    if (q.type === "Cma" && aiPairsAreLetters(q.pairs)) {
+      const leftCount = q.pairs.length;
+      const key = q.pairs.map((p) =>
+        splitLetters(p.right)
+          .map((l) => l.charCodeAt(0) - 97)
+          .filter((n) => n >= 0)
+          .sort((a, b) => a - b)
+      );
+      // Right pool spans 'a' up to the highest letter used (so distractor letters
+      // between, e.g. b/d, are still offered); minimum of 5 (a–e) like the DİM form.
+      const maxIdx = Math.max(4, ...key.flat());
+      return {
+        ...newQuestion("Cmu"),
+        text: foldMath(q.text, q.latex),
+        needsFigure: !!q.hasFigure,
+        leftCount,
+        rightCount: maxIdx + 1,
+        key,
+        explanation: q.explanation || "",
+      };
+    }
     const type = ["Cm", "Cs", "Co", "Cma"].includes(q.type) ? q.type : "Cm";
     const choices =
       Array.isArray(q.choices) && q.choices.length
@@ -982,6 +1072,31 @@ const StructuredBuilder = () => {
             rightLatex: norm(p.rightLatex) || undefined,
           })),
           answer: rights.join(" | "),
+        });
+      } else if (q.type === "Cmu") {
+        const leftCount = Number(q.leftCount) || 0;
+        const rightCount = Number(q.rightCount) || 0;
+        if (leftCount < 2 || rightCount < 2) {
+          toast.error(`Sual ${num}: ən azı 2 nömrə və 2 hərf lazımdır`);
+          return null;
+        }
+        const key = Array.from({ length: leftCount }, (_, k) =>
+          (Array.isArray(q.key?.[k]) ? q.key[k] : [])
+            .map(Number)
+            .filter((ri) => Number.isInteger(ri) && ri >= 0 && ri < rightCount)
+            .sort((a, b) => a - b)
+        );
+        if (key.some((row) => row.length === 0)) {
+          toast.error(`Sual ${num}: hər nömrə üçün ən azı bir düzgün hərf işarələ`);
+          return null;
+        }
+        correctAnswers.push({
+          type: "Cmu",
+          ...stem,
+          leftCount,
+          rightCount,
+          key,
+          answer: key.map((row) => row.map((ri) => GRID_LETTERS[ri]).join(",")).join(" | "),
         });
       }
     }
@@ -1651,6 +1766,72 @@ const StructuredBuilder = () => {
                       <p className="text-xs text-muted">
                         İmtahanda sağ sütun qarışdırılır. Sağ cavablar fərqli olmalıdır.
                       </p>
+                    </div>
+                  )}
+
+                  {q.type === "Cmu" && (
+                    <div className="space-y-2.5">
+                      <div className="flex flex-wrap items-center gap-4">
+                        <label className="flex items-center gap-1.5 text-xs font-semibold text-muted">
+                          Nömrələr
+                          <input
+                            type="number"
+                            min={2}
+                            max={15}
+                            value={q.leftCount ?? 3}
+                            onChange={(e) => setCmuLeft(i, e.target.value)}
+                            className="w-16 rounded-lg border border-line bg-surface px-2 py-1 text-sm text-text outline-none focus:border-primary"
+                          />
+                        </label>
+                        <label className="flex items-center gap-1.5 text-xs font-semibold text-muted">
+                          Hərflər (a–…)
+                          <input
+                            type="number"
+                            min={2}
+                            max={26}
+                            value={q.rightCount ?? 5}
+                            onChange={(e) => setCmuRight(i, e.target.value)}
+                            className="w-16 rounded-lg border border-line bg-surface px-2 py-1 text-sm text-text outline-none focus:border-primary"
+                          />
+                        </label>
+                      </div>
+                      <p className="text-xs text-muted">
+                        Hər nömrə üçün düzgün hərf(lər)i işarələ. Bir nömrə bir neçə hərf ala
+                        bilər; bir hərf bir neçə nömrədə təkrarlana bilər.
+                      </p>
+                      {Array.from({ length: Number(q.leftCount) || 0 }).map((_, li) => {
+                        const row = new Set(Array.isArray(q.key?.[li]) ? q.key[li] : []);
+                        return (
+                          <div
+                            key={li}
+                            className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface2/40 p-2.5"
+                          >
+                            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/12 text-sm font-bold text-primary">
+                              {li + 1}
+                            </span>
+                            <span className="text-muted">→</span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {Array.from({ length: Number(q.rightCount) || 0 }).map((__, ri) => {
+                                const on = row.has(ri);
+                                return (
+                                  <button
+                                    key={ri}
+                                    type="button"
+                                    onClick={() => toggleCmuKey(i, li, ri)}
+                                    className={`grid h-8 w-8 place-items-center rounded-lg border text-sm font-bold uppercase transition-colors ${
+                                      on
+                                        ? "border-success bg-success text-white"
+                                        : "border-line bg-surface text-text hover:border-primary/50"
+                                    }`}
+                                  >
+                                    {GRID_LETTERS[ri]}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
 
