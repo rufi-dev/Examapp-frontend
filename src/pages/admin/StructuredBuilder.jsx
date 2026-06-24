@@ -846,6 +846,7 @@ const StructuredBuilder = () => {
       return d;
     });
   const openPreview = () => {
+    setMobileToolsOpen(false); // leave the mobile tools page so preview is full-screen
     setPreviewAnswers([]);
     setPreviewMarked([]);
     setPreviewPage(0);
@@ -950,6 +951,7 @@ const StructuredBuilder = () => {
   // Import button: ask add-vs-replace only when there is content to preserve;
   // otherwise import straight away (nothing to lose).
   const startImport = () => {
+    setMobileToolsOpen(false); // import dialog / streaming take over the screen
     if (builderHasContent()) {
       setImportChoice(true);
     } else {
@@ -1199,6 +1201,7 @@ const StructuredBuilder = () => {
 
   const submit = async (e) => {
     e?.preventDefault?.();
+    setMobileToolsOpen(false); // back to the questions after a save
     if (!questions.length) return toast.error("Ən azı bir sual əlavə edin");
     const correctAnswers = buildPayload();
     if (!correctAnswers) return;
@@ -1523,13 +1526,13 @@ const StructuredBuilder = () => {
         </div>
       </header>
 
-      {/* Tools — a collapsible drawer on mobile (the full vertical panel, so phone
-          users get every tool incl. import, toggles, "Yalnız irəli"); the right
-          sidebar holds them on desktop. Saving stays on the sticky bottom bar. */}
+      {/* Tools on mobile: a compact bar that opens a FULL-SCREEN tools page (so the
+          questions are hidden while you work in the tools). Desktop uses the right
+          sidebar. Saving stays on the sticky bottom bar. */}
       <div className="shrink-0 border-b border-line bg-surface lg:hidden">
         <button
           type="button"
-          onClick={() => setMobileToolsOpen((v) => !v)}
+          onClick={() => setMobileToolsOpen(true)}
           className="flex w-full items-center justify-between gap-2 px-4 py-2.5"
         >
           <span className="flex items-center gap-2 text-sm font-bold text-text">
@@ -1537,17 +1540,29 @@ const StructuredBuilder = () => {
           </span>
           <span className="flex items-center gap-2 text-[11px] font-medium text-muted">
             {total} sual · {totalBal} bal
-            <FiChevronDown
-              className={`text-base transition-transform ${mobileToolsOpen ? "rotate-180" : ""}`}
-            />
+            <FiChevronDown className="text-base" />
           </span>
         </button>
-        {mobileToolsOpen && (
-          <div className="scrollbar-thin max-h-[65vh] overflow-y-auto border-t border-line">
-            {renderTools(true)}
-          </div>
-        )}
       </div>
+
+      {/* Full-screen mobile tools page. */}
+      {mobileToolsOpen && (
+        <div className="fixed inset-0 z-[1200] flex flex-col bg-bg lg:hidden">
+          <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-surface px-4 py-3">
+            <span className="flex items-center gap-2 font-display text-base font-bold text-text">
+              <FiZap className="text-primary" /> Alətlər və PDF idxalı
+            </span>
+            <button
+              type="button"
+              onClick={() => setMobileToolsOpen(false)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-3 py-2 text-sm font-semibold text-text transition-colors hover:bg-surface2"
+            >
+              <FiX /> Bağla
+            </button>
+          </header>
+          <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto">{renderTools(true)}</div>
+        </div>
+      )}
 
       {/* Hidden file picker for the AI PDF import. */}
       <input
