@@ -1,27 +1,11 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
-import {
-  FiClock,
-  FiActivity,
-  FiList,
-  FiBarChart2,
-  FiTarget,
-  FiArrowRight,
-  FiCheckCircle,
-} from "react-icons/fi";
+import { FiClock, FiArrowRight, FiCheckCircle } from "react-icons/fi";
 import Hero from "../components/Hero";
 import SectionTitle from "../components/ui/SectionTitle";
 import ExamCard from "../components/ExamCard";
 import { MathText } from "../components/Math";
-
-const valueItems = [
-  { icon: FiClock, label: "Real imtahan formatı" },
-  { icon: FiActivity, label: "Mövzu üzrə sınaqlar" },
-  { icon: FiList, label: "Addım-addım həll" },
-  { icon: FiBarChart2, label: "Nəticə analizi" },
-  { icon: FiTarget, label: "Şəxsi məşq planı" },
-];
 
 const navSeq = [12, 7, 25, 3, 18, 31, 9, 22, 14, 5];
 
@@ -45,20 +29,6 @@ const Home = () => {
     <>
       {/* 1 — HERO */}
       <Hero />
-
-      {/* 2 — VALUE STRIP */}
-      <section className="container-app">
-        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line bg-line sm:grid-cols-3 lg:grid-cols-5">
-          {valueItems.map(({ icon: Icon, label }) => (
-            <div key={label} className="flex items-center gap-2.5 bg-surface px-4 py-4">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-                <Icon className="text-[18px]" />
-              </span>
-              <span className="text-sm font-semibold text-text">{label}</span>
-            </div>
-          ))}
-        </div>
-      </section>
 
       {/* 3 — LATEST OPEN EXAMS (real content, same card design as the dashboard) */}
       {publicExams.length > 0 && (
