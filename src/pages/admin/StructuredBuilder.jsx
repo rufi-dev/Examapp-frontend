@@ -130,6 +130,25 @@ const aiPairsAreLetters = (pairs) =>
   pairs.length >= 2 &&
   pairs.every((p) => splitLetters(p?.right).length >= 1);
 
+// Turn a working-shape matching question (pairs: left=number, right="a, c") into
+// a Cmu correspondence grid: leftCount = number of lefts, rightCount spans 'a' up
+// to the highest letter used (min a–e), key[i] = that left's letter indices. The
+// right strings are split on commas so "a, c" becomes two separate selections.
+const toCmuFromPairs = (q) => {
+  const kept = (q.pairs || []).filter((p) => splitLetters(p?.right).length >= 1);
+  if (kept.length < 2) return q;
+  const key = kept.map((p) =>
+    splitLetters(p.right)
+      .map((l) => l.charCodeAt(0) - 97)
+      .filter((n) => n >= 0)
+      .sort((a, b) => a - b)
+  );
+  const maxIdx = Math.max(4, ...key.flat());
+  return { ...q, type: "Cmu", leftCount: kept.length, rightCount: maxIdx + 1, key };
+};
+// A matching question that should be shown as the letter grid instead of 1:1 drag.
+const isLetterMatching = (q) => q?.type === "Cma" && aiPairsAreLetters(q.pairs);
+
 const emptyChoice = () => ({ text: "", image: "", latex: "" });
 const emptyPair = () => ({
   left: "",
@@ -526,10 +545,11 @@ const StructuredBuilder = () => {
       }
       // Silently restore the autosaved draft (if any) — no banner; autosave is
       // the contract, so a reload just continues where the teacher left off.
-      const baseQs =
+      const baseQs = (
         draft && Array.isArray(draft.questions) && draft.questions.length
           ? draft.questions
-          : serverQs;
+          : serverQs
+      ).map((q) => (isLetterMatching(q) ? toCmuFromPairs(q) : q));
       resetQuestions(baseQs);
       // Toggle prefs: saved preference wins, else auto-enable from the content.
       let prefs = null;
@@ -1703,6 +1723,15 @@ const StructuredBuilder = () => {
 
                   {q.type === "Cma" && (
                     <div className="space-y-2">
+                      {isLetterMatching(q) && (
+                        <button
+                          type="button"
+                          onClick={() => patch(i, toCmuFromPairs)}
+                          className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-primary/40 bg-primary/5 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/10"
+                        >
+                          Cavablar hərfdir (a, b, c…) — hər hərfi ayrıca seçmək üçün şəbəkəyə çevir
+                        </button>
+                      )}
                       <div className="hidden grid-cols-[1fr_1fr_auto] gap-2 px-1 text-xs font-semibold text-muted sm:grid">
                         <span>Sol</span>
                         <span>Sağ (uyğun cavab)</span>
