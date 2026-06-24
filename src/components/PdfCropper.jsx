@@ -163,7 +163,13 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
         toast.error("Kəsmə alınmadı");
         return;
       }
-      const f = new File([blob], `figure-${page}.png`, { type: "image/png" });
+      // Unique filename per crop: Cloudinary presets that key on the filename
+      // would otherwise dedupe two crops from the same page (e.g. both
+      // "figure-2.png") and hand back the FIRST upload's URL — so a new crop
+      // would silently "add" an earlier, unrelated figure. A unique name forces
+      // a fresh upload every time.
+      const stamp = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+      const f = new File([blob], `figure-p${page}-${stamp}.png`, { type: "image/png" });
       await onCrop(f);
     } catch (e) {
       // eslint-disable-next-line no-console
