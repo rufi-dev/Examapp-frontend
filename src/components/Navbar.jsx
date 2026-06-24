@@ -108,6 +108,19 @@ const Navbar = () => {
               </ShowOnLogin>
             </div>
 
+            {/* Mobile: a direct login / dashboard button (no need to open the menu).
+                "Panel" sends a logged-in user straight to their dashboard. */}
+            <ShowOnLogout>
+              <Button to="/login" variant="primary" size="sm" className="lg:hidden">
+                Daxil ol
+              </Button>
+            </ShowOnLogout>
+            <ShowOnLogin>
+              <Button to="/dashboard" variant="primary" size="sm" className="lg:hidden">
+                Panel
+              </Button>
+            </ShowOnLogin>
+
             <button
               onClick={() => setOpen(true)}
               className="grid h-10 w-10 place-items-center rounded-full border border-line bg-surface text-text lg:hidden"
