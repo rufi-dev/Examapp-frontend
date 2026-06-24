@@ -8,12 +8,16 @@ import ExamCard from "./ExamCard";
 const ExamList = ({ classId }) => {
   const dispatch = useDispatch();
   const { exams } = useSelector((state) => state.quiz);
-  const [loadedOnce, setLoadedOnce] = useState(false);
+  // Loading is reset on EVERY classId change, so switching classes shows the
+  // loader instead of flashing the previous class's exams (which still sit in
+  // Redux until the new fetch lands).
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
+    setLoading(true);
     Promise.resolve(dispatch(getExamsByClass(classId))).finally(() => {
-      if (active) setLoadedOnce(true);
+      if (active) setLoading(false);
     });
     dispatch(getExamsByUser());
     dispatch(getResultsByUser());
@@ -23,7 +27,7 @@ const ExamList = ({ classId }) => {
   }, [dispatch, classId]);
 
   const hasExams = exams && exams.length > 0;
-  if (!hasExams && !loadedOnce) return <Loader />;
+  if (loading) return <Loader />;
   if (!hasExams) {
     return (
       <div className="rounded-2xl border border-dashed border-line bg-surface p-12 text-center text-muted">
