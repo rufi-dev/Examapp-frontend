@@ -22,6 +22,7 @@ import ReactPaginate from "react-paginate";
 import { Link } from "react-router-dom";
 import Badge from "../../components/ui/Badge";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
+import { gradeLabel } from "../../helper/grades";
 
 const roleLabels = {
   admin: "Admin",
@@ -135,6 +136,7 @@ const UserList = () => {
                   <th className="px-4 py-4 font-semibold">Ad və Soyad</th>
                   <th className="px-4 py-4 font-semibold">Email</th>
                   <th className="px-4 py-4 font-semibold">Telefon</th>
+                  <th className="px-4 py-4 font-semibold">Sinif</th>
                   <th className="px-4 py-4 font-semibold">Rol</th>
                   <th className="px-4 py-4 font-semibold">Status</th>
                   {isAdmin && (
@@ -161,6 +163,9 @@ const UserList = () => {
                     </td>
                     <td className="whitespace-nowrap px-4 py-4 text-muted">{user.email}</td>
                     <td className="whitespace-nowrap px-4 py-4 text-muted">{user.phone}</td>
+                    <td className="whitespace-nowrap px-4 py-4 text-muted">
+                      {user.grade ? gradeLabel(user.grade) : "—"}
+                    </td>
                     <td className="px-4 py-4">
                       <Badge tone={roleTone(user.role)}>
                         {roleLabels[user.role] || user.role}
