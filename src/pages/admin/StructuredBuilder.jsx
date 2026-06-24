@@ -434,6 +434,7 @@ const StructuredBuilder = () => {
   const [extracting, setExtracting] = useState(false); // AI PDF import running
   const [streamItems, setStreamItems] = useState([]); // questions as they stream in
   const [promptOpen, setPromptOpen] = useState(false); // extra-instructions box shown
+  const [mobileToolsOpen, setMobileToolsOpen] = useState(false); // mobile tools drawer
   // Optional extra instructions sent to the AI before the PDF. Reusable across
   // extractions, so it's persisted globally (not per-exam).
   const [aiExtraPrompt, setAiExtraPrompt] = useState(() => {
@@ -1522,8 +1523,31 @@ const StructuredBuilder = () => {
         </div>
       </header>
 
-      {/* Tools — horizontal strip on mobile; the right sidebar holds them on desktop. */}
-      <div className="shrink-0 border-b border-line bg-surface lg:hidden">{renderTools(false)}</div>
+      {/* Tools — a collapsible drawer on mobile (the full vertical panel, so phone
+          users get every tool incl. import, toggles, "Yalnız irəli"); the right
+          sidebar holds them on desktop. Saving stays on the sticky bottom bar. */}
+      <div className="shrink-0 border-b border-line bg-surface lg:hidden">
+        <button
+          type="button"
+          onClick={() => setMobileToolsOpen((v) => !v)}
+          className="flex w-full items-center justify-between gap-2 px-4 py-2.5"
+        >
+          <span className="flex items-center gap-2 text-sm font-bold text-text">
+            <FiZap className="text-primary" /> Alətlər və PDF idxalı
+          </span>
+          <span className="flex items-center gap-2 text-[11px] font-medium text-muted">
+            {total} sual · {totalBal} bal
+            <FiChevronDown
+              className={`text-base transition-transform ${mobileToolsOpen ? "rotate-180" : ""}`}
+            />
+          </span>
+        </button>
+        {mobileToolsOpen && (
+          <div className="scrollbar-thin max-h-[65vh] overflow-y-auto border-t border-line">
+            {renderTools(true)}
+          </div>
+        )}
+      </div>
 
       {/* Hidden file picker for the AI PDF import. */}
       <input
@@ -1676,29 +1700,14 @@ const StructuredBuilder = () => {
                   id={`builder-q-${i}`}
                   className="scroll-mt-4 rounded-2xl border border-line bg-surface p-4 shadow-soft sm:p-5"
                 >
-                  <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <span className="font-display text-sm font-bold text-text">Sual {i + 1}</span>
                       <span className="rounded-full border border-line bg-surface2/60 px-2 py-0.5 text-xs font-semibold text-muted">
                         {Number((points[i] || 0).toFixed(3))} bal
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex flex-wrap rounded-lg border border-line bg-surface p-0.5 text-xs font-semibold">
-                        {TYPES.map((t) => (
-                          <button
-                            key={t.key}
-                            type="button"
-                            onClick={() => setType(i, t.key)}
-                            className={`rounded-md px-2.5 py-1 transition-colors ${
-                              q.type === t.key ? "bg-primary text-primary-fg" : "text-muted"
-                            }`}
-                          >
-                            {t.label}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="flex items-center gap-0.5">
+                    <div className="flex items-center gap-0.5">
                         <button
                           type="button"
                           onClick={() => moveQuestion(i, -1)}
@@ -1737,7 +1746,23 @@ const StructuredBuilder = () => {
                           </button>
                         )}
                       </div>
-                    </div>
+                  </div>
+
+                  {/* Type selector — its own full-width row, horizontally
+                      scrollable on mobile so each type stays a comfortable tap. */}
+                  <div className="scrollbar-thin mb-3 flex gap-1 overflow-x-auto rounded-lg border border-line bg-surface p-0.5 text-xs font-semibold">
+                    {TYPES.map((t) => (
+                      <button
+                        key={t.key}
+                        type="button"
+                        onClick={() => setType(i, t.key)}
+                        className={`shrink-0 rounded-md px-3 py-1.5 transition-colors ${
+                          q.type === t.key ? "bg-primary text-primary-fg" : "text-muted"
+                        }`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
                   </div>
 
                   {/* Question stem: text with inline $...$ math (ƒx inserts at the
