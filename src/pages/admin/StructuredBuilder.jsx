@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import axios from "axios";
 import { addQuestion, getExam } from "../../../redux/features/quiz/quizSlice";
 import { PRESETS, presetTypes, presetPointsPlan, presetTotalMarks } from "../../helper/examPresets";
 import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser";
@@ -34,6 +33,7 @@ import {
   FiZap,
   FiInfo,
   FiCheckCircle,
+  FiEdit3,
 } from "react-icons/fi";
 import { questionPoints, hasAnswer } from "../../helper/helper";
 
@@ -113,6 +113,7 @@ const TYPES = [
   { key: "Cma", label: "Uyğunlaşdırma" },
   { key: "Cmu", label: "Uyğunluq" },
 ];
+const TYPE_LABEL = Object.fromEntries(TYPES.map((t) => [t.key, t.label]));
 
 // Correspondence (Cmu): a..z letter labels for the right columns.
 const GRID_LETTERS = "abcdefghijklmnopqrstuvwxyz";
@@ -148,6 +149,39 @@ const toCmuFromPairs = (q) => {
 };
 // A matching question that should be shown as the letter grid instead of 1:1 drag.
 const isLetterMatching = (q) => q?.type === "Cma" && aiPairsAreLetters(q.pairs);
+
+// Read a fetch SSE Response body and dispatch each event to handlers[event](data).
+// Handles multi-line events, ": " heartbeat comments, and chunk boundaries.
+async function consumeSSE(resp, handlers) {
+  const reader = resp.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let sep;
+    while ((sep = buf.indexOf("\n\n")) >= 0) {
+      const rawEvent = buf.slice(0, sep);
+      buf = buf.slice(sep + 2);
+      let event = "message";
+      let data = "";
+      for (const line of rawEvent.split("\n")) {
+        if (line.startsWith("event:")) event = line.slice(6).trim();
+        else if (line.startsWith("data:")) data += line.slice(5).trim();
+        // lines starting with ":" are comments (heartbeats) — ignored
+      }
+      if (!data) continue;
+      let parsed;
+      try {
+        parsed = JSON.parse(data);
+      } catch {
+        continue;
+      }
+      handlers[event]?.(parsed);
+    }
+  }
+}
 
 const emptyChoice = () => ({ text: "", image: "", latex: "" });
 const emptyPair = () => ({
@@ -398,6 +432,17 @@ const StructuredBuilder = () => {
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false); // exam/questions loaded -> show builder
   const [extracting, setExtracting] = useState(false); // AI PDF import running
+  const [streamItems, setStreamItems] = useState([]); // questions as they stream in
+  const [promptOpen, setPromptOpen] = useState(false); // extra-instructions box shown
+  // Optional extra instructions sent to the AI before the PDF. Reusable across
+  // extractions, so it's persisted globally (not per-exam).
+  const [aiExtraPrompt, setAiExtraPrompt] = useState(() => {
+    try {
+      return localStorage.getItem("ai-extra-prompt") || "";
+    } catch {
+      return "";
+    }
+  });
   // AI provider for PDF extraction: "gemini" (cheaper, default) or "claude".
   const [aiProvider, setAiProvider] = useState("gemini");
   const pdfInputRef = useRef(null);
@@ -924,79 +969,107 @@ const StructuredBuilder = () => {
     if (file.type !== "application/pdf") return toast.error("PDF fayl seçin");
     const mode = importModeRef.current === "append" ? "append" : "replace";
     setAiPdfFile(file); // keep the PDF so figures can be cropped from it
+    setStreamItems([]);
     setExtracting(true);
     try {
       const fd = new FormData();
       fd.append("pdf", file);
       fd.append("provider", aiProvider);
-      const res = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/quiz/extractQuestions/${examId}`,
-        fd
+      const extra = aiExtraPrompt.trim();
+      if (extra) fd.append("instructions", extra);
+
+      const token = localStorage.getItem("token");
+      const resp = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/quiz/extractQuestionsStream/${examId}`,
+        {
+          method: "POST",
+          body: fd,
+          credentials: "include",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        }
       );
-      const aiQs = res.data?.questions || [];
+      if (!resp.ok || !resp.body) {
+        let msg = "AI emalı alınmadı";
+        try {
+          msg = (await resp.json())?.message || msg;
+        } catch {
+          /* ignore */
+        }
+        throw new Error(msg);
+      }
+
+      // Read the SSE stream: `question` events stream in for the live preview,
+      // `done` carries the AUTHORITATIVE full result we actually commit.
+      let finalData = null;
+      let streamErr = null;
+      await consumeSSE(resp, {
+        question: (q) =>
+          setStreamItems((prev) => [
+            ...prev,
+            { type: q?.type || "Cm", text: String(q?.text || "").replace(/\s+/g, " ").trim().slice(0, 80), hasFigure: !!q?.hasFigure },
+          ]),
+        status: (s) => s?.message && toast.info(s.message),
+        done: (d) => (finalData = d),
+        error: (er) => (streamErr = er?.message || "AI emalı alınmadı"),
+      });
+      if (streamErr) throw new Error(streamErr);
+      if (!finalData) throw new Error("AI cavabı alınmadı. Yenidən cəhd edin.");
+
+      const aiQs = finalData.questions || [];
       if (!aiQs.length) {
         toast.error("PDF-də sual tapılmadı");
         return;
       }
-      const mapped = aiQs.map(fromAi);
-      if (mode === "append") {
-        // Drop a lone empty starter so appending doesn't keep a leading blank.
-        setQuestions((prev) => {
-          const base =
-            prev.length === 1 && !filledContent({ text: prev[0].text, image: prev[0].image, latex: prev[0].latex })
-              ? []
-              : prev;
-          return [...base, ...mapped];
-        });
-      } else {
-        setQuestions(mapped); // undoable — Ctrl+Z restores the prior state
-      }
-      setMathEnabled((v) => v || hasLatex(mapped));
-      setExplEnabled((v) => v || hasExpl(mapped));
-      toast.success(
-        mode === "append"
-          ? `${mapped.length} sual əlavə edildi — düzgün cavabları yoxlayın.`
-          : `${mapped.length} sual idxal edildi — düzgün cavabları yoxlayın.`
-      );
-      if (res.data?.fellBack) {
-        toast.info("Gemini məşğul idi — bu çıxarış Claude ilə emal olundu.");
-      }
-      const figs = aiQs.filter((q) => q.hasFigure).length;
-      if (figs) toast.info(`${figs} sualda şəkil var — şəkilləri əl ilə əlavə edin.`);
-      const noKey = mapped.filter(
-        (q) => (q.type === "Cm" || q.type === "Cs") && !q.correct.length
-      ).length;
-      if (noKey) toast.info(`${noKey} sualda düzgün cavab işarələnməlidir.`);
-
-      // Record what this extraction cost so it can be tallied later.
-      const cost = res.data?.cost;
-      if (cost && typeof cost.usd === "number") {
-        const entry = {
-          at: Date.now(),
-          usd: cost.usd,
-          questions: mapped.length,
-          tokens: cost.totalTokens,
-          mode,
-        };
-        setAiSpend((prev) => {
-          const next = [entry, ...prev].slice(0, 200);
-          try {
-            localStorage.setItem(AI_SPEND_KEY, JSON.stringify(next));
-          } catch {
-            /* ignore */
-          }
-          return next;
-        });
-        toast.info(`Bu çıxarışın xərci: $${cost.usd.toFixed(4)} · ${fmtTokens(cost.totalTokens)} token`);
-        // eslint-disable-next-line no-console
-        console.log(
-          `[AI extract] $${cost.usd} — in:${cost.inputTokens} out:${cost.outputTokens} cacheRead:${cost.cacheReadTokens} cacheWrite:${cost.cacheWriteTokens} total:${cost.totalTokens}`
-        );
-      }
+      commitExtracted(aiQs, mode, finalData);
     } catch (err) {
-      toast.error(err?.response?.data?.message || "AI emalı alınmadı");
+      toast.error(err?.message || "AI emalı alınmadı");
     } finally {
       setExtracting(false);
+      setStreamItems([]);
+    }
+  };
+
+  // Map AI questions into the builder, set toggles, toast warnings, log cost.
+  // Shared by the streaming path (and any future non-streaming caller).
+  const commitExtracted = (aiQs, mode, data) => {
+    const mapped = aiQs.map(fromAi);
+    if (mode === "append") {
+      setQuestions((prev) => {
+        const base =
+          prev.length === 1 && !filledContent({ text: prev[0].text, image: prev[0].image, latex: prev[0].latex })
+            ? []
+            : prev;
+        return [...base, ...mapped];
+      });
+    } else {
+      setQuestions(mapped); // undoable — Ctrl+Z restores the prior state
+    }
+    setMathEnabled((v) => v || hasLatex(mapped));
+    setExplEnabled((v) => v || hasExpl(mapped));
+    toast.success(
+      mode === "append"
+        ? `${mapped.length} sual əlavə edildi — düzgün cavabları yoxlayın.`
+        : `${mapped.length} sual idxal edildi — düzgün cavabları yoxlayın.`
+    );
+    if (data?.fellBack) toast.info("Gemini məşğul idi — bu çıxarış Claude ilə emal olundu.");
+    const figs = aiQs.filter((q) => q.hasFigure).length;
+    if (figs) toast.info(`${figs} sualda şəkil var — şəkilləri əl ilə əlavə edin.`);
+    const noKey = mapped.filter((q) => (q.type === "Cm" || q.type === "Cs") && !q.correct.length).length;
+    if (noKey) toast.info(`${noKey} sualda düzgün cavab işarələnməlidir.`);
+
+    const cost = data?.cost;
+    if (cost && typeof cost.usd === "number") {
+      const entry = { at: Date.now(), usd: cost.usd, questions: mapped.length, tokens: cost.totalTokens, mode };
+      setAiSpend((prev) => {
+        const next = [entry, ...prev].slice(0, 200);
+        try {
+          localStorage.setItem(AI_SPEND_KEY, JSON.stringify(next));
+        } catch {
+          /* ignore */
+        }
+        return next;
+      });
+      toast.info(`Bu çıxarışın xərci: $${cost.usd.toFixed(4)} · ${fmtTokens(cost.totalTokens)} token`);
     }
   };
 
@@ -1247,6 +1320,45 @@ const StructuredBuilder = () => {
             Claude · dəqiq
           </button>
         </div>
+        {/* Optional extra instructions handed to the AI before the PDF. Empty =
+            default behaviour; filled = default + these instructions. */}
+        <button
+          type="button"
+          onClick={() => setPromptOpen((v) => !v)}
+          disabled={extracting}
+          className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1 text-[11px] font-semibold transition-colors ${
+            aiExtraPrompt.trim()
+              ? "border-primary/50 bg-primary/10 text-primary"
+              : "border-line bg-surface text-muted hover:text-text"
+          }`}
+        >
+          <FiEdit3 className="text-xs" />
+          {aiExtraPrompt.trim() ? "Əlavə təlimat ✓" : "Əlavə təlimat (istəyə bağlı)"}
+        </button>
+        {promptOpen && (
+          <div className="space-y-1 rounded-lg border border-line bg-surface2/40 p-2">
+            <textarea
+              value={aiExtraPrompt}
+              onChange={(e) => {
+                setAiExtraPrompt(e.target.value);
+                try {
+                  localStorage.setItem("ai-extra-prompt", e.target.value);
+                } catch {
+                  /* ignore */
+                }
+              }}
+              disabled={extracting}
+              rows={4}
+              placeholder={
+                "Məs: yalnız 1–20 arası sualları çıxar · cavab açarını PDF-dən götür · qrafikləri şəkil kimi işarələ · izahları da əlavə et…"
+              }
+              className="w-full resize-y rounded-md border border-line bg-surface px-2.5 py-2 text-xs text-text outline-none focus:border-primary"
+            />
+            <p className="text-[10px] leading-relaxed text-muted">
+              Boş buraxsanız standart davranış işləyəcək. Yazsanız: standart + sizin təlimatınız.
+            </p>
+          </div>
+        )}
       </div>
     );
     const undoRedo = (
@@ -1518,9 +1630,33 @@ const StructuredBuilder = () => {
                   />
                 ))}
               </div>
-              <p className="mt-4 text-xs leading-relaxed text-muted">
-                Bir neçə saniyə çəkə bilər — PDF-in həcmindən asılıdır.
-              </p>
+              {streamItems.length > 0 ? (
+                <div className="mt-4 text-left">
+                  <p className="mb-1.5 text-center text-xs font-bold text-text">
+                    {streamItems.length} sual tapıldı…
+                  </p>
+                  <div className="scrollbar-thin max-h-40 space-y-1 overflow-y-auto rounded-xl border border-line bg-surface2/40 p-2">
+                    {streamItems.slice(-12).map((it, k) => (
+                      <div
+                        key={k}
+                        className="flex animate-fade-in items-center gap-1.5 rounded-lg bg-surface px-2 py-1 text-[11px]"
+                      >
+                        <span className="shrink-0 rounded bg-primary/12 px-1.5 py-0.5 font-bold text-primary">
+                          {TYPE_LABEL[it.type] || it.type}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-muted">
+                          {it.text || "(şəkilli sual)"}
+                        </span>
+                        {it.hasFigure && <FiImage className="shrink-0 text-accent2" />}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-4 text-xs leading-relaxed text-muted">
+                  Bir neçə saniyə çəkə bilər — PDF-in həcmindən asılıdır.
+                </p>
+              )}
             </div>
           </div>
         )}
