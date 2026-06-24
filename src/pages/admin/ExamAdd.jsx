@@ -213,7 +213,14 @@ const ExamAdd = () => {
 
               <CoverImageField value={coverImage} onChange={setCoverImage} />
 
-              <Field label="Sual mənbəyi" hint={source === "pdf" ? "Hazır PDF faylı yüklə" : "Sualları tətbiqdə özün yaz"}>
+              <Field
+                label="Sual mənbəyi"
+                hint={
+                  source === "pdf"
+                    ? "Hazır PDF faylı yüklə"
+                    : "Sualları özün yaz və ya AI ilə PDF-dən avtomatik çıxar"
+                }
+              >
                 <div className="inline-flex w-full rounded-xl border border-line bg-surface p-1">
                   <button
                     type="button"
@@ -231,7 +238,7 @@ const ExamAdd = () => {
                       source === "structured" ? "bg-primary text-primary-fg shadow-sm" : "text-muted hover:text-text"
                     }`}
                   >
-                    Sualları özüm yazım
+                    Özüm yazım / AI ilə
                   </button>
                 </div>
               </Field>
