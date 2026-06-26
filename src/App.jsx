@@ -50,6 +50,7 @@ const UserList = lazy(() => import("./pages/profile/UserList"));
 const Classes = lazy(() => import("./pages/Classes"));
 const Exams = lazy(() => import("./pages/Exams"));
 const Overview = lazy(() => import("./pages/Overview"));
+const Connections = lazy(() => import("./pages/Connections"));
 const OurSuccess = lazy(() => import("./pages/OurSuccess"));
 const About = lazy(() => import("./pages/About"));
 const Contact = lazy(() => import("./pages/Contact"));
@@ -202,6 +203,7 @@ function App() {
             <Route element={<RequireAuth />}>
               <Route path="/dashboard" element={<Overview />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/connections" element={<Connections />} />
               <Route path="/users" element={<UserList />} />
               <Route path="/aiUsage" element={<AiUsage />} />
               <Route path="/examResults" element={<ExamResults />} />

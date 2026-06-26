@@ -18,6 +18,7 @@ import {
   FiX,
   FiChevronRight,
   FiHome,
+  FiLink2,
 } from "react-icons/fi";
 import { LuGraduationCap } from "react-icons/lu";
 
@@ -40,6 +41,8 @@ const navItems = [
 const adminNav = [
   { to: "/users", label: "İstifadəçilər", icon: FiUsers },
   { to: "/examResults", label: "Nəticələr", icon: FiPieChart },
+  // Telegram + WhatsApp notification integrations live here now (moved out of Profil).
+  { to: "/connections", label: "Bağlantılar", icon: FiLink2 },
 ];
 
 // Fallback label for the CURRENT page when a page doesn't pass a `title`
@@ -53,6 +56,7 @@ const PATH_LABELS = {
   "/profile": "Profil",
   "/users": "İstifadəçilər",
   "/examResults": "Nəticələr",
+  "/connections": "Bağlantılar",
   "/aiUsage": "AI xərcləri",
 };
 
