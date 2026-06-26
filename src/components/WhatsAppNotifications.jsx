@@ -15,6 +15,7 @@ const WA_GREEN = "#25D366";
 const WhatsAppNotifications = () => {
   const [status, setStatus] = useState(null); // { enabled, ready, hasQr, qr }
   const [loading, setLoading] = useState(true);
+  const [opening, setOpening] = useState(false); // fetching when the modal opens
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState("");
   const [groups, setGroups] = useState([]);
@@ -99,7 +100,8 @@ const WhatsAppNotifications = () => {
       pollRef.current && clearInterval(pollRef.current);
       return;
     }
-    loadStatus(true);
+    setOpening(true);
+    loadStatus(true).finally(() => setOpening(false));
     pollRef.current = setInterval(() => loadStatus(true), 3000);
     const onKey = (e) => e.key === "Escape" && setOpen(false);
     window.addEventListener("keydown", onKey);
@@ -145,7 +147,7 @@ const WhatsAppNotifications = () => {
   const ready = !!status?.ready;
   const enabled = status?.enabled !== false;
 
-  const body = loading ? (
+  const body = loading || opening ? (
     <div className="grid place-items-center py-10">
       <Spinner size={24} className="text-primary" />
     </div>

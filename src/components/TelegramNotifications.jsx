@@ -49,6 +49,7 @@ const Check = ({ checked, indeterminate, disabled, onChange }) => {
 const TelegramNotifications = () => {
   const [status, setStatus] = useState(null); // { configured, linked, deepLink, ... }
   const [loading, setLoading] = useState(true);
+  const [opening, setOpening] = useState(false); // fetching when the modal opens
   const [open, setOpenModal] = useState(false); // settings modal
   const [busy, setBusy] = useState(""); // "test" | "unlink" | "check"
   const [waiting, setWaiting] = useState(false); // polling after Connect tap
@@ -100,7 +101,10 @@ const TelegramNotifications = () => {
 
   const openSettings = () => {
     setOpenModal(true);
-    if (status?.linked && !auto) loadAutomation();
+    if (status?.linked && !auto) {
+      setOpening(true);
+      loadAutomation().finally(() => setOpening(false));
+    }
   };
 
   // After the teacher opens the bot, poll so it flips to "connected" once they
@@ -215,7 +219,7 @@ const TelegramNotifications = () => {
   const linked = !!status?.linked;
 
   // The settings body (rendered inside the modal).
-  const body = loading ? (
+  const body = loading || opening ? (
     <div className="grid place-items-center py-10">
       <Spinner size={24} className="text-primary" />
     </div>
