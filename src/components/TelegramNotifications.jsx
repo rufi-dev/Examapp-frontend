@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { FaTelegramPlane } from "react-icons/fa";
@@ -91,12 +92,17 @@ const TelegramNotifications = () => {
     return () => pollRef.current && clearInterval(pollRef.current);
   }, []);
 
-  // Close the modal on Escape.
+  // Close on Escape + lock background scroll while the modal is open.
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => e.key === "Escape" && setOpenModal(false);
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
   }, [open]);
 
   const openSettings = () => {
@@ -379,7 +385,7 @@ const TelegramNotifications = () => {
       </button>
 
       {/* Settings modal */}
-      {open && (
+      {open && createPortal(
         <div className="fixed inset-0 z-[1500] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setOpenModal(false)} />
           <div className="animate-scale-in relative flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-lift">
@@ -404,7 +410,8 @@ const TelegramNotifications = () => {
             </div>
             <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto p-5">{body}</div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
