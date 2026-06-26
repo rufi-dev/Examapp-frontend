@@ -12,6 +12,7 @@ const navSeq = [12, 7, 25, 3, 18, 31, 9, 22, 14, 5];
 const Home = () => {
   // Newest exams from OPEN (public) classes — real content, no auth needed.
   const [publicExams, setPublicExams] = useState([]);
+  const [loadingExams, setLoadingExams] = useState(true);
   useEffect(() => {
     let on = true;
     axios
@@ -19,7 +20,10 @@ const Home = () => {
       .then((r) => {
         if (on) setPublicExams(Array.isArray(r.data) ? r.data : []);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        if (on) setLoadingExams(false);
+      });
     return () => {
       on = false;
     };
@@ -30,8 +34,10 @@ const Home = () => {
       {/* 1 — HERO */}
       <Hero />
 
-      {/* 3 — LATEST OPEN EXAMS (real content, same card design as the dashboard) */}
-      {publicExams.length > 0 && (
+      {/* 3 — LATEST OPEN EXAMS. Stays mounted while loading (skeletons) so the
+          layout doesn't collapse and the dark section below doesn't jump up on
+          every refresh. Hidden only once we KNOW there are no public exams. */}
+      {(loadingExams || publicExams.length > 0) && (
         <section id="sinaqlar" className="container-app scroll-mt-24 py-20 sm:py-24">
           <SectionTitle
             eyebrow="Açıq sınaqlar"
@@ -39,9 +45,27 @@ const Home = () => {
             subtitle="Müəllimlərin açıq paylaşdığı ən yeni imtahanlar — seç və həll etməyə başla."
           />
           <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {publicExams.slice(0, 6).map((e) => (
-              <ExamCard key={e._id} exam={e} publicView />
-            ))}
+            {loadingExams
+              ? Array.from({ length: 3 }).map((_, k) => (
+                  <div
+                    key={k}
+                    className="animate-pulse overflow-hidden rounded-2xl border border-line bg-surface"
+                  >
+                    <div className="h-40 bg-surface2" />
+                    <div className="space-y-3 p-5">
+                      <div className="h-4 w-3/4 rounded bg-surface2" />
+                      <div className="flex gap-3">
+                        <div className="h-12 flex-1 rounded-lg bg-surface2" />
+                        <div className="h-12 flex-1 rounded-lg bg-surface2" />
+                        <div className="h-12 flex-1 rounded-lg bg-surface2" />
+                      </div>
+                      <div className="h-10 w-full rounded-xl bg-surface2" />
+                    </div>
+                  </div>
+                ))
+              : publicExams.slice(0, 6).map((e) => (
+                  <ExamCard key={e._id} exam={e} publicView />
+                ))}
           </div>
         </section>
       )}
