@@ -1,9 +1,22 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// Production API. Used as a FALLBACK so a build that forgot to set
+// VITE_BACKEND_URL (e.g. a CI/host env var not configured) still ships a working
+// app instead of calling "undefined/api/..." and breaking everything.
+const DEFAULT_BACKEND_URL = 'https://api.bunkermath.az'
+
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  const backendUrl = env.VITE_BACKEND_URL || DEFAULT_BACKEND_URL
+  return {
+  // Force a defined value for the backend URL even if the env var is missing,
+  // so `import.meta.env.VITE_BACKEND_URL` is never `undefined` in the bundle.
+  define: {
+    'import.meta.env.VITE_BACKEND_URL': JSON.stringify(backendUrl),
+  },
   plugins: [
     react(),
     VitePWA({
@@ -72,4 +85,5 @@ export default defineConfig({
       devOptions: { enabled: false },
     }),
   ],
+  }
 })
