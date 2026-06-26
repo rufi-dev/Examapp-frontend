@@ -1,5 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import Layout from "./components/Layout";
+// Home (the landing) is loaded EAGERLY, not lazily, so the first paint is the
+// actual page — no Suspense spinner / blank screen when someone opens the site.
+import Home from "./pages/Home";
 import ScrollToTop from "./components/ScrollToTop";
 import PendingJoinHandler from "./components/PendingJoinHandler";
 import ProfileCompletionGate from "./components/ProfileCompletionGate";
@@ -36,7 +39,6 @@ axios.interceptors.request.use((config) => {
   return config;
 });
 
-const Home = lazy(() => import("./pages/Home"));
 const Login = lazy(() => import("./pages/auth/Login"));
 const Register = lazy(() => import("./pages/auth/Register"));
 const Forgot = lazy(() => import("./pages/auth/Forgot"));
