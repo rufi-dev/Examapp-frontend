@@ -6,7 +6,7 @@ import ProfileCompletionGate from "./components/ProfileCompletionGate";
 import axios from "axios";
 import { ToastContainer, Slide } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   getLoginStatus,
@@ -99,10 +99,13 @@ function App() {
   const dispatch = useDispatch();
   const isLoggedIn = useSelector(selectIsLoggedIn);
   const user = useSelector(selectUser);
-  const [checked, setChecked] = useState(false);
 
+  // Revalidate the session in the BACKGROUND. We don't block the UI on it:
+  // isLoggedIn is hydrated synchronously from the stored token, so the page
+  // (hero + its own section loaders) renders immediately on every refresh
+  // instead of sitting behind a full-screen spinner.
   useEffect(() => {
-    Promise.resolve(dispatch(getLoginStatus())).finally(() => setChecked(true));
+    dispatch(getLoginStatus());
   }, [dispatch]);
 
   useEffect(() => {
@@ -115,14 +118,6 @@ function App() {
 
   if (import.meta.env.VITE_DEVELOPMENT_STATUS === "production") {
     disableReactDevTools();
-  }
-
-  if (!checked) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-bg">
-        <Spinner size={48} className="text-primary" />
-      </div>
-    );
   }
 
   return (

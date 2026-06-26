@@ -2,8 +2,20 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit"
 import { toast } from "react-toastify"
 import authService from "./authService";
 
+// Hydrate auth state synchronously from the stored token so the app knows
+// immediately whether the user is logged in — no need to block the whole UI
+// behind a full-screen spinner while getLoginStatus revalidates in the
+// background. logout clears this token, so absence reliably means logged out.
+const hasToken = (() => {
+    try {
+        return !!localStorage.getItem("token")
+    } catch {
+        return false
+    }
+})()
+
 const initialState = {
-    isLoggedIn: false,
+    isLoggedIn: hasToken,
     achivements: null,
     user: null,
     userById: null,
