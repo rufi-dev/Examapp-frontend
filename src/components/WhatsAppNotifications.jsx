@@ -16,7 +16,6 @@ const WA_GREEN = "#25D366";
 const WhatsAppNotifications = () => {
   const [status, setStatus] = useState(null); // { enabled, ready, hasQr, qr }
   const [loading, setLoading] = useState(true);
-  const [opening, setOpening] = useState(false); // fetching when the modal opens
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState("");
   const [groups, setGroups] = useState([]);
@@ -101,8 +100,7 @@ const WhatsAppNotifications = () => {
       pollRef.current && clearInterval(pollRef.current);
       return;
     }
-    setOpening(true);
-    loadStatus(true).finally(() => setOpening(false));
+    loadStatus(true);
     pollRef.current = setInterval(() => loadStatus(true), 3000);
     const onKey = (e) => e.key === "Escape" && setOpen(false);
     window.addEventListener("keydown", onKey);
@@ -151,9 +149,9 @@ const WhatsAppNotifications = () => {
   const ready = !!status?.ready;
   const enabled = status?.enabled !== false;
 
-  const body = loading || opening ? (
-    <div className="grid place-items-center py-10">
-      <Spinner size={24} className="text-primary" />
+  const body = loading ? (
+    <div className="grid min-h-[18rem] place-items-center">
+      <Spinner size={26} className="text-primary" />
     </div>
   ) : !enabled ? (
     <p className="rounded-xl border border-dashed border-line p-4 text-sm text-muted">
@@ -177,7 +175,7 @@ const WhatsAppNotifications = () => {
             value={groupId}
             onChange={(e) => saveGroup(e.target.value)}
             disabled={busy === "group"}
-            className="min-w-[12rem] flex-1 rounded-xl border border-line bg-surface px-3 py-2 text-sm text-text outline-none focus:border-primary"
+            className="w-full flex-1 rounded-xl border border-line bg-surface px-3 py-2 text-sm text-text outline-none focus:border-primary sm:w-auto sm:min-w-[12rem]"
           >
             <option value="">— Qrupsuz (hər kəsə ayrıca) —</option>
             {groups.map((g) => (
@@ -212,7 +210,7 @@ const WhatsAppNotifications = () => {
               value={inviteLink}
               onChange={(e) => setInviteLink(e.target.value)}
               placeholder="https://chat.whatsapp.com/..."
-              className="min-w-[12rem] flex-1 rounded-xl border border-line bg-surface px-3 py-2 text-sm text-text outline-none focus:border-primary"
+              className="w-full flex-1 rounded-xl border border-line bg-surface px-3 py-2 text-sm text-text outline-none focus:border-primary sm:w-auto sm:min-w-[12rem]"
             />
             <Button type="button" variant="soft" onClick={saveInvite} disabled={busy === "invite"}>
               {busy === "invite" ? <Spinner size={16} /> : null} Saxla
@@ -230,24 +228,44 @@ const WhatsAppNotifications = () => {
         </Button>
       </div>
     </div>
-  ) : status?.qr ? (
-    <div>
-      <ol className="mb-4 space-y-1.5 text-sm text-muted">
-        <li>1. Telefonunuzda WhatsApp-ı açın.</li>
-        <li>
-          2. <span className="font-semibold text-text">Parametrlər → Əlaqəli cihazlar → Cihaz əlavə et</span>.
-        </li>
-        <li>3. Aşağıdakı QR kodu skan edin.</li>
-      </ol>
-      <div className="mx-auto w-fit rounded-2xl border border-line bg-white p-3">
-        <img src={status.qr} alt="WhatsApp QR" className="h-56 w-56" />
-      </div>
-      <p className="mt-3 text-center text-xs text-muted">Skan etdikdən sonra bu pəncərə avtomatik yenilənir…</p>
-    </div>
   ) : (
-    <div className="grid place-items-center gap-3 py-8 text-center">
-      <Spinner size={24} className="text-primary" />
-      <p className="text-sm text-muted">QR kod hazırlanır… bir neçə saniyə.</p>
+    // NOT connected → QR flow. Instructions + box stay put; ONLY the QR box
+    // shows a loader until the code is ready, so the layout never jumps.
+    <div>
+      <ol className="mb-5 space-y-3">
+        {[
+          <>
+            Telefonunuzda <span className="font-semibold text-text">WhatsApp</span>-ı açın.
+          </>,
+          <>
+            <span className="font-semibold text-text">Parametrlər → Əlaqəli cihazlar → Cihaz əlavə et</span>.
+          </>,
+          <>Aşağıdakı QR kodu skan edin.</>,
+        ].map((t, i) => (
+          <li key={i} className="flex items-start gap-3 text-sm text-muted">
+            <span
+              className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-bold"
+              style={{ backgroundColor: `${WA_GREEN}1f`, color: WA_GREEN }}
+            >
+              {i + 1}
+            </span>
+            <span className="pt-0.5">{t}</span>
+          </li>
+        ))}
+      </ol>
+      <div className="mx-auto grid aspect-square w-full max-w-[15rem] place-items-center rounded-2xl border border-line bg-white p-3 shadow-soft">
+        {status?.qr ? (
+          <img src={status.qr} alt="WhatsApp QR" className="h-full w-full object-contain" />
+        ) : (
+          <div className="flex flex-col items-center gap-2.5 text-muted">
+            <Spinner size={26} className="text-primary" />
+            <span className="text-xs">QR hazırlanır…</span>
+          </div>
+        )}
+      </div>
+      <p className="mt-3 text-center text-xs text-muted">
+        Skan etdikdən sonra bu pəncərə avtomatik yenilənir…
+      </p>
     </div>
   );
 

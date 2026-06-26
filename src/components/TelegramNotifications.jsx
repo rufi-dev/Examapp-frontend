@@ -50,7 +50,6 @@ const Check = ({ checked, indeterminate, disabled, onChange }) => {
 const TelegramNotifications = () => {
   const [status, setStatus] = useState(null); // { configured, linked, deepLink, ... }
   const [loading, setLoading] = useState(true);
-  const [opening, setOpening] = useState(false); // fetching when the modal opens
   const [open, setOpenModal] = useState(false); // settings modal
   const [busy, setBusy] = useState(""); // "test" | "unlink" | "check"
   const [waiting, setWaiting] = useState(false); // polling after Connect tap
@@ -107,10 +106,7 @@ const TelegramNotifications = () => {
 
   const openSettings = () => {
     setOpenModal(true);
-    if (status?.linked && !auto) {
-      setOpening(true);
-      loadAutomation().finally(() => setOpening(false));
-    }
+    if (status?.linked && !auto) loadAutomation();
   };
 
   // After the teacher opens the bot, poll so it flips to "connected" once they
@@ -225,18 +221,29 @@ const TelegramNotifications = () => {
   const linked = !!status?.linked;
 
   // The settings body (rendered inside the modal).
-  const body = loading || opening ? (
-    <div className="grid place-items-center py-10">
-      <Spinner size={24} className="text-primary" />
+  const body = loading ? (
+    <div className="grid min-h-[16rem] place-items-center">
+      <Spinner size={26} className="text-primary" />
     </div>
   ) : !linked ? (
     <div>
-      <ol className="mb-4 space-y-1.5 text-sm text-muted">
-        <li>1. “Telegram-ı qoş” düyməsini basın — bot açılacaq.</li>
-        <li>
-          2. Telegram-da <span className="font-semibold text-text">Start</span> düyməsini basın.
-        </li>
-        <li>3. Bu pəncərə avtomatik “Qoşulub” olacaq.</li>
+      <ol className="mb-5 space-y-3">
+        {[
+          <>
+            <span className="font-semibold text-text">“Telegram-ı qoş”</span> düyməsini basın — bot açılacaq.
+          </>,
+          <>
+            Telegram-da <span className="font-semibold text-text">Start</span> düyməsini basın.
+          </>,
+          <>Bu pəncərə avtomatik “Qoşulub” olacaq.</>,
+        ].map((t, i) => (
+          <li key={i} className="flex items-start gap-3 text-sm text-muted">
+            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#229ED9]/12 text-xs font-bold text-[#229ED9]">
+              {i + 1}
+            </span>
+            <span className="pt-0.5">{t}</span>
+          </li>
+        ))}
       </ol>
       <div className="flex flex-wrap gap-2.5">
         <Button type="button" onClick={onConnect} className="bg-[#229ED9] text-white hover:brightness-105">
@@ -262,7 +269,12 @@ const TelegramNotifications = () => {
       </div>
 
       {!auto ? (
-        <Spinner size={18} className="text-primary" />
+        <div className="grid min-h-[12rem] place-items-center rounded-2xl border border-line bg-surface2/30">
+          <div className="flex flex-col items-center gap-2.5 text-muted">
+            <Spinner size={24} className="text-primary" />
+            <span className="text-xs">Ayarlar yüklənir…</span>
+          </div>
+        </div>
       ) : (
         <>
           <div>
