@@ -26,6 +26,11 @@ const inputCls =
 
 const isPhoneValid = (p) => String(p || "").replace(/\D/g, "").length >= 9;
 
+const pickInviteLink = (data) => {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return "";
+  return typeof data.link === "string" ? data.link : "";
+};
+
 // EVERYONE needs a real phone; STUDENTS additionally need a grade ("Sinif").
 const needsCompletion = (user) => {
   if (!user) return false;
@@ -51,7 +56,7 @@ const ProfileCompletionGate = () => {
   useEffect(() => {
     axios
       .get(INVITE_API)
-      .then((r) => setInviteLink(r.data?.link || ""))
+      .then((r) => setInviteLink(pickInviteLink(r.data)))
       .catch(() => {});
   }, []);
 
