@@ -133,14 +133,26 @@ const QuestionAdd = () => {
 
   // --- Correspondence (Cmu) grid editing ---
   // Resize the number of rows (numbers), keeping existing per-number selections.
+  // While TYPING: allow an empty field and only cap the max — don't force the
+  // minimum (so you can clear "5" and type "3" without it snapping to 2). The
+  // minimum is enforced on blur via commitCmu* below.
   const setCmuLeft = (i, val) =>
     setQuestions((prev) =>
       prev.map((q, idx) => {
         if (idx !== i) return q;
-        const n = clampInt(val, 2, 15);
-        const key = Array.from({ length: n }, (_, k) =>
-          Array.isArray(q.key?.[k]) ? q.key[k] : []
-        );
+        const cleaned = String(val).replace(/\D/g, "");
+        if (cleaned === "") return { ...q, leftCount: "" };
+        const n = Math.min(15, parseInt(cleaned, 10) || 0);
+        const key = Array.from({ length: n }, (_, k) => (Array.isArray(q.key?.[k]) ? q.key[k] : []));
+        return { ...q, leftCount: n, key };
+      })
+    );
+  const commitCmuLeft = (i) =>
+    setQuestions((prev) =>
+      prev.map((q, idx) => {
+        if (idx !== i) return q;
+        const n = Math.max(2, Math.min(15, Number(q.leftCount) || 2));
+        const key = Array.from({ length: n }, (_, k) => (Array.isArray(q.key?.[k]) ? q.key[k] : []));
         return { ...q, leftCount: n, key };
       })
     );
@@ -149,10 +161,19 @@ const QuestionAdd = () => {
     setQuestions((prev) =>
       prev.map((q, idx) => {
         if (idx !== i) return q;
-        const m = clampInt(val, 2, 12);
-        const key = (q.key || []).map((arr) =>
-          Array.isArray(arr) ? arr.filter((ri) => ri < m) : []
-        );
+        const cleaned = String(val).replace(/\D/g, "");
+        if (cleaned === "") return { ...q, rightCount: "" };
+        const m = Math.min(12, parseInt(cleaned, 10) || 0);
+        const key = (q.key || []).map((arr) => (Array.isArray(arr) ? arr.filter((ri) => ri < m) : []));
+        return { ...q, rightCount: m, key };
+      })
+    );
+  const commitCmuRight = (i) =>
+    setQuestions((prev) =>
+      prev.map((q, idx) => {
+        if (idx !== i) return q;
+        const m = Math.max(2, Math.min(12, Number(q.rightCount) || 2));
+        const key = (q.key || []).map((arr) => (Array.isArray(arr) ? arr.filter((ri) => ri < m) : []));
         return { ...q, rightCount: m, key };
       })
     );
@@ -404,22 +425,26 @@ const QuestionAdd = () => {
                           <label className="flex items-center gap-2 text-xs font-semibold text-muted">
                             Nömrələr
                             <input
-                              type="number"
-                              min={2}
-                              max={15}
-                              value={q.leftCount ?? 5}
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              maxLength={2}
+                              value={q.leftCount ?? ""}
                               onChange={(e) => setCmuLeft(i, e.target.value)}
+                              onBlur={() => commitCmuLeft(i)}
                               className="w-16 rounded-lg border border-line bg-surface px-2 py-1 text-center text-sm text-text outline-none focus:border-primary"
                             />
                           </label>
                           <label className="flex items-center gap-2 text-xs font-semibold text-muted">
                             Hərflər
                             <input
-                              type="number"
-                              min={2}
-                              max={12}
-                              value={q.rightCount ?? 5}
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              maxLength={2}
+                              value={q.rightCount ?? ""}
                               onChange={(e) => setCmuRight(i, e.target.value)}
+                              onBlur={() => commitCmuRight(i)}
                               className="w-16 rounded-lg border border-line bg-surface px-2 py-1 text-center text-sm text-text outline-none focus:border-primary"
                             />
                           </label>
