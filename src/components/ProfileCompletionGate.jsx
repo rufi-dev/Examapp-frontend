@@ -39,8 +39,6 @@ const needsCompletion = (user) => {
   return noPhone || noGrade;
 };
 
-const groupKey = (user) => `wa_grp_${user?._id}`;
-
 const ProfileCompletionGate = () => {
   const dispatch = useDispatch();
   const isLoggedIn = useSelector(selectIsLoggedIn);
@@ -50,9 +48,11 @@ const ProfileCompletionGate = () => {
   const [phone, setPhone] = useState("+994 ");
   const [saving, setSaving] = useState(false);
   const [inviteLink, setInviteLink] = useState("");
+  const [checking, setChecking] = useState(false);
+  const [joinClicked, setJoinClicked] = useState(false);
   const [step, setStep] = useState(null); // null | "form" | "group"
 
-  // Load the group invite link once (public endpoint).
+  // Load the group invite link (public endpoint).
   useEffect(() => {
     axios
       .get(INVITE_API)
@@ -66,31 +66,61 @@ const ProfileCompletionGate = () => {
     setPhone(user.phone && user.phone !== "+994" ? user.phone : "+994 ");
   }, [user]);
 
-  // Decide what (if anything) to show: finish the profile first, then a one-time
-  // (per device) prompt for students to join the WhatsApp group.
+  // Decide what (if anything) to show: finish the profile first, then — for
+  // STUDENTS only — MANDATORY WhatsApp group join. Once the account is verified
+  // joined (server flag), it never shows again.
   useEffect(() => {
     if (!isLoggedIn || !user) return setStep(null);
     if (needsCompletion(user)) return setStep("form");
-    // Prompt to join the WhatsApp group once (per device) — for any role.
-    const needGroup = !!inviteLink && !localStorage.getItem(groupKey(user));
+    const isStudent = user.role === "student";
+    const needGroup = isStudent && !!inviteLink && !user.whatsappGroupJoined;
     setStep(needGroup ? "group" : null);
   }, [isLoggedIn, user, inviteLink]);
 
-  if (!step) return null;
+  // Verify membership: confirm the student's registered phone is in the group.
+  const checkJoined = async () => {
+    setChecking(true);
+    try {
+      const { data } = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/api/whatsapp/check-join`
+      );
+      if (data?.joined) {
+        await dispatch(getUser()); // refreshes the flag → the gate closes
+        toast.success("Qrupa qoşulmusan ✓");
+      } else if (data && (data.ready === false || data.configured === false)) {
+        // Bot offline / no group set → we can't verify; don't trap the student.
+        toast.info("WhatsApp yoxlaması hazırda mümkün deyil — davam edə bilərsən.");
+        setStep(null);
+      } else {
+        toast.error(
+          `Qrupda tapılmadın. Qeydiyyatdakı nömrə (${user?.phone}) ilə qoşul və yenidən yoxla.`
+        );
+      }
+    } catch {
+      toast.error("Yoxlama alınmadı, yenidən cəhd et.");
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  // When the student returns from the WhatsApp tab, auto-verify once.
+  useEffect(() => {
+    if (step !== "group" || !joinClicked) return;
+    const onFocus = () => checkJoined();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, joinClicked]);
+
+  // `user` can flip to null (logout / session expiry) before the decide-effect
+  // clears `step` — guard so we never read user.role off null.
+  if (!step || !user) return null;
 
   const isStudent = user.role === "student";
 
-  const finishGroup = () => {
-    try {
-      localStorage.setItem(groupKey(user), "1");
-    } catch {
-      /* ignore */
-    }
-    setStep(null);
-  };
   const joinGroup = () => {
+    setJoinClicked(true);
     window.open(inviteLink, "_blank", "noopener");
-    finishGroup();
   };
 
   const submit = async (e) => {
@@ -127,25 +157,61 @@ const ProfileCompletionGate = () => {
             >
               <FaWhatsapp className="text-2xl" />
             </span>
-            <h2 className="mt-4 font-display text-xl font-bold text-text">Demək olar ki, hazırdır!</h2>
+            <h2 className="mt-4 font-display text-xl font-bold text-text">WhatsApp qrupuna qoşul</h2>
             <p className="mt-1.5 text-sm text-muted">
-              Yeni imtahan bildirişlərini almaq üçün WhatsApp qrupuna qoşul.
+              Davam etmək üçün imtahan bildirişləri qrupuna qoşulmaq mütləqdir.
             </p>
+
+            <div className="mt-4 rounded-xl border border-line bg-surface2/40 px-4 py-3 text-left text-xs text-muted">
+              <p>
+                1. <span className="font-semibold text-text">Qrupa qoşul</span> düyməsini bas və WhatsApp-da qrupa qoşul.
+              </p>
+              <p className="mt-1">
+                2. Geri qayıt və <span className="font-semibold text-text">Qoşulduğumu yoxla</span>ya bas.
+              </p>
+              <p className="mt-1.5">
+                ⚠️ Qeydiyyatdakı nömrə ilə qoşul:{" "}
+                <span className="font-semibold text-text">{user?.phone}</span>
+              </p>
+            </div>
+
             <Button
               type="button"
               onClick={joinGroup}
               size="lg"
-              className="mt-6 w-full bg-[#25D366] text-white hover:brightness-105"
+              className="mt-4 w-full bg-[#25D366] text-white hover:brightness-105"
             >
-              <FaWhatsapp /> WhatsApp qrupuna qoşul
+              <FaWhatsapp /> Qrupa qoşul
             </Button>
-            <button
+            <Button
               type="button"
-              onClick={finishGroup}
-              className="mx-auto mt-4 block text-sm text-muted transition-colors hover:text-text"
+              variant="secondary"
+              onClick={checkJoined}
+              size="lg"
+              disabled={checking}
+              className="mt-3 w-full"
             >
-              Keç
-            </button>
+              {checking ? <Spinner /> : "Qoşulduğumu yoxla"}
+            </Button>
+
+            <div className="mt-4 flex items-center justify-center gap-4 text-sm">
+              {/* Wrong number? jump back to the phone form to fix it. */}
+              <button
+                type="button"
+                onClick={() => setStep("form")}
+                className="font-semibold text-primary transition-colors hover:underline"
+              >
+                Nömrəni dəyiş
+              </button>
+              <span className="text-line">·</span>
+              <button
+                type="button"
+                onClick={onLogout}
+                className="flex items-center gap-1.5 text-muted transition-colors hover:text-text"
+              >
+                <FiLogOut /> Çıxış et
+              </button>
+            </div>
           </div>
         ) : (
           <>
