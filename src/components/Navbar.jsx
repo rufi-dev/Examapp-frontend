@@ -2,12 +2,12 @@ import { useState, useEffect } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { RxHamburgerMenu } from "react-icons/rx";
 import { GrClose } from "react-icons/gr";
-import { FiLogOut, FiArrowRight } from "react-icons/fi";
+import { FiLogOut, FiArrowRight, FiSun, FiMoon } from "react-icons/fi";
 import { useDispatch } from "react-redux";
 import { RESET, logout } from "../../redux/features/auth/authSlice";
 import { ShowOnLogin, ShowOnLogout } from "./protect/hiddenLink";
 import { UserName } from "../pages/profile/Profile";
-import ThemeToggle from "./ui/ThemeToggle";
+import ThemeToggle, { useTheme } from "./ui/ThemeToggle";
 import Button from "./ui/Button";
 import BunkerMathLogo from "./blueprint/BunkerMathLogo";
 import { MathGridBackground } from "./blueprint/MathVisuals";
@@ -27,6 +27,7 @@ const Navbar = () => {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { isDark, toggle: toggleTheme } = useTheme();
   const close = () => setOpen(false);
 
   // Transparent over the hero; solid with a border once scrolled.
@@ -83,8 +84,10 @@ const Navbar = () => {
           </ul>
 
           <div className="flex items-center gap-2.5">
-            <ThemeToggle />
+            {/* Theme toggle is DESKTOP-only here; on mobile it lives in the
+                burger menu (below) to keep the header clean. */}
             <div className="hidden items-center gap-2.5 lg:flex">
+              <ThemeToggle />
               <ShowOnLogout>
                 <Button to="/login" variant="ghost" size="sm">
                   Daxil ol
@@ -144,16 +147,13 @@ const Navbar = () => {
             <Link to="/" onClick={close}>
               <BunkerMathLogo />
             </Link>
-            <div className="flex items-center gap-2.5">
-              <ThemeToggle />
-              <button
-                onClick={close}
-                aria-label="Bağla"
-                className="grid h-10 w-10 place-items-center rounded-full border border-line bg-surface text-text"
-              >
-                <GrClose className="text-[15px]" />
-              </button>
-            </div>
+            <button
+              onClick={close}
+              aria-label="Bağla"
+              className="grid h-10 w-10 place-items-center rounded-full border border-line bg-surface text-text"
+            >
+              <GrClose className="text-[15px]" />
+            </button>
           </div>
 
           <nav className="flex flex-1 flex-col px-5 py-6 sm:px-8">
@@ -174,6 +174,28 @@ const Navbar = () => {
             </ul>
 
             <div className="mt-auto flex flex-col gap-3 pt-8">
+              {/* Theme switch — lives in the menu on mobile (not the header). */}
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className="flex w-full items-center justify-between rounded-xl border border-line bg-surface px-4 py-3.5 transition-colors hover:bg-surface2"
+              >
+                <span className="flex items-center gap-2.5 text-base font-semibold text-text">
+                  {isDark ? <FiSun className="text-[18px]" /> : <FiMoon className="text-[18px]" />}
+                  {isDark ? "İşıqlı tema" : "Qaranlıq tema"}
+                </span>
+                <span
+                  className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+                    isDark ? "bg-primary" : "bg-line"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all duration-200 ease-out-quint ${
+                      isDark ? "left-[1.375rem]" : "left-0.5"
+                    }`}
+                  />
+                </span>
+              </button>
               <ShowOnLogout>
                 <Button to="/login" variant="secondary" onClick={close} size="lg" className="w-full">
                   Daxil ol
