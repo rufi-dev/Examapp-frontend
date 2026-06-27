@@ -1367,9 +1367,12 @@ const StructuredBuilder = () => {
     );
     const importBtn = (
       <div className={`flex flex-col gap-1.5 ${vertical ? "w-full" : "shrink-0"}`}>
+        {/* Press to open the import panel — pick model, type optional
+            instructions, then extract. (Opening first lets the teacher add
+            instructions BEFORE the file dialog so the AI actually gets them.) */}
         <button
           type="button"
-          onClick={startImport}
+          onClick={() => setPromptOpen((v) => !v)}
           disabled={extracting}
           title="Süni intellekt PDF-dən sualları avtomatik çıxarır"
           className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-primary/40 bg-gradient-to-r from-primary/10 to-accent2/10 px-3 py-2.5 text-sm font-bold text-primary transition-colors hover:from-primary/20 hover:to-accent2/20 disabled:opacity-60"
@@ -1378,67 +1381,70 @@ const StructuredBuilder = () => {
           <span className="rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-primary-fg">
             AI
           </span>
-        </button>
-        {/* AI model: Gemini (cheaper) or Claude (more precise). */}
-        <div className="flex items-center gap-0.5 rounded-lg border border-line bg-surface p-0.5 text-[11px] font-semibold">
-          <button
-            type="button"
-            onClick={() => setAiProvider("gemini")}
-            disabled={extracting}
-            className={`flex-1 rounded-md px-2 py-1 transition-colors ${
-              aiProvider === "gemini" ? "bg-primary text-primary-fg" : "text-muted hover:text-text"
-            }`}
-          >
-            Gemini · ucuz
-          </button>
-          <button
-            type="button"
-            onClick={() => setAiProvider("claude")}
-            disabled={extracting}
-            className={`flex-1 rounded-md px-2 py-1 transition-colors ${
-              aiProvider === "claude" ? "bg-primary text-primary-fg" : "text-muted hover:text-text"
-            }`}
-          >
-            Claude · dəqiq
-          </button>
-        </div>
-        {/* Optional extra instructions handed to the AI before the PDF. Empty =
-            default behaviour; filled = default + these instructions. */}
-        <button
-          type="button"
-          onClick={() => setPromptOpen((v) => !v)}
-          disabled={extracting}
-          className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1 text-[11px] font-semibold transition-colors ${
-            aiExtraPrompt.trim()
-              ? "border-primary/50 bg-primary/10 text-primary"
-              : "border-line bg-surface text-muted hover:text-text"
-          }`}
-        >
-          <FiEdit3 className="text-xs" />
-          {aiExtraPrompt.trim() ? "Əlavə təlimat ✓" : "Əlavə təlimat (istəyə bağlı)"}
+          <FiChevronDown className={`text-xs transition-transform ${promptOpen ? "rotate-180" : ""}`} />
         </button>
         {promptOpen && (
-          <div className="space-y-1 rounded-lg border border-line bg-surface2/40 p-2">
-            <textarea
-              value={aiExtraPrompt}
-              onChange={(e) => {
-                setAiExtraPrompt(e.target.value);
-                try {
-                  localStorage.setItem("ai-extra-prompt", e.target.value);
-                } catch {
-                  /* ignore */
+          <div className="space-y-2 rounded-xl border border-line bg-surface2/40 p-2.5">
+            {/* AI model: Gemini (cheaper) or Claude (more precise). */}
+            <div className="flex items-center gap-0.5 rounded-lg border border-line bg-surface p-0.5 text-[11px] font-semibold">
+              <button
+                type="button"
+                onClick={() => setAiProvider("gemini")}
+                disabled={extracting}
+                className={`flex-1 rounded-md px-2 py-1 transition-colors ${
+                  aiProvider === "gemini" ? "bg-primary text-primary-fg" : "text-muted hover:text-text"
+                }`}
+              >
+                Gemini · ucuz
+              </button>
+              <button
+                type="button"
+                onClick={() => setAiProvider("claude")}
+                disabled={extracting}
+                className={`flex-1 rounded-md px-2 py-1 transition-colors ${
+                  aiProvider === "claude" ? "bg-primary text-primary-fg" : "text-muted hover:text-text"
+                }`}
+              >
+                Claude · dəqiq
+              </button>
+            </div>
+            {/* Optional extra instructions handed to the AI before the PDF. Empty =
+                default behaviour; filled = default + these instructions. */}
+            <div className="space-y-1">
+              <span className="flex items-center gap-1.5 text-[11px] font-semibold text-muted">
+                <FiEdit3 className="text-xs" /> Əlavə təlimat (istəyə bağlı)
+                {aiExtraPrompt.trim() && <span className="text-primary">✓</span>}
+              </span>
+              <textarea
+                value={aiExtraPrompt}
+                onChange={(e) => {
+                  setAiExtraPrompt(e.target.value);
+                  try {
+                    localStorage.setItem("ai-extra-prompt", e.target.value);
+                  } catch {
+                    /* ignore */
+                  }
+                }}
+                disabled={extracting}
+                rows={4}
+                placeholder={
+                  "Məs: yalnız 1–20 arası sualları çıxar · cavab açarını PDF-dən götür · qrafikləri şəkil kimi işarələ · izahları da əlavə et…"
                 }
-              }}
+                className="w-full resize-y rounded-md border border-line bg-surface px-2.5 py-2 text-xs text-text outline-none focus:border-primary"
+              />
+              <p className="text-[10px] leading-relaxed text-muted">
+                Boş buraxsanız standart davranış işləyəcək. Yazsanız: standart + sizin təlimatınız.
+              </p>
+            </div>
+            {/* Extract: pick the PDF and run the AI with the instructions above. */}
+            <button
+              type="button"
+              onClick={startImport}
               disabled={extracting}
-              rows={4}
-              placeholder={
-                "Məs: yalnız 1–20 arası sualları çıxar · cavab açarını PDF-dən götür · qrafikləri şəkil kimi işarələ · izahları da əlavə et…"
-              }
-              className="w-full resize-y rounded-md border border-line bg-surface px-2.5 py-2 text-xs text-text outline-none focus:border-primary"
-            />
-            <p className="text-[10px] leading-relaxed text-muted">
-              Boş buraxsanız standart davranış işləyəcək. Yazsanız: standart + sizin təlimatınız.
-            </p>
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-bold text-primary-fg transition-colors hover:bg-primary/90 disabled:opacity-60"
+            >
+              {extracting ? <Spinner size={16} /> : <FiZap />} PDF seç və çıxar
+            </button>
           </div>
         )}
       </div>
