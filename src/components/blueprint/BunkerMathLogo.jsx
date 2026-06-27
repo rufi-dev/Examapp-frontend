@@ -1,6 +1,6 @@
-// BunkerMath brand mark: a "blueprint tile" — a cobalt rounded square holding a
-// white coordinate axis + parabola (the product is math, drawn on graph paper).
-// `showText` renders the wordmark beside it.
+// BunkerMath brand mark: a cobalt "bunker" tile (a strong container) holding a
+// white coordinate plane with a RISING results line — math (axes + plot) plus the
+// product's promise (your exam scores going up). `showText` adds the wordmark.
 const BunkerMathLogo = ({ size = 36, showText = true, className = "", textClassName = "" }) => (
   <span className={`inline-flex items-center gap-2.5 ${className}`}>
     <svg
@@ -14,18 +14,22 @@ const BunkerMathLogo = ({ size = 36, showText = true, className = "", textClassN
     >
       {!showText && <title>BunkerMath</title>}
       <rect x="1.5" y="1.5" width="37" height="37" rx="10" className="fill-primary" />
-      {/* faint inner graph paper */}
-      {[12, 20, 28].map((p) => (
-        <line key={`v${p}`} x1={p} y1="6" x2={p} y2="34" stroke="#fff" strokeOpacity="0.18" strokeWidth="1" />
-      ))}
-      {[12, 20, 28].map((p) => (
-        <line key={`h${p}`} x1="6" y1={p} x2="34" y2={p} stroke="#fff" strokeOpacity="0.18" strokeWidth="1" />
-      ))}
-      {/* axes */}
-      <line x1="7" y1="28" x2="33" y2="28" stroke="#fff" strokeOpacity="0.55" strokeWidth="1.5" strokeLinecap="round" />
-      {/* parabola */}
-      <path d="M10 12 Q20 38 30 12" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" fill="none" />
-      <circle cx="20" cy="27.5" r="2" fill="#fff" />
+      {/* coordinate axes (faint) */}
+      <path d="M11 28 H31" stroke="#fff" strokeOpacity="0.45" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M11 28 V10" stroke="#fff" strokeOpacity="0.45" strokeWidth="1.5" strokeLinecap="round" />
+      {/* rising results line */}
+      <path
+        d="M11 24 L17.5 19 L23 21 L30 11"
+        stroke="#fff"
+        strokeWidth="2.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      {/* data nodes — the goal/peak accented */}
+      <circle cx="17.5" cy="19" r="1.55" fill="#fff" />
+      <circle cx="23" cy="21" r="1.55" fill="#fff" />
+      <circle cx="30" cy="11" r="2.7" fill="#fff" />
     </svg>
     {showText && (
       <span className={`font-display text-[1.15rem] font-extrabold leading-none tracking-tight text-text ${textClassName}`}>
