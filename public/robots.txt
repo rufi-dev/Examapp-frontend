@@ -1,0 +1,21 @@
+# BunkerMath — allow search engines on public pages, keep the private app out.
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /connections
+Disallow: /classes
+Disallow: /myExams
+Disallow: /myResults
+Disallow: /users
+Disallow: /examResults
+Disallow: /aiUsage
+Disallow: /exam/
+Disallow: /class/
+Disallow: /user/
+Disallow: /login
+Disallow: /register
+Disallow: /resetPassword
+Disallow: /verify
+
+Sitemap: https://bunkermath.az/sitemap.xml
