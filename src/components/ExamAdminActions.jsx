@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import { MdOutlineModeEditOutline } from "react-icons/md";
 import { AiFillDelete, AiOutlinePlus } from "react-icons/ai";
-import { FiBarChart2, FiEye, FiEyeOff } from "react-icons/fi";
+import { FiBarChart2, FiEye, FiEyeOff, FiRadio } from "react-icons/fi";
 import { deleteExam, setExamHidden } from "../../redux/features/quiz/quizSlice";
 import ConfirmDialog from "./ui/ConfirmDialog";
 
@@ -73,6 +73,9 @@ const ExamAdminActions = ({ exam, onChanged, className = "" }) => {
       <div className={`flex items-center justify-end gap-1.5 ${className}`}>
         <ExamAction onClick={toggleHidden} label={exam.hidden ? "Göstər" : "Gizlət"}>
           {exam.hidden ? <FiEye className="text-[17px]" /> : <FiEyeOff className="text-[17px]" />}
+        </ExamAction>
+        <ExamAction to={`/exam/${exam._id}/live`} label="Canlı izlə">
+          <FiRadio className="text-[17px]" />
         </ExamAction>
         <ExamAction to={`/exam/${exam._id}/resultsByExam`} label="Nəticələr">
           <FiBarChart2 className="text-[17px]" />

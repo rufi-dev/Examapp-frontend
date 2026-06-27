@@ -361,6 +361,26 @@ const Quiz = () => {
     }
   }, [answers, answersKey]);
 
+  // Live-watch telemetry (kept in a ref so the autosave callback stays stable):
+  // which question the student is on (1-based, first question of the current
+  // page) and how many they've answered. Pushed with each autosave heartbeat.
+  const liveRef = useRef({ currentQuestion: 0, answeredCount: 0 });
+  useEffect(() => {
+    const latest = answersRef.current || [];
+    const hasAns = (a) => {
+      const v = a?.answer;
+      if (v == null) return false;
+      if (typeof v === "string") return v.trim() !== "";
+      if (Array.isArray(v)) return v.length > 0;
+      if (typeof v === "object") return Object.keys(v).length > 0;
+      return true;
+    };
+    liveRef.current = {
+      currentQuestion: Math.min(totalCount || 0, safeExamPage * examPageSize + 1),
+      answeredCount: latest.filter(hasAns).length,
+    };
+  }, [safeExamPage, answers, examPageSize, totalCount]);
+
   // Autosave the in-progress selections to the SERVER, so the attempt can be
   // auto-submitted when the timer runs out even if the student never finishes
   // (closed the tab / lost connection). Stable across renders (reads refs).
@@ -373,7 +393,7 @@ const Quiz = () => {
       answer: a?.answer,
       ...(a?.photo ? { photo: a.photo } : {}),
     }));
-    autosaveAnswers(examId, selectedAnswers, attempt.attemptId).catch(() => {});
+    autosaveAnswers(examId, selectedAnswers, attempt.attemptId, liveRef.current).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [access, attempt?.attemptId, examId, questions.length]);
 
@@ -390,7 +410,7 @@ const Quiz = () => {
   // is hidden / backgrounded (best chance to capture before the student leaves).
   useEffect(() => {
     if (access !== "allowed" || !attempt?.attemptId) return;
-    const id = setInterval(saveDraftToServer, 25000);
+    const id = setInterval(saveDraftToServer, 10000); // also the live-watch heartbeat
     const onVis = () => {
       if (document.visibilityState === "hidden") saveDraftToServer();
     };

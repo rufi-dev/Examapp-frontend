@@ -181,11 +181,19 @@ export const getAttemptStatus = async (examId, counts) => {
 
 // Autosave the in-progress selections onto the active attempt, so the server
 // can auto-submit them if the student never finishes (timer safety net).
-export const autosaveAnswers = async (examId, selectedAnswers, attemptId) => {
+export const autosaveAnswers = async (examId, selectedAnswers, attemptId, live = {}) => {
     const response = await axios.post(API_URL + "exam/" + examId + "/autosave", {
         selectedAnswers,
         attemptId,
+        currentQuestion: live.currentQuestion,
+        answeredCount: live.answeredCount,
     })
+    return response.data
+}
+
+// Live exam watch (owner/admin): active attempts + which question each is on.
+export const getLiveAttempts = async (examId) => {
+    const response = await axios.get(API_URL + "exam/" + examId + "/live")
     return response.data
 }
 
