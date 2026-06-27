@@ -23,9 +23,9 @@ export default defineConfig(({ mode }) => {
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'favicon-64.png', 'apple-touch-icon.png'],
       manifest: {
-        name: 'İmtahan Platforması',
-        short_name: 'İmtahan',
-        description: 'Onlayn sınaq imtahanları, nəticələr və statistika.',
+        name: 'BunkerMath',
+        short_name: 'BunkerMath',
+        description: 'Riyaziyyat sınaq imtahanları, nəticələr və statistika.',
         lang: 'az',
         dir: 'ltr',
         start_url: '/',
