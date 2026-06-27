@@ -47,8 +47,8 @@ export const PRESETS = {
 
 // Per-question points for a preset (null when the preset uses legacy scoring,
 // so callers fall back to questionPoints).
-// `types` (optional ordered question-type list) lets type-aware presets (e.g.
-// Az dili) weight open vs closed regardless of position; others ignore it.
+// `types` (optional ordered question-type list) lets type-aware presets weight
+// by question type regardless of position; the current presets ignore it.
 export const presetPointsPlan = (presetId, count, types) => {
   const p = PRESETS[presetId];
   return p && typeof p.pointsPlan === "function" ? p.pointsPlan(count, types) : null;
