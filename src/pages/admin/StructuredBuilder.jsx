@@ -719,10 +719,9 @@ const StructuredBuilder = () => {
   // can't blow up the grid. The min is enforced on blur (commit*) below.
   const setCmuLeft = (i, val) =>
     patch(i, (q) => {
-      if (val === "") return { ...q, leftCount: "" };
-      let n = Math.floor(Number(val));
-      if (!Number.isFinite(n)) return q;
-      n = Math.min(15, Math.max(0, n));
+      const cleaned = String(val).replace(/\D/g, "");
+      if (cleaned === "") return { ...q, leftCount: "" }; // empty while typing — no auto-2
+      const n = Math.min(15, parseInt(cleaned, 10) || 0);
       const key = Array.from({ length: n }, (k) => (Array.isArray(q.key?.[k]) ? q.key[k] : []));
       return { ...q, leftCount: n, key };
     });
@@ -734,10 +733,9 @@ const StructuredBuilder = () => {
     });
   const setCmuRight = (i, val) =>
     patch(i, (q) => {
-      if (val === "") return { ...q, rightCount: "" };
-      let n = Math.floor(Number(val));
-      if (!Number.isFinite(n)) return q;
-      n = Math.min(26, Math.max(0, n));
+      const cleaned = String(val).replace(/\D/g, "");
+      if (cleaned === "") return { ...q, rightCount: "" };
+      const n = Math.min(26, parseInt(cleaned, 10) || 0);
       const key = (q.key || []).map((arr) => (Array.isArray(arr) ? arr : []).filter((ri) => ri < n));
       return { ...q, rightCount: n, key };
     });
@@ -1999,9 +1997,10 @@ const StructuredBuilder = () => {
                         <label className="flex items-center gap-1.5 text-xs font-semibold text-muted">
                           Nömrələr
                           <input
-                            type="number"
-                            min={2}
-                            max={15}
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            maxLength={2}
                             value={q.leftCount ?? ""}
                             onChange={(e) => setCmuLeft(i, e.target.value)}
                             onBlur={() => commitCmuLeft(i)}
@@ -2011,9 +2010,10 @@ const StructuredBuilder = () => {
                         <label className="flex items-center gap-1.5 text-xs font-semibold text-muted">
                           Hərflər (a–…)
                           <input
-                            type="number"
-                            min={2}
-                            max={26}
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            maxLength={2}
                             value={q.rightCount ?? ""}
                             onChange={(e) => setCmuRight(i, e.target.value)}
                             onBlur={() => commitCmuRight(i)}
