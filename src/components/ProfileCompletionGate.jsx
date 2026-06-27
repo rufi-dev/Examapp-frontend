@@ -48,8 +48,7 @@ const ProfileCompletionGate = () => {
   const [phone, setPhone] = useState("+994 ");
   const [saving, setSaving] = useState(false);
   const [inviteLink, setInviteLink] = useState("");
-  const [checking, setChecking] = useState(false);
-  const [joinClicked, setJoinClicked] = useState(false);
+  const [joining, setJoining] = useState(false);
   const [step, setStep] = useState(null); // null | "form" | "group"
 
   // Load the group invite link (public endpoint).
@@ -77,50 +76,26 @@ const ProfileCompletionGate = () => {
     setStep(needGroup ? "group" : null);
   }, [isLoggedIn, user, inviteLink]);
 
-  // Verify membership: confirm the student's registered phone is in the group.
-  const checkJoined = async () => {
-    setChecking(true);
-    try {
-      const { data } = await axios.get(
-        `${import.meta.env.VITE_BACKEND_URL}/api/whatsapp/check-join`
-      );
-      if (data?.joined) {
-        await dispatch(getUser()); // refreshes the flag → the gate closes
-        toast.success("Qrupa qoşulmusan ✓");
-      } else if (data && (data.ready === false || data.configured === false)) {
-        // Bot offline / no group set → we can't verify; don't trap the student.
-        toast.info("WhatsApp yoxlaması hazırda mümkün deyil — davam edə bilərsən.");
-        setStep(null);
-      } else {
-        toast.error(
-          `Qrupda tapılmadın. Qeydiyyatdakı nömrə (${user?.phone}) ilə qoşul və yenidən yoxla.`
-        );
-      }
-    } catch {
-      toast.error("Yoxlama alınmadı, yenidən cəhd et.");
-    } finally {
-      setChecking(false);
-    }
-  };
-
-  // When the student returns from the WhatsApp tab, auto-verify once.
-  useEffect(() => {
-    if (step !== "group" || !joinClicked) return;
-    const onFocus = () => checkJoined();
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, joinClicked]);
-
   // `user` can flip to null (logout / session expiry) before the decide-effect
   // clears `step` — guard so we never read user.role off null.
   if (!step || !user) return null;
 
   const isStudent = user.role === "student";
 
-  const joinGroup = () => {
-    setJoinClicked(true);
+  // Trust-based: open the group AND mark the student joined (no membership
+  // verification — it trapped too many students). The gate closes right after.
+  const joinGroup = async () => {
     window.open(inviteLink, "_blank", "noopener");
+    setJoining(true);
+    try {
+      await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/whatsapp/mark-joined`);
+      await dispatch(getUser()); // flips whatsappGroupJoined → the gate closes
+      toast.success("Qrupa qoşuldun ✓");
+    } catch {
+      toast.error("Alınmadı, yenidən cəhd et.");
+    } finally {
+      setJoining(false);
+    }
   };
 
   const submit = async (e) => {
@@ -164,10 +139,7 @@ const ProfileCompletionGate = () => {
 
             <div className="mt-4 rounded-xl border border-line bg-surface2/40 px-4 py-3 text-left text-xs text-muted">
               <p>
-                1. <span className="font-semibold text-text">Qrupa qoşul</span> düyməsini bas və WhatsApp-da qrupa qoşul.
-              </p>
-              <p className="mt-1">
-                2. Geri qayıt və <span className="font-semibold text-text">Qoşulduğumu yoxla</span>ya bas.
+                <span className="font-semibold text-text">Qrupa qoşul</span> düyməsini bas və WhatsApp-da qrupa qoşul.
               </p>
               <p className="mt-1.5">
                 ⚠️ Qeydiyyatdakı nömrə ilə qoşul:{" "}
@@ -179,19 +151,10 @@ const ProfileCompletionGate = () => {
               type="button"
               onClick={joinGroup}
               size="lg"
+              disabled={joining}
               className="mt-4 w-full bg-[#25D366] text-white hover:brightness-105"
             >
-              <FaWhatsapp /> Qrupa qoşul
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={checkJoined}
-              size="lg"
-              disabled={checking}
-              className="mt-3 w-full"
-            >
-              {checking ? <Spinner /> : "Qoşulduğumu yoxla"}
+              {joining ? <Spinner /> : <><FaWhatsapp /> Qrupa qoşul</>}
             </Button>
 
             <div className="mt-4 flex items-center justify-center gap-4 text-sm">
