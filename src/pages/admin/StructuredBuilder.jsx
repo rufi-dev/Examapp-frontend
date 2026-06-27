@@ -714,18 +714,37 @@ const StructuredBuilder = () => {
     });
 
   // --- Correspondence (Cmu) grid editing ---
+  // While TYPING: allow an empty field and don't force the minimum (so you can
+  // clear "5" and type "3" without it jumping to 2/15). Only cap the max so it
+  // can't blow up the grid. The min is enforced on blur (commit*) below.
   const setCmuLeft = (i, val) =>
     patch(i, (q) => {
-      const n = Math.max(2, Math.min(15, Number(val) || 0));
+      if (val === "") return { ...q, leftCount: "" };
+      let n = Math.floor(Number(val));
+      if (!Number.isFinite(n)) return q;
+      n = Math.min(15, Math.max(0, n));
+      const key = Array.from({ length: n }, (k) => (Array.isArray(q.key?.[k]) ? q.key[k] : []));
+      return { ...q, leftCount: n, key };
+    });
+  const commitCmuLeft = (i) =>
+    patch(i, (q) => {
+      const n = Math.max(2, Math.min(15, Number(q.leftCount) || 2));
       const key = Array.from({ length: n }, (k) => (Array.isArray(q.key?.[k]) ? q.key[k] : []));
       return { ...q, leftCount: n, key };
     });
   const setCmuRight = (i, val) =>
     patch(i, (q) => {
-      const n = Math.max(2, Math.min(26, Number(val) || 0));
-      const key = (q.key || []).map((arr) =>
-        (Array.isArray(arr) ? arr : []).filter((ri) => ri < n)
-      );
+      if (val === "") return { ...q, rightCount: "" };
+      let n = Math.floor(Number(val));
+      if (!Number.isFinite(n)) return q;
+      n = Math.min(26, Math.max(0, n));
+      const key = (q.key || []).map((arr) => (Array.isArray(arr) ? arr : []).filter((ri) => ri < n));
+      return { ...q, rightCount: n, key };
+    });
+  const commitCmuRight = (i) =>
+    patch(i, (q) => {
+      const n = Math.max(2, Math.min(26, Number(q.rightCount) || 2));
+      const key = (q.key || []).map((arr) => (Array.isArray(arr) ? arr : []).filter((ri) => ri < n));
       return { ...q, rightCount: n, key };
     });
   const toggleCmuKey = (i, li, ri) =>
@@ -1983,8 +2002,9 @@ const StructuredBuilder = () => {
                             type="number"
                             min={2}
                             max={15}
-                            value={q.leftCount ?? 3}
+                            value={q.leftCount ?? ""}
                             onChange={(e) => setCmuLeft(i, e.target.value)}
+                            onBlur={() => commitCmuLeft(i)}
                             className="w-16 rounded-lg border border-line bg-surface px-2 py-1 text-sm text-text outline-none focus:border-primary"
                           />
                         </label>
@@ -1994,8 +2014,9 @@ const StructuredBuilder = () => {
                             type="number"
                             min={2}
                             max={26}
-                            value={q.rightCount ?? 5}
+                            value={q.rightCount ?? ""}
                             onChange={(e) => setCmuRight(i, e.target.value)}
+                            onBlur={() => commitCmuRight(i)}
                             className="w-16 rounded-lg border border-line bg-surface px-2 py-1 text-sm text-text outline-none focus:border-primary"
                           />
                         </label>
