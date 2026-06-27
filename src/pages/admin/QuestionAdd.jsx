@@ -13,9 +13,10 @@ import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser"
 import Spinner from "../../components/Spinner";
 import Button from "../../components/ui/Button";
 import { inputClass } from "../../components/ui/Field";
-import { FiPlus, FiX } from "react-icons/fi";
+import { FiPlus, FiX, FiMove, FiChevronUp, FiChevronDown } from "react-icons/fi";
 import { questionPoints } from "../../helper/helper";
 import { PRESETS, presetTypes, presetPointsPlan, presetTotalMarks } from "../../helper/examPresets";
+import ScoringEditor from "../../components/ScoringEditor";
 
 // Questions 1-13 default to closed (Cm); 14+ default to open (Co).
 const CLOSED_COUNT = 13;
@@ -52,6 +53,7 @@ const QuestionAdd = () => {
   );
   const [mobileView, setMobileView] = useState("pdf"); // "pdf" | "builder"
   const [preset, setPreset] = useState(""); // exam scoring preset (for bal preview)
+  const [typePoints, setTypePoints] = useState(null); // manual per-type bal override
   const { examId } = useParams();
 
   useEffect(() => {
@@ -67,6 +69,7 @@ const QuestionAdd = () => {
         const existing = examAction?.payload?.questions?.correctAnswers;
         const presetId = examAction?.payload?.preset;
         setPreset(presetId || "");
+        setTypePoints(examAction?.payload?.typePoints || null);
         if (existing && existing.length) {
           setQuestions(
             existing.map((q) => ({
@@ -87,12 +90,11 @@ const QuestionAdd = () => {
         } else if (presetId && PRESETS[presetId]) {
           // Seed the answer key from the preset. PDF mode supports closed (Cm),
           // open (Co) and correspondence (Cmu); detailed-open (Cd) slots fall back
-          // to open. Scoring is positional, so the result matches the structured
-          // preset. The Blok matching slot (Cma) seeds as a real Uyğunluq (Cmu).
+          // to open. Matching slots (Cma/Cmu) both seed as the Uyğunluq grid (Cmu).
           const types = presetTypes(PRESETS[presetId]);
           setQuestions(
             types.map((t) =>
-              newQuestion(t === "Cm" ? "Cm" : t === "Cma" ? "Cmu" : "Co")
+              newQuestion(t === "Cm" ? "Cm" : t === "Cma" || t === "Cmu" ? "Cmu" : "Co")
             )
           );
         }
@@ -133,17 +135,18 @@ const QuestionAdd = () => {
 
   // --- Correspondence (Cmu) grid editing ---
   // Resize the number of rows (numbers), keeping existing per-number selections.
-  // While TYPING: allow an empty field and only cap the max — don't force the
-  // minimum (so you can clear "5" and type "3" without it snapping to 2). The
-  // minimum is enforced on blur via commitCmu* below.
+  // While typing, accept the raw value (so clearing "5" and typing "3" doesn't
+  // jump to 2/15); only cap the max. The min of 2 is enforced on blur (commit*).
   const setCmuLeft = (i, val) =>
     setQuestions((prev) =>
       prev.map((q, idx) => {
         if (idx !== i) return q;
         const cleaned = String(val).replace(/\D/g, "");
-        if (cleaned === "") return { ...q, leftCount: "" };
+        if (cleaned === "") return { ...q, leftCount: "" }; // empty while typing — no auto-2
         const n = Math.min(15, parseInt(cleaned, 10) || 0);
-        const key = Array.from({ length: n }, (_, k) => (Array.isArray(q.key?.[k]) ? q.key[k] : []));
+        const key = Array.from({ length: n }, (_, k) =>
+          Array.isArray(q.key?.[k]) ? q.key[k] : []
+        );
         return { ...q, leftCount: n, key };
       })
     );
@@ -151,8 +154,10 @@ const QuestionAdd = () => {
     setQuestions((prev) =>
       prev.map((q, idx) => {
         if (idx !== i) return q;
-        const n = Math.max(2, Math.min(15, Number(q.leftCount) || 2));
-        const key = Array.from({ length: n }, (_, k) => (Array.isArray(q.key?.[k]) ? q.key[k] : []));
+        const n = clampInt(q.leftCount, 2, 15);
+        const key = Array.from({ length: n }, (_, k) =>
+          Array.isArray(q.key?.[k]) ? q.key[k] : []
+        );
         return { ...q, leftCount: n, key };
       })
     );
@@ -164,7 +169,9 @@ const QuestionAdd = () => {
         const cleaned = String(val).replace(/\D/g, "");
         if (cleaned === "") return { ...q, rightCount: "" };
         const m = Math.min(12, parseInt(cleaned, 10) || 0);
-        const key = (q.key || []).map((arr) => (Array.isArray(arr) ? arr.filter((ri) => ri < m) : []));
+        const key = (q.key || []).map((arr) =>
+          Array.isArray(arr) ? arr.filter((ri) => ri < m) : []
+        );
         return { ...q, rightCount: m, key };
       })
     );
@@ -172,8 +179,10 @@ const QuestionAdd = () => {
     setQuestions((prev) =>
       prev.map((q, idx) => {
         if (idx !== i) return q;
-        const m = Math.max(2, Math.min(12, Number(q.rightCount) || 2));
-        const key = (q.key || []).map((arr) => (Array.isArray(arr) ? arr.filter((ri) => ri < m) : []));
+        const m = clampInt(q.rightCount, 2, 12);
+        const key = (q.key || []).map((arr) =>
+          Array.isArray(arr) ? arr.filter((ri) => ri < m) : []
+        );
         return { ...q, rightCount: m, key };
       })
     );
@@ -211,6 +220,33 @@ const QuestionAdd = () => {
           : q
       )
     );
+  // Reorder (drag-and-drop + up/down buttons).
+  const [dragIdx, setDragIdx] = useState(null);
+  const [overIdx, setOverIdx] = useState(null);
+  const moveQuestion = (i, dir) =>
+    setQuestions((prev) => {
+      const j = i + dir;
+      if (j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+  const reorderQuestion = (from, to) =>
+    setQuestions((prev) => {
+      if (
+        from == null || to == null || from === to ||
+        from < 0 || to < 0 || from >= prev.length || to >= prev.length
+      )
+        return prev;
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  const endDrag = () => {
+    setDragIdx(null);
+    setOverIdx(null);
+  };
   const removeQuestion = (i) => setQuestions((prev) => prev.filter((_, idx) => idx !== i));
   const addQuestionRow = () => setQuestions((prev) => [...prev, newQuestion("Co")]);
 
@@ -247,7 +283,9 @@ const QuestionAdd = () => {
       );
       // Success/error toasts are handled by the addQuestion slice; unwrap() so
       // we only navigate away when the save actually succeeds.
-      await dispatch(addQuestion({ examId, questionData: { correctAnswers } })).unwrap();
+      await dispatch(
+        addQuestion({ examId, questionData: { correctAnswers, typePoints } })
+      ).unwrap();
       // Take the teacher to the exam instructions overview after saving.
       navigate(`/exam/details/${examId}`);
     } catch {
@@ -259,9 +297,19 @@ const QuestionAdd = () => {
 
   // Preview the per-question bal from the exam's preset (e.g. Blok = 150) so the
   // builder matches the server score; legacy/Buraxılış fall back to questionPoints.
-  const customPlan = presetPointsPlan(preset, questions.length);
+  const customPlan = presetPointsPlan(preset, questions.length, questions.map((q) => q.type));
   const points = customPlan || questionPoints(questions.length);
-  const totalBal = presetTotalMarks(preset);
+  // Effective per-question bal: a manual per-type override wins over the preset's
+  // auto value; types absent from the override keep the auto value.
+  const effPoints = typePoints
+    ? questions.map((q, i) => {
+        const ov = typePoints[q.type];
+        return ov === undefined || ov === null || ov === "" ? points[i] : Number(ov) || 0;
+      })
+    : points;
+  const totalBal = typePoints
+    ? Number(effPoints.reduce((s, p) => s + (p || 0), 0).toFixed(2))
+    : presetTotalMarks(preset);
 
   // Hold back the answer-key builder until the existing key is loaded, so the
   // teacher never sees the blank default sheet flash before it populates.
@@ -365,18 +413,74 @@ const QuestionAdd = () => {
         >
           <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col">
             <div className="scrollbar-thin min-h-0 flex-1 space-y-3 overflow-y-auto p-4 sm:p-5">
+                <ScoringEditor
+                  questions={questions}
+                  autoPoints={points}
+                  typePoints={typePoints}
+                  onChange={setTypePoints}
+                />
                 {questions.map((q, i) => (
-                  <div key={i} className="rounded-2xl border border-line bg-surface2/40 p-4">
+                  <div
+                    key={i}
+                    onDragOver={(e) => {
+                      if (dragIdx === null) return;
+                      e.preventDefault();
+                      if (overIdx !== i) setOverIdx(i);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      reorderQuestion(dragIdx, i);
+                      endDrag();
+                    }}
+                    className={`rounded-2xl border bg-surface2/40 p-4 transition-shadow ${
+                      dragIdx === i
+                        ? "border-primary opacity-50"
+                        : overIdx === i && dragIdx !== null
+                        ? "border-primary ring-2 ring-primary/40"
+                        : "border-line"
+                    }`}
+                  >
                     <div className="mb-3 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
                         <span className="font-display text-sm font-bold text-text">
                           Sual {i + 1}
                         </span>
                         <span className="rounded-full border border-line bg-surface px-2 py-0.5 text-xs font-semibold text-muted">
-                          {Number((points[i] || 0).toFixed(3))} bal
+                          {Number((effPoints[i] || 0).toFixed(3))} bal
                         </span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center justify-end gap-2">
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            type="button"
+                            draggable
+                            onDragStart={() => setDragIdx(i)}
+                            onDragEnd={endDrag}
+                            className="grid h-7 w-7 cursor-grab place-items-center rounded-lg text-muted transition-colors hover:bg-surface hover:text-text active:cursor-grabbing"
+                            aria-label="Sürüklə"
+                            title="Sürükləyib yerini dəyiş"
+                          >
+                            <FiMove />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveQuestion(i, -1)}
+                            disabled={i === 0}
+                            className="grid h-7 w-7 place-items-center rounded-lg text-muted transition-colors hover:bg-surface hover:text-text disabled:opacity-30"
+                            aria-label="Yuxarı"
+                          >
+                            <FiChevronUp />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveQuestion(i, 1)}
+                            disabled={i === questions.length - 1}
+                            className="grid h-7 w-7 place-items-center rounded-lg text-muted transition-colors hover:bg-surface hover:text-text disabled:opacity-30"
+                            aria-label="Aşağı"
+                          >
+                            <FiChevronDown />
+                          </button>
+                        </div>
                         <div className="flex rounded-lg border border-line bg-surface p-0.5 text-xs font-semibold">
                           <button
                             type="button"

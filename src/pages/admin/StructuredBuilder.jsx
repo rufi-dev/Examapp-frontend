@@ -12,6 +12,7 @@ import { MathTextField } from "../../components/MathEditor";
 import { textHasMath } from "../../components/Math";
 import QuestionType from "../../components/QuestionType";
 import QuestionMap from "../../components/QuestionMap";
+import ScoringEditor from "../../components/ScoringEditor";
 import PdfCropper from "../../components/PdfCropper";
 import { uploadImage } from "../../helper/cloudinary";
 import {
@@ -19,6 +20,7 @@ import {
   FiX,
   FiImage,
   FiCopy,
+  FiMove,
   FiCrop,
   FiChevronUp,
   FiChevronDown,
@@ -110,10 +112,20 @@ const TYPES = [
   { key: "Cm", label: "Tək seçim" },
   { key: "Cs", label: "Çox seçim" },
   { key: "Co", label: "Açıq cavab" },
-  { key: "Cma", label: "Uyğunlaşdırma" },
+  // Matching is the Cmu correspondence grid (numbers → letters), same as PDF
+  // mode. The old 1:1 "Uyğunlaşdırma" (Cma) was removed from creation; legacy
+  // Cma questions still render, but new/AI matching is always Cmu.
   { key: "Cmu", label: "Uyğunluq" },
 ];
 const TYPE_LABEL = Object.fromEntries(TYPES.map((t) => [t.key, t.label]));
+// Per-type accent colors used in the question navigator (number badge + chip).
+const TYPE_ACCENT = {
+  Cm: { dot: "bg-sky-500", chip: "bg-sky-500/12 text-sky-600" },
+  Cs: { dot: "bg-violet-500", chip: "bg-violet-500/12 text-violet-600" },
+  Co: { dot: "bg-amber-500", chip: "bg-amber-500/12 text-amber-600" },
+  Cmu: { dot: "bg-emerald-500", chip: "bg-emerald-500/12 text-emerald-600" },
+  Cma: { dot: "bg-emerald-500", chip: "bg-emerald-500/12 text-emerald-600" },
+};
 
 // Correspondence (Cmu): a..z letter labels for the right columns.
 const GRID_LETTERS = "abcdefghijklmnopqrstuvwxyz";
@@ -444,7 +456,8 @@ const StructuredBuilder = () => {
       return "";
     }
   });
-  // AI provider for PDF extraction: "gemini" (cheaper, default) or "claude".
+  // AI provider for PDF extraction: "gemini" (default, cheaper — needs
+  // GEMINI_API_KEY on the server) or "claude" (uses ANTHROPIC_API_KEY).
   const [aiProvider, setAiProvider] = useState("gemini");
   const pdfInputRef = useRef(null);
   // PDF import: "append" adds to the end, "replace" overwrites everything. We
@@ -505,12 +518,15 @@ const StructuredBuilder = () => {
   const savedJsonRef = useRef(""); // JSON of the last server-saved questions
   const savedPerPageRef = useRef(0); // last server-saved questionsPerPage (0 = all)
   const savedForwardOnlyRef = useRef(false); // last server-saved forwardOnly
+  const [typePoints, setTypePoints] = useState(null); // manual per-type bal override
+  const savedTypePointsRef = useRef("null"); // JSON of last server-saved typePoints
   // "all" -> 0; otherwise the numeric per-page count.
   const perPageNum = perPage === "all" ? 0 : Number(perPage);
   const dirty =
     JSON.stringify(questions) !== savedJsonRef.current ||
     perPageNum !== savedPerPageRef.current ||
-    forwardOnly !== savedForwardOnlyRef.current;
+    forwardOnly !== savedForwardOnlyRef.current ||
+    JSON.stringify(typePoints) !== savedTypePointsRef.current;
 
   // Pre-load existing structured questions so editing is non-destructive.
   useEffect(() => {
@@ -527,6 +543,10 @@ const StructuredBuilder = () => {
         setPerPage(qpp > 0 ? String(qpp) : "all");
         savedForwardOnlyRef.current = !!exam?.forwardOnly;
         setForwardOnly(!!exam?.forwardOnly);
+        const tp =
+          exam?.typePoints && typeof exam.typePoints === "object" ? exam.typePoints : null;
+        savedTypePointsRef.current = JSON.stringify(tp);
+        setTypePoints(tp);
         const existing = exam?.questions?.correctAnswers;
         const isStructured =
           Array.isArray(existing) &&
@@ -714,9 +734,9 @@ const StructuredBuilder = () => {
     });
 
   // --- Correspondence (Cmu) grid editing ---
-  // While TYPING: allow an empty field and don't force the minimum (so you can
-  // clear "5" and type "3" without it jumping to 2/15). Only cap the max so it
-  // can't blow up the grid. The min is enforced on blur (commit*) below.
+  // While typing, accept the raw value (so the teacher can clear "5" and type
+  // "3" without it jumping to 2/15). Only cap the max so it can't blow up the
+  // grid; the min of 2 is enforced on blur (commit* below), not per keystroke.
   const setCmuLeft = (i, val) =>
     patch(i, (q) => {
       const cleaned = String(val).replace(/\D/g, "");
@@ -736,13 +756,17 @@ const StructuredBuilder = () => {
       const cleaned = String(val).replace(/\D/g, "");
       if (cleaned === "") return { ...q, rightCount: "" };
       const n = Math.min(26, parseInt(cleaned, 10) || 0);
-      const key = (q.key || []).map((arr) => (Array.isArray(arr) ? arr : []).filter((ri) => ri < n));
+      const key = (q.key || []).map((arr) =>
+        (Array.isArray(arr) ? arr : []).filter((ri) => ri < n)
+      );
       return { ...q, rightCount: n, key };
     });
   const commitCmuRight = (i) =>
     patch(i, (q) => {
       const n = Math.max(2, Math.min(26, Number(q.rightCount) || 2));
-      const key = (q.key || []).map((arr) => (Array.isArray(arr) ? arr : []).filter((ri) => ri < n));
+      const key = (q.key || []).map((arr) =>
+        (Array.isArray(arr) ? arr : []).filter((ri) => ri < n)
+      );
       return { ...q, rightCount: n, key };
     });
   const toggleCmuKey = (i, li, ri) =>
@@ -811,6 +835,10 @@ const StructuredBuilder = () => {
       return { ...q, pairs };
     });
 
+  // Drag-and-drop reorder state (works alongside the up/down buttons).
+  const [dragIdx, setDragIdx] = useState(null);
+  const [overIdx, setOverIdx] = useState(null);
+
   const removeQuestion = (i) => setQuestions((prev) => prev.filter((_, idx) => idx !== i));
   const addQuestionRow = () => setQuestions((prev) => [...prev, newQuestion("Cm")]);
   const duplicateQuestion = (i) =>
@@ -828,6 +856,28 @@ const StructuredBuilder = () => {
       [next[i], next[j]] = [next[j], next[i]];
       return next;
     });
+  // Move a question from one position to any other (drag-and-drop).
+  const reorderQuestion = (from, to) =>
+    setQuestions((prev) => {
+      if (
+        from == null ||
+        to == null ||
+        from === to ||
+        from < 0 ||
+        to < 0 ||
+        from >= prev.length ||
+        to >= prev.length
+      )
+        return prev;
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  const endDrag = () => {
+    setDragIdx(null);
+    setOverIdx(null);
+  };
 
   // Map the working questions to the STUDENT-facing shape (answer key stripped).
   const buildPreviewDefs = () =>
@@ -896,9 +946,10 @@ const StructuredBuilder = () => {
   // ---- AI import from PDF ----------------------------------------------------
   // Map one AI-extracted question into the builder's working shape.
   const fromAi = (q) => {
-    // A matching question whose answers are letters → a Cmu correspondence grid,
-    // so each letter is its own selectable option (a number may match several).
-    if (q.type === "Cma" && aiPairsAreLetters(q.pairs)) {
+    // ALL matching → a Cmu correspondence grid (numbers → letters), so each
+    // letter is its own selectable option (a number may match several). The old
+    // 1:1 "Cma" type is no longer produced; any AI matching is normalized here.
+    if (q.type === "Cma") {
       const leftCount = q.pairs.length;
       const key = q.pairs.map((p) =>
         splitLetters(p.right)
@@ -919,7 +970,7 @@ const StructuredBuilder = () => {
         explanation: q.explanation || "",
       };
     }
-    const type = ["Cm", "Cs", "Co", "Cma"].includes(q.type) ? q.type : "Cm";
+    const type = ["Cm", "Cs", "Co"].includes(q.type) ? q.type : "Cm";
     const choices =
       Array.isArray(q.choices) && q.choices.length
         ? q.choices.map((c) => ({ text: foldMath(c?.text, c?.latex), image: "", latex: "" }))
@@ -1227,12 +1278,13 @@ const StructuredBuilder = () => {
       await dispatch(
         addQuestion({
           examId,
-          questionData: { correctAnswers, questionsPerPage: perPageNum, forwardOnly },
+          questionData: { correctAnswers, questionsPerPage: perPageNum, forwardOnly, typePoints },
         })
       ).unwrap();
       savedJsonRef.current = JSON.stringify(questions);
       savedPerPageRef.current = perPageNum;
       savedForwardOnlyRef.current = forwardOnly;
+      savedTypePointsRef.current = JSON.stringify(typePoints);
       try {
         localStorage.removeItem(draftKey);
       } catch {
@@ -1250,8 +1302,17 @@ const StructuredBuilder = () => {
 
   // Per-question bal preview from the exam's preset (e.g. Blok = 150) so the
   // builder matches the server score; legacy/Buraxılış fall back to questionPoints.
-  const points = presetPointsPlan(preset, questions.length) || questionPoints(questions.length);
-  const totalBal = presetTotalMarks(preset);
+  const points =
+    presetPointsPlan(preset, questions.length, questions.map((q) => q.type)) ||
+    questionPoints(questions.length);
+  // Effective per-question bal: a manual per-type override wins, else the preset.
+  const effPoints = points.map((p, i) => {
+    const ov = typePoints?.[questions[i]?.type];
+    return ov === undefined || ov === null || ov === "" ? p : Number(ov) || 0;
+  });
+  const totalBal = typePoints
+    ? Number(effPoints.reduce((s, p) => s + (p || 0), 0).toFixed(2))
+    : presetTotalMarks(preset);
   const isChoice = (t) => t === "Cm" || t === "Cs";
 
   const safePage = Math.min(Math.max(0, page), pageCount - 1);
@@ -1416,10 +1477,12 @@ const StructuredBuilder = () => {
     }
 
     return (
-      <div className="flex flex-col gap-4 p-4">
+      <div className="flex flex-col gap-4 p-5">
         <div className="space-y-2">
-          {saveBtn}
-          {previewBtn}
+          <div className="grid grid-cols-2 gap-2">
+            {saveBtn}
+            {previewBtn}
+          </div>
           {importBtn}
           {aiSpend.length > 0 && (
             <button
@@ -1465,6 +1528,13 @@ const StructuredBuilder = () => {
           />
         </div>
 
+        <ScoringEditor
+          questions={questions}
+          autoPoints={points}
+          typePoints={typePoints}
+          onChange={setTypePoints}
+        />
+
         <div className="border-t border-line pt-3 text-xs text-muted">{total} sual · {totalBal} bal</div>
       </div>
     );
@@ -1473,36 +1543,56 @@ const StructuredBuilder = () => {
   // Left-side question navigator (outline) — fills the left margin on desktop.
   const renderNav = () => (
     <div className="flex h-full flex-col">
-      <div className="shrink-0 border-b border-line px-4 py-3 text-[11px] font-bold uppercase tracking-wide text-muted">
-        Suallar ({total})
+      <div className="flex shrink-0 items-center justify-between border-b border-line px-4 py-3.5">
+        <span className="text-[11px] font-bold uppercase tracking-wide text-muted">Suallar</span>
+        <span className="rounded-full bg-primary/12 px-2 py-0.5 text-[11px] font-bold tabular-nums text-primary">
+          {total}
+        </span>
       </div>
-      <div className="scrollbar-thin min-h-0 flex-1 space-y-0.5 overflow-y-auto p-2">
-        {questions.map((q, idx) => (
-          <button
-            key={idx}
-            type="button"
-            onClick={() => goToQuestion(idx)}
-            className="flex w-full items-start gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-surface2"
-          >
-            <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded bg-surface2 text-[11px] font-bold text-text">
-              {idx + 1}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm text-text">
-                {norm(q.text) || TYPES.find((t) => t.key === q.type)?.label || "Sual"}
+      <div className="scrollbar-thin min-h-0 flex-1 space-y-1 overflow-y-auto p-2.5">
+        {questions.map((q, idx) => {
+          const accent = TYPE_ACCENT[q.type] || TYPE_ACCENT.Cm;
+          const label = TYPES.find((t) => t.key === q.type)?.label || "Sual";
+          return (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => goToQuestion(idx)}
+              className="group flex w-full items-center gap-2.5 rounded-xl border border-transparent px-2.5 py-2 text-left transition-all hover:border-line hover:bg-surface2 hover:shadow-soft"
+            >
+              <span
+                className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg text-xs font-bold text-white shadow-soft ${accent.dot}`}
+              >
+                {idx + 1}
               </span>
-              <span className="block text-[11px] text-muted">
-                {TYPES.find((t) => t.key === q.type)?.label}
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium text-text">
+                  {norm(q.text) || label}
+                </span>
+                <span className="mt-1 flex items-center gap-1.5">
+                  <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${accent.chip}`}>
+                    {label}
+                  </span>
+                  <span className="text-[10px] font-medium tabular-nums text-muted">
+                    {Number((effPoints[idx] || 0).toFixed(2))} bal
+                  </span>
+                </span>
               </span>
-            </span>
-          </button>
-        ))}
+            </button>
+          );
+        })}
       </div>
-      <div className="shrink-0 border-t border-line p-2">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-t border-line px-3 py-2.5 text-[11px] font-medium text-muted">
+        <span className="tabular-nums">{total} sual</span>
+        <span className="rounded-full bg-surface2 px-2 py-0.5 font-bold tabular-nums text-text">
+          {totalBal} bal
+        </span>
+      </div>
+      <div className="shrink-0 border-t border-line p-2.5">
         <button
           type="button"
           onClick={addQuestionRow}
-          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-line py-2 text-sm font-semibold text-muted transition-colors hover:border-primary hover:text-primary"
+          className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-line py-2.5 text-sm font-semibold text-muted transition-colors hover:border-primary hover:bg-primary/5 hover:text-primary"
         >
           <FiPlus /> Sual əlavə et
         </button>
@@ -1718,7 +1808,7 @@ const StructuredBuilder = () => {
         )}
 
         {/* Left: question navigator (fills the left margin on desktop). */}
-        <aside className="hidden w-56 shrink-0 border-r border-line bg-surface lg:block">
+        <aside className="hidden w-72 shrink-0 border-r border-line bg-surface lg:block xl:w-80">
           {renderNav()}
         </aside>
 
@@ -1730,16 +1820,43 @@ const StructuredBuilder = () => {
                 <div
                   key={i}
                   id={`builder-q-${i}`}
-                  className="scroll-mt-4 rounded-2xl border border-line bg-surface p-4 shadow-soft sm:p-5"
+                  onDragOver={(e) => {
+                    if (dragIdx === null) return;
+                    e.preventDefault();
+                    if (overIdx !== i) setOverIdx(i);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    reorderQuestion(dragIdx, i);
+                    endDrag();
+                  }}
+                  className={`scroll-mt-4 rounded-2xl border bg-surface p-4 shadow-soft transition-shadow sm:p-5 ${
+                    dragIdx === i
+                      ? "border-primary opacity-50"
+                      : overIdx === i && dragIdx !== null
+                      ? "border-primary ring-2 ring-primary/40"
+                      : "border-line"
+                  }`}
                 >
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <span className="font-display text-sm font-bold text-text">Sual {i + 1}</span>
                       <span className="rounded-full border border-line bg-surface2/60 px-2 py-0.5 text-xs font-semibold text-muted">
-                        {Number((points[i] || 0).toFixed(3))} bal
+                        {Number((effPoints[i] || 0).toFixed(3))} bal
                       </span>
                     </div>
                     <div className="flex items-center gap-0.5">
+                        <button
+                          type="button"
+                          draggable
+                          onDragStart={() => setDragIdx(i)}
+                          onDragEnd={endDrag}
+                          className="grid h-7 w-7 cursor-grab place-items-center rounded-lg text-muted transition-colors hover:bg-surface2 hover:text-text active:cursor-grabbing"
+                          aria-label="Sürüklə"
+                          title="Sürükləyib yerini dəyiş"
+                        >
+                          <FiMove />
+                        </button>
                         <button
                           type="button"
                           onClick={() => moveQuestion(i, -1)}
@@ -2125,7 +2242,7 @@ const StructuredBuilder = () => {
         </form>
 
         {/* Right: tools sidebar (fills the right margin on desktop). */}
-        <aside className="hidden w-72 shrink-0 overflow-y-auto border-l border-line bg-surface lg:block">
+        <aside className="hidden w-80 shrink-0 overflow-y-auto border-l border-line bg-surface lg:block xl:w-96">
           {renderTools(true)}
         </aside>
       </div>
