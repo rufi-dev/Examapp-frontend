@@ -201,6 +201,22 @@ const ExamEdit = () => {
         pdfUrl = upRes.data?.url;
         if (!pdfUrl) return toast.error("PDF yüklənmədi");
       }
+      // Validate the exam window: end must be after start, and the window must
+      // be at least as long as one student's duration. Times are local
+      // wall-clock here (datetime-local), so comparing the parsed Dates is
+      // safe — both are in the teacher's own timezone.
+      if (startDate && endDate) {
+        const startMs = new Date(startDate).getTime();
+        const endMs = new Date(endDate).getTime();
+        if (endMs <= startMs) {
+          return toast.error("Bitmə tarixi başlanma tarixindən sonra olmalıdır");
+        }
+        const durSec = Number(duration) || 0;
+        if (durSec > 0 && endMs - startMs < durSec * 1000) {
+          const mins = Math.round(durSec / 60);
+          return toast.error(`İmtahan pəncərəsi müddətdən (${mins} dəq) qısadır`);
+        }
+      }
       const examData = {
         name,
         duration,
