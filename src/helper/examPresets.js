@@ -17,19 +17,6 @@ function tailEqualPlan(count, totalMarks, tail, tailEach) {
   return pts;
 }
 
-// 9th-grade Azerbaijani-language buraxılış scoring (DİM), out of 100 (nisbi bal).
-// Weighted BY TYPE, not position — open (Co) questions = 2 units, every closed
-// one (Cm/Cs/Cma/Cmu) = 1 unit, normalized to 100. So variants can order/place
-// the open & matching questions however they like and the score stays correct.
-function azWrittenPlan(count, types) {
-  const n = Number(count) || 0;
-  if (n <= 0) return [];
-  const t = Array.isArray(types) ? types : [];
-  const weights = Array.from({ length: n }, (_, i) => (t[i] === "Co" ? 2 : 1));
-  const total = weights.reduce((s, w) => s + w, 0) || 1;
-  return weights.map((w) => (w / total) * 100);
-}
-
 export const PRESETS = {
   buraxilis: {
     id: "buraxilis",
@@ -55,20 +42,6 @@ export const PRESETS = {
     ],
     pointsPlan: (count) => tailEqualPlan(count, 150, 3, 9),
     negativeMarking: { enabled: true, wrongPerPenalty: 4, correctPerPenalty: 1, untilQuestion: 22 },
-  },
-  "az-buraxilis-9": {
-    id: "az-buraxilis-9",
-    label: "Buraxılış — Azərbaycan dili (9)",
-    totalMarks: 100, // DİM nisbi bal: closed=100/34, open=200/34 (open weighted 2x)
-    // 30 tapşırıq: 10 dil qaydası (qapalı) + 2 mətn × 10 (hər mətndə 8 qapalı + 2 açıq).
-    slots: [
-      { type: "Cm", count: 18 }, // Q1-10 qaydalar + Q11-18 mətn-1 (qapalı)
-      { type: "Co", count: 2 },  // Q19-20 mətn-1 (açıq, yazılı)
-      { type: "Cm", count: 8 },  // Q21-28 mətn-2 (qapalı)
-      { type: "Co", count: 2 },  // Q29-30 mətn-2 (açıq, yazılı)
-    ],
-    pointsPlan: azWrittenPlan,
-    negativeMarking: null,
   },
 };
 
