@@ -725,7 +725,7 @@ const StructuredBuilder = () => {
       // Switching to Cmu: make sure a sane grid exists (key length === leftCount).
       if (type === "Cmu") {
         const n = Number(q.leftCount) || 3;
-        const key = Array.from({ length: n }, (k) =>
+        const key = Array.from({ length: n }, (_, k) =>
           Array.isArray(q.key?.[k]) ? q.key[k] : []
         );
         return { ...q, type, leftCount: n, rightCount: Number(q.rightCount) || 5, key };
@@ -742,13 +742,13 @@ const StructuredBuilder = () => {
       const cleaned = String(val).replace(/\D/g, "");
       if (cleaned === "") return { ...q, leftCount: "" }; // empty while typing — no auto-2
       const n = Math.min(15, parseInt(cleaned, 10) || 0);
-      const key = Array.from({ length: n }, (k) => (Array.isArray(q.key?.[k]) ? q.key[k] : []));
+      const key = Array.from({ length: n }, (_, k) => (Array.isArray(q.key?.[k]) ? q.key[k] : []));
       return { ...q, leftCount: n, key };
     });
   const commitCmuLeft = (i) =>
     patch(i, (q) => {
       const n = Math.max(2, Math.min(15, Number(q.leftCount) || 2));
-      const key = Array.from({ length: n }, (k) => (Array.isArray(q.key?.[k]) ? q.key[k] : []));
+      const key = Array.from({ length: n }, (_, k) => (Array.isArray(q.key?.[k]) ? q.key[k] : []));
       return { ...q, leftCount: n, key };
     });
   const setCmuRight = (i, val) =>
@@ -772,7 +772,7 @@ const StructuredBuilder = () => {
   const toggleCmuKey = (i, li, ri) =>
     patch(i, (q) => {
       const n = Number(q.leftCount) || 0;
-      const key = Array.from({ length: n }, (k) =>
+      const key = Array.from({ length: n }, (_, k) =>
         Array.isArray(q.key?.[k]) ? [...q.key[k]] : []
       );
       const row = new Set(key[li] || []);
