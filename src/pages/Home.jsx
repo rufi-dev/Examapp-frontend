@@ -124,6 +124,7 @@ const Home = () => {
                     src="/demo.mp4"
                     poster="/demo-poster.jpg"
                     controls
+                    muted
                     playsInline
                     preload="metadata"
                   />
