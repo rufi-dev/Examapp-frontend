@@ -123,10 +123,12 @@ const Home = () => {
                     className="h-full w-full object-cover"
                     src="/demo.mp4"
                     poster="/demo-poster.jpg"
-                    controls
+                    autoPlay
+                    loop
                     muted
                     playsInline
-                    preload="metadata"
+                    controls
+                    preload="auto"
                   />
                 </div>
               </div>
