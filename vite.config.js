@@ -60,12 +60,33 @@ export default defineConfig(({ mode }) => {
           '**/ResultsExcelExport-*.js',
           '**/exceljs*.js',
         ],
-        navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api/],
+        // Disable the default cache-first NavigationRoute (app-shell). It served
+        // the precached shell first, which during a deploy's SW-swap window pointed
+        // at just-purged chunk hashes → "site can't be reached" (ERR_FAILED). The
+        // network-first navigation route below handles all navigations instead.
+        navigateFallback: null,
         cleanupOutdatedCaches: true,
         clientsClaim: true,
+        navigationPreload: true,
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024, // include the pdf.js worker chunk
         runtimeCaching: [
+          {
+            // Page navigations: ALWAYS try the live network first so users get the
+            // freshest index.html (with the current hashed-chunk names) right after
+            // a deploy. The old behaviour served the precached app shell first —
+            // which, during the brief SW-update window, pointed at chunk hashes that
+            // had just been purged, surfacing as "site can't be reached"
+            // (ERR_FAILED) until it self-healed. Falling back to cache only when the
+            // network truly fails keeps it working offline.
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'html-navigations',
+              networkTimeoutSeconds: 4,
+              expiration: { maxEntries: 32, maxAgeSeconds: 60 * 60 * 24 * 7 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: 'StaleWhileRevalidate',
