@@ -13,6 +13,21 @@ const Home = () => {
   // Newest exams from OPEN (public) classes — real content, no auth needed.
   const [publicExams, setPublicExams] = useState([]);
   const [loadingExams, setLoadingExams] = useState(true);
+  // The "Necə işləyir?" demo shows only once a screen recording exists at
+  // /demo.mp4 (drop the file into Frontend/public/). This avoids an empty
+  // video player on the live site before the recording is uploaded.
+  const [hasDemo, setHasDemo] = useState(false);
+  useEffect(() => {
+    let on = true;
+    fetch("/demo.mp4", { method: "HEAD" })
+      .then((r) => {
+        if (on) setHasDemo(r.ok);
+      })
+      .catch(() => {});
+    return () => {
+      on = false;
+    };
+  }, []);
   useEffect(() => {
     let on = true;
     axios
@@ -66,6 +81,55 @@ const Home = () => {
               : publicExams.slice(0, 6).map((e) => (
                   <ExamCard key={e._id} exam={e} publicView />
                 ))}
+          </div>
+        </section>
+      )}
+
+      {/* 3.5 — HOW IT WORKS: mobile screen-recording demo. Renders only once a
+          recording exists at /demo.mp4 (drop the file into Frontend/public/, and
+          optionally a /demo-poster.jpg thumbnail). */}
+      {hasDemo && (
+        <section id="demo" className="container-app scroll-mt-24 py-20 sm:py-24">
+          <div className="grid items-center gap-12 lg:grid-cols-2">
+            <div className="text-center lg:text-left">
+              <p className="text-xs font-bold uppercase tracking-wider text-primary">Necə işləyir?</p>
+              <h2 className="mt-3 font-display text-3xl font-extrabold tracking-tight text-text sm:text-4xl">
+                Telefonunda bir neçə toxunuşla sınağa başla.
+              </h2>
+              <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-muted lg:mx-0">
+                Qeydiyyatdan keç, sinfinə qoşul və imtahana başla — hamısı telefonda.
+                Videoda saytın necə işlədiyini addım-addım izlə.
+              </p>
+              <ul className="mx-auto mt-6 flex max-w-xs flex-col gap-2.5 text-left text-sm text-muted lg:mx-0">
+                <li className="flex items-center gap-2.5"><FiCheckCircle className="shrink-0 text-primary" /> Qeydiyyat və sinfə qoşulma</li>
+                <li className="flex items-center gap-2.5"><FiCheckCircle className="shrink-0 text-primary" /> İmtahanı həll etmək</li>
+                <li className="flex items-center gap-2.5"><FiCheckCircle className="shrink-0 text-primary" /> Nəticə və analiz</li>
+              </ul>
+              <Link
+                to="/register"
+                className="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-7 text-base font-semibold text-primary-fg shadow-glow transition-transform hover:-translate-y-0.5"
+              >
+                Sən də başla <FiArrowRight />
+              </Link>
+            </div>
+
+            {/* phone mockup holding the screen recording */}
+            <div className="flex justify-center">
+              <div className="relative">
+                <div aria-hidden className="absolute -inset-6 rounded-full bg-primary/15 blur-3xl" />
+                <div className="relative aspect-[9/19.5] w-[270px] overflow-hidden rounded-[2.75rem] border-[12px] border-navy bg-navy shadow-lift sm:w-[300px]">
+                  <div aria-hidden className="absolute left-1/2 top-0 z-10 h-6 w-1/3 -translate-x-1/2 rounded-b-2xl bg-navy" />
+                  <video
+                    className="h-full w-full object-cover"
+                    src="/demo.mp4"
+                    poster="/demo-poster.jpg"
+                    controls
+                    playsInline
+                    preload="metadata"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </section>
       )}
