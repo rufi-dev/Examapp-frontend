@@ -1,4 +1,4 @@
-import { AdminTeacherLink, StudentLink } from "../components/protect/hiddenLink";
+import { AdminTeacherLink, ShowOnLogin } from "../components/protect/hiddenLink";
 import ClassList from "../components/ClassList";
 import JoinClassButton from "../components/JoinClassButton";
 import useRedirectLoggedOutUser from "../customHook/useRedirectLoggedOutUser";
@@ -15,10 +15,10 @@ const Classes = () => {
       subtitle="Sinif seç və imtahanlara bax."
       actions={
         <div className="flex items-center gap-2">
-          {/* Students join a class with the teacher's code. */}
-          <StudentLink>
+          {/* Anyone logged in can join a class with the teacher's code. */}
+          <ShowOnLogin>
             <JoinClassButton />
-          </StudentLink>
+          </ShowOnLogin>
           <AdminTeacherLink>
             <Button to="/classAdd" variant="secondary" size="sm">
               <FiPlus /> Sinif əlavə et
