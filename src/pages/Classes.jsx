@@ -1,5 +1,6 @@
-import { AdminTeacherLink } from "../components/protect/hiddenLink";
+import { AdminTeacherLink, StudentLink } from "../components/protect/hiddenLink";
 import ClassList from "../components/ClassList";
+import JoinClassButton from "../components/JoinClassButton";
 import useRedirectLoggedOutUser from "../customHook/useRedirectLoggedOutUser";
 import AccountLayout from "../components/AccountLayout";
 import Button from "../components/ui/Button";
@@ -13,11 +14,17 @@ const Classes = () => {
       title="Siniflər"
       subtitle="Sinif seç və imtahanlara bax."
       actions={
-        <AdminTeacherLink>
-          <Button to="/classAdd" variant="secondary" size="sm">
-            <FiPlus /> Sinif əlavə et
-          </Button>
-        </AdminTeacherLink>
+        <div className="flex items-center gap-2">
+          {/* Students join a class with the teacher's code. */}
+          <StudentLink>
+            <JoinClassButton />
+          </StudentLink>
+          <AdminTeacherLink>
+            <Button to="/classAdd" variant="secondary" size="sm">
+              <FiPlus /> Sinif əlavə et
+            </Button>
+          </AdminTeacherLink>
+        </div>
       }
     >
       <ClassList />

@@ -85,6 +85,17 @@ export const AdminTeacherLink = ({ children }) => {
   return null;
 };
 
+// Student-only. Used for student actions like joining a class with a code.
+export const StudentLink = ({ children }) => {
+  const isLoggedIn = useSelector(selectIsLoggedIn);
+  const user = useSelector(selectUser);
+
+  if (isLoggedIn && user?.role === "student") {
+    return <>{children}</>;
+  }
+  return null;
+};
+
 // Admin-only (not teachers). Used for sensitive admin tools like AI spend.
 export const AdminLink = ({ children }) => {
   const isLoggedIn = useSelector(selectIsLoggedIn);
