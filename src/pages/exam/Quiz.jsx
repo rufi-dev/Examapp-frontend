@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import axios from "axios";
 import { useDispatch } from "react-redux";
 import { startAttempt, getPdfByExam } from "../../../redux/features/quiz/quizSlice";
 import { reportViolation, getAttemptStatus, autosaveAnswers } from "../../../redux/features/quiz/quizService";
@@ -107,6 +108,14 @@ const Quiz = () => {
   const [timeLeft, setTimeLeft] = useState(null); // seconds remaining
   const warned5 = useRef(false);
   const warned1 = useRef(false);
+  // Server-clock offset (server ms − local ms). The countdown is measured against
+  // SERVER time, not the device clock, so a phone/PC whose date/time/timezone is
+  // set WRONG (ahead) can no longer read the deadline as already passed and get
+  // kicked out with a false "Vaxt bitdi". We never auto-submit until this sync
+  // has confirmed real time (clockSyncedRef); the server enforces the deadline
+  // regardless, so nothing is lost if the sync is slow.
+  const clockOffsetRef = useRef(0);
+  const clockSyncedRef = useRef(false);
 
   // Refs so the (interval-based) auto-submit always reads the latest values.
   const answersRef = useRef(answers);
@@ -421,13 +430,40 @@ const Quiz = () => {
     };
   }, [saveDraftToServer, access, attempt?.attemptId]);
 
+  // Sync the server clock ONCE (offset from the local clock). Retried a few
+  // times so a slow first request still lands. Public endpoint (same one
+  // useServerNow uses). Until this succeeds the timer shows but won't auto-submit.
+  useEffect(() => {
+    if (access !== "allowed") return;
+    let mounted = true;
+    let tries = 0;
+    const sync = () => {
+      axios
+        .get(`${import.meta.env.VITE_BACKEND_URL}/api/quiz/server-time`)
+        .then((res) => {
+          if (!mounted || !res?.data?.now) return;
+          clockOffsetRef.current = res.data.now - Date.now();
+          clockSyncedRef.current = true;
+        })
+        .catch(() => {
+          if (mounted && tries++ < 6) setTimeout(sync, 1500);
+        });
+    };
+    sync();
+    return () => {
+      mounted = false;
+    };
+  }, [access]);
+
   // Wall-clock countdown from the SERVER deadline: leaving / sleeping / closing
-  // the tab can't pause it, and it can't be extended from localStorage.
+  // the tab can't pause it, and it can't be extended from localStorage. Measured
+  // against SERVER time (Date.now() + offset), so a wrong device clock is harmless.
   useEffect(() => {
     if (access !== "allowed" || deadline == null) return;
     let id;
     const tick = () => {
-      const rem = Math.max(0, Math.round((deadline - Date.now()) / 1000));
+      const serverNow = Date.now() + clockOffsetRef.current;
+      const rem = Math.max(0, Math.round((deadline - serverNow) / 1000));
       setTimeLeft(rem);
       if (rem <= 300 && rem > 60 && !warned5.current) {
         warned5.current = true;
@@ -437,7 +473,10 @@ const Quiz = () => {
         warned1.current = true;
         toast.warn("1 dəqiqə qaldı!");
       }
-      if (rem <= 0) {
+      // Only end the exam once we've CONFIRMED real time with the server — a
+      // wrong local clock must never trigger a false time-up. If the sync never
+      // lands, the server-side finalizer still enforces the deadline.
+      if (rem <= 0 && clockSyncedRef.current) {
         clearInterval(id);
         toast.info("Vaxt bitdi! Cavablar avtomatik təqdim olunur...");
         submitAnswerSheet();
