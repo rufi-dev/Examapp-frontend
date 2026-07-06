@@ -19,12 +19,16 @@ const ScoringEditor = ({ questions, autoPoints, typePoints, onChange }) => {
     const m = {};
     (questions || []).forEach((q, i) => {
       const t = q?.type || "Cm";
-      if (!m[t]) m[t] = { type: t, count: 0, auto: 0 };
+      if (!m[t]) m[t] = { type: t, count: 0, sum: 0 };
       m[t].count += 1;
-      // Auto points are equal within a type — keep one representative value.
-      m[t].auto = (autoPoints && autoPoints[i]) || m[t].auto || 0;
+      m[t].sum += (autoPoints && autoPoints[i]) || 0;
     });
-    return Object.values(m);
+    // `auto` is the AVERAGE per-question value of the type. For type-based presets
+    // (Blok) every question of a type is equal, so this IS that value. For
+    // POSITIONAL presets (Buraxılış: first 18 share 55, rest 45) a type can span
+    // the boundary — the average keeps count × auto = the type's real total, so
+    // the Cəmi stays exactly right (e.g. 100) instead of over/undercounting.
+    return Object.values(m).map((g) => ({ ...g, auto: g.count ? g.sum / g.count : 0 }));
   }, [questions, autoPoints]);
 
   const eff = (t, auto) => {
