@@ -19,6 +19,7 @@ import {
   FiChevronRight,
   FiHome,
   FiLink2,
+  FiVideo,
 } from "react-icons/fi";
 import { LuGraduationCap } from "react-icons/lu";
 
@@ -29,6 +30,9 @@ const navItems = [
   { to: "/classes", label: "Siniflər", icon: LuGraduationCap },
   { to: "/myExams", label: "İmtahanlarım", icon: FiAward },
   { to: "/myResults", label: "Nəticələrim", icon: FiBarChart2 },
+  // Teachers add YouTube topic-explanation videos; everyone watches (add/delete
+  // controls are gated inside the page).
+  { to: "/videos", label: "Mövzu izahları", icon: FiVideo },
   // Visible to everyone; only admins/teachers get the add/delete controls
   // (gated inside the page itself).
   { to: "/achievements", label: "Nailiyyətlərimiz", icon: FiStar },
@@ -52,6 +56,7 @@ const PATH_LABELS = {
   "/classes": "Siniflər",
   "/myExams": "İmtahanlarım",
   "/myResults": "Nəticələrim",
+  "/videos": "Mövzu izahları",
   "/achievements": "Nailiyyətlərimiz",
   "/profile": "Profil",
   "/users": "İstifadəçilər",

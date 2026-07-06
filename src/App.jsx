@@ -51,6 +51,7 @@ const Classes = lazy(() => import("./pages/Classes"));
 const Exams = lazy(() => import("./pages/Exams"));
 const Overview = lazy(() => import("./pages/Overview"));
 const Connections = lazy(() => import("./pages/Connections"));
+const VideoLessons = lazy(() => import("./pages/VideoLessons"));
 const OurSuccess = lazy(() => import("./pages/OurSuccess"));
 const About = lazy(() => import("./pages/About"));
 const Contact = lazy(() => import("./pages/Contact"));
@@ -205,6 +206,7 @@ function App() {
               <Route path="/dashboard" element={<Overview />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/connections" element={<Connections />} />
+              <Route path="/videos" element={<VideoLessons />} />
               <Route path="/users" element={<UserList />} />
               <Route path="/aiUsage" element={<AiUsage />} />
               <Route path="/examResults" element={<ExamResults />} />
