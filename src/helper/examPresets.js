@@ -17,6 +17,24 @@ function tailEqualPlan(count, totalMarks, tail, tailEach) {
   return pts;
 }
 
+// Blok (DİM), out of 150: each solution-required question (type Cd — the last 3,
+// #28-30) = 9 pts; every other question shares the rest of 150 equally. Scored
+// BY TYPE so the per-type panel totals 150. No Cd marked → last-3-by-position.
+// Mirrors Backend/helper/examPresets.js.
+const BLOK_SOLVE_PTS = 9;
+function blokPlan(count, types) {
+  const n = Number(count) || 0;
+  if (n <= 0) return [];
+  const t = Array.isArray(types) ? types : [];
+  const solveCount = t.filter((x) => x === "Cd").length;
+  if (solveCount > 0) {
+    const rest = n - solveCount;
+    const restEach = rest > 0 ? (150 - BLOK_SOLVE_PTS * solveCount) / rest : 0;
+    return Array.from({ length: n }, (_, i) => (t[i] === "Cd" ? BLOK_SOLVE_PTS : restEach));
+  }
+  return tailEqualPlan(n, 150, 3, BLOK_SOLVE_PTS);
+}
+
 export const PRESETS = {
   buraxilis: {
     id: "buraxilis",
@@ -40,7 +58,7 @@ export const PRESETS = {
       { type: "Cmu", count: 1 },
       { type: "Cd", count: 3 },
     ],
-    pointsPlan: (count) => tailEqualPlan(count, 150, 3, 9),
+    pointsPlan: blokPlan,
     negativeMarking: { enabled: true, wrongPerPenalty: 4, correctPerPenalty: 1, untilQuestion: 22 },
   },
 };

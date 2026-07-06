@@ -6,7 +6,7 @@ const TYPE_LABELS = {
   Co: "Açıq cavab",
   Cmu: "Uyğunluq",
   Cma: "Uyğunlaşdırma",
-  Cd: "Açıq",
+  Cd: "Həlli tələb olunan açıq",
 };
 
 // Per-type editable scoring. Lists each question TYPE present with its count and

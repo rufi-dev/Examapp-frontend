@@ -13,7 +13,7 @@ const LABELS = {
   Co: "Açıq sual",
   Cma: "Uyğunluq",
   Cmu: "Uyğunluq",
-  Cd: "Ətraflı yazı",
+  Cd: "Həlli tələb olunan açıq sual",
 };
 const DEFAULT_OPTIONS = ["a", "b", "c", "d", "e"];
 const GRID_LETTERS = "abcdefghijklmnopqrstuvwxyz";

@@ -89,12 +89,14 @@ const QuestionAdd = () => {
           );
         } else if (presetId && PRESETS[presetId]) {
           // Seed the answer key from the preset. PDF mode supports closed (Cm),
-          // open (Co) and correspondence (Cmu); detailed-open (Cd) slots fall back
-          // to open. Matching slots (Cma/Cmu) both seed as the Uyğunluq grid (Cmu).
+          // open (Co), solution-required open (Cd) and correspondence (Cmu).
+          // Matching slots (Cma/Cmu) both seed as the Uyğunluq grid (Cmu).
           const types = presetTypes(PRESETS[presetId]);
           setQuestions(
             types.map((t) =>
-              newQuestion(t === "Cm" ? "Cm" : t === "Cma" || t === "Cmu" ? "Cmu" : "Co")
+              newQuestion(
+                t === "Cm" ? "Cm" : t === "Cma" || t === "Cmu" ? "Cmu" : t === "Cd" ? "Cd" : "Co"
+              )
             )
           );
         }
@@ -499,6 +501,16 @@ const QuestionAdd = () => {
                             }`}
                           >
                             Açıq
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setType(i, "Cd")}
+                            title="Həlli tələb olunan açıq sual"
+                            className={`rounded-md px-3 py-1 transition-colors ${
+                              q.type === "Cd" ? "bg-primary text-primary-fg" : "text-muted"
+                            }`}
+                          >
+                            Həll tələb
                           </button>
                           <button
                             type="button"

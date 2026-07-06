@@ -116,6 +116,9 @@ const TYPES = [
   // mode. The old 1:1 "Uyğunlaşdırma" (Cma) was removed from creation; legacy
   // Cma questions still render, but new/AI matching is always Cmu.
   { key: "Cmu", label: "Uyğunluq" },
+  // Open question whose SOLUTION must be reviewed (DİM Blok #28-30). Scored like
+  // an open answer but shown/labelled separately so teachers grade the working.
+  { key: "Cd", label: "Həlli tələb olunan açıq" },
 ];
 const TYPE_LABEL = Object.fromEntries(TYPES.map((t) => [t.key, t.label]));
 // Per-type accent colors used in the question navigator (number badge + chip).
@@ -125,6 +128,7 @@ const TYPE_ACCENT = {
   Co: { dot: "bg-amber-500", chip: "bg-amber-500/12 text-amber-600" },
   Cmu: { dot: "bg-emerald-500", chip: "bg-emerald-500/12 text-emerald-600" },
   Cma: { dot: "bg-emerald-500", chip: "bg-emerald-500/12 text-emerald-600" },
+  Cd: { dot: "bg-rose-500", chip: "bg-rose-500/12 text-rose-600" },
 };
 
 // Correspondence (Cmu): a..z letter labels for the right columns.
