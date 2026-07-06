@@ -58,7 +58,7 @@ const ScoringEditor = ({ questions, autoPoints, typePoints, onChange }) => {
               <input
                 type="number"
                 min="0"
-                step="0.01"
+                step="any"
                 value={typePoints?.[g.type] ?? Number((g.auto || 0).toFixed(3))}
                 onChange={(e) => setOne(g.type, e.target.value)}
                 className="h-8 w-20 rounded-lg border border-line bg-surface px-2 text-right text-sm tabular-nums text-text outline-none transition focus:border-primary"
