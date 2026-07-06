@@ -25,9 +25,9 @@ const newQuestion = (type = "Cm") => ({
   type,
   answer: "",
   options: ["a", "b", "c", "d", "e"],
-  // Correspondence (Cmu) defaults: 5 numbers, 5 letters, empty key per number.
+  // Correspondence (Cmu) defaults: 3 numbers, 5 letters, empty key per number.
   ...(type === "Cmu"
-    ? { leftCount: 5, rightCount: 5, key: [[], [], [], [], []] }
+    ? { leftCount: 3, rightCount: 5, key: [[], [], []] }
     : {}),
 });
 const clampInt = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.round(Number(v) || lo)));
@@ -80,7 +80,7 @@ const QuestionAdd = () => {
               // Preserve the correspondence grid + answer key (owner payload).
               ...(q.type === "Cmu"
                 ? {
-                    leftCount: Number(q.leftCount) || 5,
+                    leftCount: Number(q.leftCount) || 3,
                     rightCount: Number(q.rightCount) || 5,
                     key: Array.isArray(q.key) ? q.key : [],
                   }
@@ -130,7 +130,7 @@ const QuestionAdd = () => {
     update(
       i,
       type === "Cmu"
-        ? { type, answer: "", leftCount: 5, rightCount: 5, key: [[], [], [], [], []] }
+        ? { type, answer: "", leftCount: 3, rightCount: 5, key: [[], [], []] }
         : { type, answer: "" }
     );
   const setAnswer = (i, answer) => update(i, { answer });
