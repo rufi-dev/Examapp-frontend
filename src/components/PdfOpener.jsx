@@ -25,7 +25,15 @@ const MAX_ZOOM = 4;
 const MAX_CANVAS_DIM = 3800;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 // Supersample a bit for crisp text, but cap so high zoom doesn't blow up memory.
-const RENDER_DPR = Math.min(2, (typeof window !== "undefined" && window.devicePixelRatio) || 1);
+// Lower-end phones ran out of canvas/GPU memory and rendered garbage (horizontal
+// static) — some students couldn't read the PDF at all. So cap the supersample
+// lower on mobile, and to 1× on devices reporting ≤4 GB RAM. Desktop stays 2×.
+const _dpr = (typeof window !== "undefined" && window.devicePixelRatio) || 1;
+const _mem = (typeof navigator !== "undefined" && navigator.deviceMemory) || 0;
+const _touch =
+  typeof window !== "undefined" &&
+  ("ontouchstart" in window || (navigator.maxTouchPoints || 0) > 0);
+const RENDER_DPR = Math.min(_mem && _mem <= 4 ? 1 : _touch ? 1.5 : 2, _dpr);
 
 // Scrollable PDF viewer. Pages are rendered at their ACTUAL display size (like a
 // real PDF viewer) so text stays sharp at 100% and at every zoom — no CSS
