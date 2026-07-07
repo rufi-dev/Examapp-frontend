@@ -161,18 +161,19 @@ const ClassList = () => {
         onClose={() => setConfirmClass(null)}
         onConfirm={handleDeleteClass}
         title="Sinfi silmək?"
-        confirmLabel="Bəli, sil"
+        confirmLabel="Bəli, sinfi sil"
         cancelLabel="Geri"
         tone="danger"
         loading={deleting}
       >
         <p>
-          <span className="font-semibold text-text">{classLabel(confirmClass)}</span> və
-          içindəki{" "}
-          <span className="font-semibold text-text">
-            bütün imtahanlar, suallar və nəticələr
-          </span>{" "}
-          həmişəlik silinəcək. Bu əməliyyat geri qaytarıla bilməz.
+          <span className="font-semibold text-text">{classLabel(confirmClass)}</span> sinfi{" "}
+          <span className="font-semibold text-text">həmişəlik</span> silinəcək.
+        </p>
+        <p className="mt-2">
+          İçindəki bütün imtahanlar isə{" "}
+          <span className="font-semibold text-text">zibil qutusuna</span> keçəcək — 30 gün ərzində
+          geri qaytara bilərsiniz, sonra avtomatik silinəcək.
         </p>
       </ConfirmDialog>
     </>

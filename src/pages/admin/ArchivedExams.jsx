@@ -23,13 +23,16 @@ const ArchivedExams = () => {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(""); // id being acted on
   const [confirmExam, setConfirmExam] = useState(null); // delete-forever target
+  const [error, setError] = useState(false); // load failed (≠ "empty")
 
   const load = async () => {
+    setError(false);
     try {
       const { data } = await axios.get(`${API}/archivedExams`);
       setExams(Array.isArray(data) ? data : []);
     } catch {
-      /* empty state covers it */
+      // A network/auth/server failure must NOT masquerade as "Trash is empty".
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -78,6 +81,26 @@ const ArchivedExams = () => {
             <div key={k} className="h-20 animate-pulse rounded-2xl border border-line bg-surface" />
           ))}
         </div>
+      ) : error ? (
+        <div className="mx-auto mt-10 max-w-md rounded-3xl border border-dashed border-danger/40 bg-surface p-10 text-center">
+          <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-danger/12 text-danger">
+            <FiInbox className="text-2xl" />
+          </span>
+          <h3 className="mt-4 font-display text-lg font-bold text-text">Yüklənmədi</h3>
+          <p className="mt-1.5 text-sm text-muted">
+            Zibil qutusu yüklənərkən xəta baş verdi. İnternet bağlantınızı yoxlayın.
+          </p>
+          <Button
+            type="button"
+            className="mt-5"
+            onClick={() => {
+              setLoading(true);
+              load();
+            }}
+          >
+            Yenidən cəhd et
+          </Button>
+        </div>
       ) : exams.length === 0 ? (
         <div className="mx-auto mt-10 max-w-md rounded-3xl border border-dashed border-line bg-surface p-10 text-center">
           <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-primary/12 text-primary">
@@ -102,6 +125,7 @@ const ArchivedExams = () => {
                     {left === 0
                       ? "Bu gün həmişəlik silinəcək"
                       : `${left} gün sonra həmişəlik silinəcək`}
+                    {e.deletedByName ? ` · ${e.deletedByName} silib` : ""}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
