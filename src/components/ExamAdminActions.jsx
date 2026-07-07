@@ -98,15 +98,16 @@ const ExamAdminActions = ({ exam, onChanged, className = "" }) => {
         open={confirm}
         onClose={() => setConfirm(false)}
         onConfirm={doDelete}
-        title="İmtahanı silmək?"
-        confirmLabel="Bəli, sil"
+        title="İmtahanı arxivləşdirmək?"
+        confirmLabel="Bəli, arxivə at"
         cancelLabel="Geri"
         tone="danger"
         loading={deleting}
       >
         <p>
-          <span className="font-semibold text-text">{exam?.name}</span> imtahanı, sualları, PDF-i
-          və bütün nəticələri həmişəlik silinəcək. Bu əməliyyat geri qaytarıla bilməz.
+          <span className="font-semibold text-text">{exam?.name}</span> imtahanı{" "}
+          <span className="font-semibold text-text">Zibil qutusuna</span> keçəcək. 30 gün ərzində
+          geri qaytara bilərsiniz; sonra avtomatik həmişəlik silinəcək.
         </p>
       </ConfirmDialog>
     </>

@@ -20,6 +20,7 @@ import {
   FiHome,
   FiLink2,
   FiVideo,
+  FiTrash2,
 } from "react-icons/fi";
 import { LuGraduationCap } from "react-icons/lu";
 
@@ -47,6 +48,8 @@ const adminNav = [
   { to: "/examResults", label: "Nəticələr", icon: FiPieChart },
   // Telegram + WhatsApp notification integrations live here now (moved out of Profil).
   { to: "/connections", label: "Bağlantılar", icon: FiLink2 },
+  // Soft-deleted exams — restore or purge (auto-purged after 30 days).
+  { to: "/trash", label: "Zibil qutusu", icon: FiTrash2 },
 ];
 
 // Fallback label for the CURRENT page when a page doesn't pass a `title`
@@ -62,6 +65,7 @@ const PATH_LABELS = {
   "/users": "İstifadəçilər",
   "/examResults": "Nəticələr",
   "/connections": "Bağlantılar",
+  "/trash": "Zibil qutusu",
   "/aiUsage": "AI xərcləri",
 };
 

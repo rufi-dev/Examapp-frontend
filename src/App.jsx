@@ -52,6 +52,7 @@ const Exams = lazy(() => import("./pages/Exams"));
 const Overview = lazy(() => import("./pages/Overview"));
 const Connections = lazy(() => import("./pages/Connections"));
 const VideoLessons = lazy(() => import("./pages/VideoLessons"));
+const ArchivedExams = lazy(() => import("./pages/admin/ArchivedExams"));
 const OurSuccess = lazy(() => import("./pages/OurSuccess"));
 const About = lazy(() => import("./pages/About"));
 const Contact = lazy(() => import("./pages/Contact"));
@@ -207,6 +208,7 @@ function App() {
               <Route path="/profile" element={<Profile />} />
               <Route path="/connections" element={<Connections />} />
               <Route path="/videos" element={<VideoLessons />} />
+              <Route path="/trash" element={<ArchivedExams />} />
               <Route path="/users" element={<UserList />} />
               <Route path="/aiUsage" element={<AiUsage />} />
               <Route path="/examResults" element={<ExamResults />} />
