@@ -7,7 +7,7 @@ import Loader from "../../components/Loader";
 import AccountLayout from "../../components/AccountLayout";
 import ExamAnalytics from "../../components/analytics/ExamAnalytics";
 import { toast } from "react-toastify";
-import { FiDownload, FiAlertTriangle, FiFileText, FiEye } from "react-icons/fi";
+import { FiDownload, FiAlertTriangle, FiFileText, FiEye, FiSearch, FiX } from "react-icons/fi";
 import Spinner from "../../components/Spinner";
 
 // Heavy (@react-pdf/renderer ~1.3MB) — loaded only when a teacher clicks export.
@@ -21,6 +21,7 @@ const ResultsByExam = () => {
   const { examId } = useParams();
   const { resultsByExam, isLoading } = useSelector((state) => state.result);
   const [tab, setTab] = useState("analytics"); // "analytics" | "students"
+  const [query, setQuery] = useState(""); // student search (name / email / phone)
   const [showPdf, setShowPdf] = useState(false); // defer the PDF export library
   const [excelBusy, setExcelBusy] = useState(false);
 
@@ -34,6 +35,24 @@ const ResultsByExam = () => {
 
   const results = Array.isArray(resultsByExam) ? resultsByExam : [];
   const passingMarks = results[0]?.examId?.passingMarks;
+
+  // Client-side student search: match name / email / phone (case-insensitive;
+  // phone matches on digits only so "+994 50" and "05055" both work).
+  const q = query.trim().toLowerCase();
+  const qDigits = q.replace(/\D/g, "");
+  const filteredResults = q
+    ? results.filter((r) => {
+        const u = r.userId || {};
+        const name = (u.name || "").toLowerCase();
+        const email = (u.email || "").toLowerCase();
+        const phone = (u.phone || "").replace(/\D/g, "");
+        return (
+          name.includes(q) ||
+          email.includes(q) ||
+          (qDigits.length >= 2 && phone.includes(qDigits))
+        );
+      })
+    : results;
 
   // Defer the (heavy) exceljs library until the teacher actually exports.
   const onExcel = async () => {
@@ -95,8 +114,49 @@ const ResultsByExam = () => {
       ) : tab === "analytics" ? (
         <ExamAnalytics results={results} passingMarks={passingMarks} />
       ) : (
-        <div className="flex flex-col gap-6">
-          {results.map((result, index) => (
+        <div className="flex flex-col gap-4">
+          {/* Search students by name / email / phone. */}
+          <div className="relative">
+            <FiSearch className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              type="search"
+              inputMode="search"
+              placeholder="Ad, e-poçt və ya nömrə ilə axtar…"
+              className="h-12 w-full rounded-2xl border border-line bg-surface pl-11 pr-11 text-[15px] text-text shadow-soft outline-none transition placeholder:text-muted/70 focus:border-primary focus:ring-4 focus:ring-ring/25"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                className="absolute right-3 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg text-muted transition-colors hover:bg-surface2 hover:text-text"
+                aria-label="Təmizlə"
+              >
+                <FiX />
+              </button>
+            )}
+          </div>
+          {query && (
+            <p className="-mt-1 px-1 text-sm text-muted">
+              <span className="font-semibold text-text">{filteredResults.length}</span> nəticə
+              tapıldı
+            </p>
+          )}
+
+          {filteredResults.length === 0 ? (
+            <div className="rounded-3xl border border-dashed border-line bg-surface p-14 text-center">
+              <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-surface2 text-muted">
+                <FiSearch className="text-xl" />
+              </span>
+              <p className="mt-3 font-semibold text-text">Şagird tapılmadı</p>
+              <p className="mt-1 text-sm text-muted">
+                “{query}” üçün nəticə yoxdur — adı, e-poçtu və ya nömrəni yoxlayın.
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-6">
+              {filteredResults.map((result, index) => (
             <div
               key={result._id || index}
               className={`rounded-3xl bg-surface p-6 shadow-soft ${
@@ -143,7 +203,9 @@ const ResultsByExam = () => {
               </div>
               <ResultCard result={result} />
             </div>
-          ))}
+              ))}
+            </div>
+          )}
         </div>
       )}
     </AccountLayout>
