@@ -24,6 +24,7 @@ const GRID_LETTERS = "abcdefghijklmnopqrstuvwxyz";
 const newQuestion = (type = "Cm") => ({
   type,
   answer: "",
+  answers: [""], // open (Co/Cd): all accepted answers (any match = correct)
   options: ["a", "b", "c", "d", "e"],
   // Correspondence (Cmu) defaults: 3 numbers, 5 letters, empty key per number.
   ...(type === "Cmu"
@@ -280,6 +281,16 @@ const QuestionAdd = () => {
           : {
               type: q.type,
               answer: q.answer,
+              // Open (Co/Cd): store every accepted answer; a typed answer matching
+              // ANY (case/space-insensitive) is correct.
+              ...((q.type === "Co" || q.type === "Cd") && Array.isArray(q.answers)
+                ? (() => {
+                    const acc = [
+                      ...new Set(q.answers.map((s) => String(s || "").trim()).filter(Boolean)),
+                    ];
+                    return acc.length > 1 ? { answer: acc[0], answers: acc } : {};
+                  })()
+                : {}),
               ...(q.type === "Cm" ? { options: q.options } : {}),
             }
       );
@@ -645,12 +656,59 @@ const QuestionAdd = () => {
                         </button>
                       </div>
                     ) : (
-                      <input
-                        value={q.answer}
-                        onChange={(e) => setAnswer(i, e.target.value)}
-                        placeholder="Düzgün cavabı yaz..."
-                        className={inputClass}
-                      />
+                      (() => {
+                        // Multiple accepted answers — correct if the student types ANY.
+                        const accepted =
+                          Array.isArray(q.answers) && q.answers.length
+                            ? q.answers
+                            : [q.answer || ""];
+                        const setAcc = (next) =>
+                          update(i, {
+                            answers: next.length ? next : [""],
+                            answer: next[0] || "",
+                          });
+                        return (
+                          <div className="space-y-2">
+                            {accepted.map((ans, ai) => (
+                              <div key={ai} className="flex items-center gap-2">
+                                <input
+                                  value={ans}
+                                  onChange={(e) => {
+                                    const next = [...accepted];
+                                    next[ai] = e.target.value;
+                                    setAcc(next);
+                                  }}
+                                  placeholder={
+                                    ai === 0
+                                      ? "Düzgün cavab (məs: x+2)..."
+                                      : "Alternativ cavab (məs: x + 2)..."
+                                  }
+                                  className={inputClass}
+                                />
+                                {accepted.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setAcc(accepted.filter((_, k) => k !== ai))
+                                    }
+                                    className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-danger/10 hover:text-danger"
+                                    aria-label="Sil"
+                                  >
+                                    <FiX />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() => setAcc([...accepted, ""])}
+                              className="flex items-center gap-1.5 rounded-lg px-1 py-1 text-sm font-semibold text-muted transition-colors hover:text-primary"
+                            >
+                              <FiPlus className="text-base" /> Alternativ cavab əlavə et
+                            </button>
+                          </div>
+                        );
+                      })()
                     )}
                   </div>
                 ))}

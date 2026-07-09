@@ -21,6 +21,7 @@ import {
   FiLink2,
   FiVideo,
   FiTrash2,
+  FiActivity,
 } from "react-icons/fi";
 import { LuGraduationCap } from "react-icons/lu";
 
@@ -67,6 +68,7 @@ const PATH_LABELS = {
   "/connections": "Bağlantılar",
   "/trash": "Zibil qutusu",
   "/aiUsage": "AI xərcləri",
+  "/health": "Sistem sağlamlığı",
 };
 
 // Parent crumbs (with links) for nested routes; the current page itself is
@@ -170,6 +172,7 @@ export default function AccountLayout({ title, subtitle, actions, children }) {
         <AdminLink>
           <div className="mt-1 flex flex-col gap-1">
             <SideItem to="/aiUsage" label="AI xərcləri" icon={FiDollarSign} />
+            <SideItem to="/health" label="Sistem sağlamlığı" icon={FiActivity} />
           </div>
         </AdminLink>
       </nav>

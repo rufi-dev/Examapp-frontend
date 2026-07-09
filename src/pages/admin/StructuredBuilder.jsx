@@ -216,6 +216,7 @@ const newQuestion = (type = "Cm") => ({
   choices: [emptyChoice(), emptyChoice(), emptyChoice(), emptyChoice()],
   correct: type === "Cm" ? [0] : [], // indices into choices
   answer: "", // open (Co) correct text
+  answers: [""], // open (Co): all accepted answers (any match = correct)
   pairs: [emptyPair(), emptyPair()],
   // Correspondence (Cmu): numbers 1..leftCount → letters a..rightCount; key[i]
   // is the array of correct letter indices for number i+1 (one-to-many, reusable).
@@ -575,6 +576,13 @@ const StructuredBuilder = () => {
               ? [0]
               : [],
             answer: q.type === "Co" || q.type === "Cd" ? q.answer || "" : "",
+            // Restore all accepted open answers so editing/re-saving keeps them.
+            answers:
+              q.type === "Co" || q.type === "Cd"
+                ? Array.isArray(q.answers) && q.answers.length
+                  ? q.answers
+                  : [q.answer || ""]
+                : [""],
             pairs:
               Array.isArray(q.pairs) && q.pairs.length
                 ? q.pairs.map((p) => ({
@@ -992,6 +1000,15 @@ const StructuredBuilder = () => {
       choices,
       correct: type === "Cm" && correct.length > 1 ? [correct[0]] : correct,
       answer: type === "Co" || type === "Cd" ? q.openAnswer || "" : "",
+      // Accepted open-answer variants from the AI (plain text, e.g. "x+2", "x + 2").
+      answers: (() => {
+        if (type !== "Co" && type !== "Cd") return [""];
+        const acc = (Array.isArray(q.openAnswers) ? q.openAnswers : [])
+          .concat(q.openAnswer ? [q.openAnswer] : [])
+          .map((s) => String(s || "").trim());
+        const uniq = [...new Set(acc.filter(Boolean))];
+        return uniq.length ? uniq : [""];
+      })(),
       // Builder-only hint (not saved): the AI flagged a figure to add manually.
       needsFigure: !!q.hasFigure,
       pairs:
@@ -1212,11 +1229,20 @@ const StructuredBuilder = () => {
           answer: correct.join(","),
         });
       } else if (q.type === "Co" || q.type === "Cd") {
-        if (!norm(q.answer)) {
+        // Collect every accepted answer (deduped); the student's typed answer is
+        // correct if it matches ANY of them (case/space-insensitive, server-side).
+        const acc = (Array.isArray(q.answers) ? q.answers : [q.answer]).map((s) => norm(s));
+        const uniq = [...new Set(acc.filter(Boolean))];
+        if (!uniq.length) {
           toast.error(`Sual ${num}: düzgün cavabı yazın`);
           return null;
         }
-        correctAnswers.push({ type: q.type, ...stem, answer: norm(q.answer) });
+        correctAnswers.push({
+          type: q.type,
+          ...stem,
+          answer: uniq[0],
+          ...(uniq.length > 1 ? { answers: uniq } : {}),
+        });
       } else if (q.type === "Cma") {
         const kept = q.pairs.filter((p) => norm(p.left) && norm(p.right));
         if (kept.length < 2) {
@@ -2032,14 +2058,64 @@ const StructuredBuilder = () => {
                     </div>
                   )}
 
-                  {(q.type === "Co" || q.type === "Cd") && (
-                    <input
-                      value={q.answer}
-                      onChange={(e) => patch(i, (qq) => ({ ...qq, answer: e.target.value }))}
-                      placeholder="Düzgün cavab (dəqiq mətn)..."
-                      className={inputClass}
-                    />
-                  )}
+                  {(q.type === "Co" || q.type === "Cd") &&
+                    (() => {
+                      // Multiple accepted answers — the student is correct if their
+                      // typed answer matches ANY (case/space-insensitive).
+                      const accepted =
+                        Array.isArray(q.answers) && q.answers.length
+                          ? q.answers
+                          : [q.answer || ""];
+                      const setAcc = (next) =>
+                        patch(i, (qq) => ({
+                          ...qq,
+                          answers: next.length ? next : [""],
+                          answer: next[0] || "",
+                        }));
+                      return (
+                        <div className="space-y-2">
+                          {accepted.map((ans, ai) => (
+                            <div key={ai} className="flex items-center gap-2">
+                              <input
+                                value={ans}
+                                onChange={(e) => {
+                                  const next = [...accepted];
+                                  next[ai] = e.target.value;
+                                  setAcc(next);
+                                }}
+                                placeholder={
+                                  ai === 0
+                                    ? "Düzgün cavab (məs: x+2)..."
+                                    : "Alternativ cavab (məs: x + 2)..."
+                                }
+                                className={inputClass}
+                              />
+                              {accepted.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setAcc(accepted.filter((_, k) => k !== ai))}
+                                  className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-danger/10 hover:text-danger"
+                                  aria-label="Sil"
+                                >
+                                  <FiX />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => setAcc([...accepted, ""])}
+                            className="flex items-center gap-1.5 rounded-lg px-1 py-1 text-sm font-semibold text-muted transition-colors hover:text-primary"
+                          >
+                            <FiPlus className="text-base" /> Alternativ cavab əlavə et
+                          </button>
+                          <p className="text-xs text-muted">
+                            Şagird bunlardan hər hansı birini yazsa düzgün sayılır (böyük/kiçik
+                            hərf və boşluqlar nəzərə alınmır).
+                          </p>
+                        </div>
+                      );
+                    })()}
 
                   {q.type === "Cma" && (
                     <div className="space-y-2">

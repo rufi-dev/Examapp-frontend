@@ -85,8 +85,14 @@ export function isSelectionCorrect(correct, selected, type) {
     if (selected === "") return false;
     return new Set(want).has(Number(selected));
   }
-  // Open / legacy string.
-  return n(selected) !== "" && n(selected) === n(correct);
+  // Open / legacy string. The stored correct value may list several accepted
+  // answers joined by " / "; a case- and space-insensitive match to ANY counts.
+  const openN = (v) => n(v).toLowerCase().replace(/\s+/g, " ");
+  const got = openN(selected);
+  if (got === "") return false;
+  return String(correct ?? "")
+    .split(" / ")
+    .some((s) => openN(s) && openN(s) === got);
 }
 
 // Score an answer sheet against the exam's correct answers.
