@@ -75,28 +75,28 @@ const fmtInterval = (ms) => {
 
 const OVERALL = {
   healthy: {
-    label: "Examopia sağlamdır",
+    label: "BunkerMath sağlamdır",
     sub: "Bütün yoxlamalar normaldır.",
     icon: FiCheckCircle,
     chip: "bg-success/12 text-success",
     ring: "border-success/40",
   },
   warning: {
-    label: "Examopia-da xəbərdarlıqlar var",
+    label: "BunkerMath-da xəbərdarlıqlar var",
     sub: "Sistem işləyir, amma diqqət tələb edən məsələlər var.",
     icon: FiAlertTriangle,
     chip: "bg-warning/12 text-warning",
     ring: "border-warning/40",
   },
   critical: {
-    label: "Examopia kritik vəziyyətdədir",
+    label: "BunkerMath kritik vəziyyətdədir",
     sub: "İstifadəçilər təsirlənməmiş problemləri dərhal yoxlayın.",
     icon: FiAlertTriangle,
     chip: "bg-danger/12 text-danger",
     ring: "border-danger/50",
   },
   down: {
-    label: "Examopia işləmir",
+    label: "BunkerMath işləmir",
     sub: "Əsas servislərdən biri əlçatmazdır.",
     icon: FiXCircle,
     chip: "bg-danger/12 text-danger",
@@ -418,7 +418,7 @@ const HealthDashboard = () => {
   return (
     <AccountLayout
       title="Sistem sağlamlığı"
-      subtitle="Examopia hazırda sağlamdırmı — və deyilsə, konkret nə problemdir?"
+      subtitle="BunkerMath hazırda sağlamdırmı — və deyilsə, konkret nə problemdir?"
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2 text-sm font-medium text-muted">
@@ -664,7 +664,7 @@ const HealthDashboard = () => {
           <HistoryStrip rows={history?.rows} />
           <p className="mt-2 text-xs text-muted">
             "API" faizi gözlənilən 5-dəqiqəlik nümunələrin neçəsinin yazıldığını göstərir — boşluq backend-in
-            dayandığı/yenidən başladığı vaxtdır. "Sayt" faizi serverdən examopia.com-un açılıb-açılmadığıdır.
+            dayandığı/yenidən başladığı vaxtdır. "Sayt" faizi serverdən bunkermath.az-un açılıb-açılmadığıdır.
           </p>
         </div>
       </Section>
@@ -754,7 +754,7 @@ const HealthDashboard = () => {
         <div className="grid gap-4 lg:grid-cols-2">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
-              examopia.com (serverdən yoxlanılır)
+              bunkermath.az (serverdən yoxlanılır)
             </p>
             <Table head={["Səhifə", "Status", { label: "Kod", right: true }, { label: "Müddət", right: true }]}>
               {(data.site?.pages || []).map((p) => (
@@ -774,7 +774,7 @@ const HealthDashboard = () => {
             </Table>
           </div>
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">api.examopia.com</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">api.bunkermath.az</p>
             <Table head={["Yoxlama", "Status", { label: "Kod", right: true }, { label: "Müddət", right: true }]}>
               {(data.api?.endpoints || []).map((p, i) => (
                 <Tr key={i}>
@@ -795,7 +795,7 @@ const HealthDashboard = () => {
       </Section>
 
       {/* 7 — Business checks */}
-      <Section icon={FiCheckCircle} title="Examopia yoxlamaları (məhsul səviyyəsi)">
+      <Section icon={FiCheckCircle} title="BunkerMath yoxlamaları (məhsul səviyyəsi)">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           <StatTile label="Aktiv imtahan" value={biz.examsActive ?? "—"} sub={`${biz.examsHidden ?? 0} qaralama · ${biz.examsArchived ?? 0} zibil qutusunda`} />
           <StatTile label="Canlı cəhdlər" value={biz.attemptsActive ?? "—"} sub="hazırda imtahan verənlər" tone={biz.attemptsActive > 0 ? "text-primary" : "text-text"} />
@@ -998,7 +998,7 @@ const HealthDashboard = () => {
         <div className="mt-4 rounded-2xl border border-line bg-surface p-4 text-sm text-muted shadow-soft">
           <p>
             HTTPS: <b className="text-text">{data.site?.pages?.[0]?.headers?.hsts ? "HSTS aktiv" : "aktiv"}</b> · CORS:{" "}
-            <b className="text-text">yalnız examopia.com</b> · AI sorğu limiti:{" "}
+            <b className="text-text">yalnız bunkermath.az</b> · AI sorğu limiti:{" "}
             <b className="text-text">aktiv (istifadəçi başına)</b> · Girişlər DebugLog-da izlənir (14 gün).
           </p>
         </div>
