@@ -23,9 +23,22 @@ import { toUtcIso } from "../../helper/datetime";
 import { PRESETS, presetOptions } from "../../helper/examPresets";
 import { uploadImage } from "../../helper/cloudinary";
 import CoverImageField from "../../components/ui/CoverImageField";
+import DateTimePicker from "../../components/ui/DateTimePicker";
+import { FiClock } from "react-icons/fi";
 
 const fileInputClass =
   "block w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-text file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:font-semibold file:text-primary-fg hover:file:bg-primary-hover";
+
+// Common exam durations (minutes) for one-tap selection.
+const QUICK_MIN = [30, 45, 60, 90, 120, 180];
+// Input with a leading icon (icon sits in the left padding).
+const iconInputClass = inputClass.replace("px-3.5", "pl-11 pr-3.5");
+const IconInput = ({ icon: Icon, children }) => (
+  <div className="relative">
+    <Icon className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+    {children}
+  </div>
+);
 
 const ExamAdd = () => {
   useRedirectLoggedOutUser("/login");
@@ -207,7 +220,10 @@ const ExamAdd = () => {
     return <Loader />;
   }
 
-  const minuteHint = `≈ ${Math.round((Number(duration) || 0) / 60)} dəqiqə`;
+  // Duration is stored in SECONDS (backend), but the teacher enters MINUTES.
+  const durationMin = Math.round((Number(duration) || 0) / 60);
+  const setDurationMin = (min) =>
+    setField("duration", Math.max(0, Math.round(Number(min) || 0)) * 60);
 
   return (
     <AccountLayout title="İmtahan əlavə et" subtitle="Yeni sınaq imtahanı yarat.">
@@ -296,15 +312,54 @@ const ExamAdd = () => {
 
           <FormSection title="Vaxt və müddət">
             <div className="space-y-5">
-              <Field label="Müddət (saniyə)" htmlFor="duration" required hint={minuteHint}>
-                <input value={duration} onChange={handleInputChange} type="number" id="duration" name="duration" className={inputClass} />
+              <Field label="Müddət (dəqiqə)" htmlFor="duration" required>
+                <IconInput icon={FiClock}>
+                  <input
+                    value={durationMin || ""}
+                    onChange={(e) => setDurationMin(e.target.value)}
+                    type="number"
+                    min="0"
+                    id="duration"
+                    name="duration"
+                    className={iconInputClass}
+                    placeholder="60"
+                  />
+                </IconInput>
+                <div className="mt-2.5 flex flex-wrap gap-2">
+                  {QUICK_MIN.map((m) => {
+                    const active = durationMin === m;
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setDurationMin(m)}
+                        className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+                          active
+                            ? "border-primary bg-primary text-primary-fg"
+                            : "border-line bg-surface text-muted hover:border-primary/50 hover:text-text"
+                        }`}
+                      >
+                        {m < 60 ? `${m} dəq` : `${m / 60} saat`}
+                      </button>
+                    );
+                  })}
+                </div>
               </Field>
               <div className="grid gap-5 sm:grid-cols-2">
                 <Field label="Başlanma tarixi" htmlFor="startDate">
-                  <input value={startDate || ""} onChange={handleInputChange} type="datetime-local" id="startDate" name="startDate" className={inputClass} />
+                  <DateTimePicker
+                    id="startDate"
+                    value={startDate || ""}
+                    onChange={(v) => setField("startDate", v)}
+                  />
                 </Field>
                 <Field label="Bitmə tarixi" htmlFor="endDate">
-                  <input value={endDate || ""} onChange={handleInputChange} type="datetime-local" id="endDate" name="endDate" className={inputClass} />
+                  <DateTimePicker
+                    id="endDate"
+                    value={endDate || ""}
+                    onChange={(v) => setField("endDate", v)}
+                    align="right"
+                  />
                 </Field>
               </div>
             </div>
