@@ -35,10 +35,22 @@ function blokPlan(count, types) {
   return tailEqualPlan(n, 150, 3, BLOK_SOLVE_PTS);
 }
 
+// Buraxılış 9-cu sinif (DİM), out of 100: solution-required questions (type Cd,
+// the last 4: #22-25) are weighted 2×; everything normalized to 100. 21 normal +
+// 4 Cd → 29 units → normal ≈ 3.45, Cd ≈ 6.90. No negative marking. Scored BY TYPE.
+function bur9Plan(count, types) {
+  const n = Number(count) || 0;
+  if (n <= 0) return [];
+  const t = Array.isArray(types) ? types : [];
+  const weights = Array.from({ length: n }, (_, i) => (t[i] === "Cd" ? 2 : 1));
+  const total = weights.reduce((s, w) => s + w, 0) || 1;
+  return weights.map((w) => (w / total) * 100);
+}
+
 export const PRESETS = {
   buraxilis: {
     id: "buraxilis",
-    label: "Buraxılış",
+    label: "Buraxılış 11-ci sinif",
     totalMarks: 100,
     slots: [
       { type: "Cm", count: 13 },
@@ -46,6 +58,19 @@ export const PRESETS = {
       { type: "Cd", count: 7 },
     ],
     pointsPlan: null, // null -> builder uses the legacy questionPoints (out of 100)
+    negativeMarking: null,
+  },
+  "buraxilis-9": {
+    id: "buraxilis-9",
+    label: "Buraxılış 9-cu sinif",
+    totalMarks: 100,
+    // 25 tapşırıq: 15 qapalı (#1-15) + 6 açıq (#16-21) + 4 həlli tələb olunan (#22-25).
+    slots: [
+      { type: "Cm", count: 15 },
+      { type: "Co", count: 6 },
+      { type: "Cd", count: 4 },
+    ],
+    pointsPlan: bur9Plan,
     negativeMarking: null,
   },
   "blok-1": {
