@@ -47,6 +47,13 @@ function bur9Plan(count, types) {
   return weights.map((w) => (w / total) * 100);
 }
 
+// Every question worth an EQUAL share of totalMarks (10 pts each for a 10-question,
+// 100-point test). Adapts if the count changes so the total stays at totalMarks.
+function equalPlan(count, totalMarks) {
+  const n = Number(count) || 0;
+  return n > 0 ? Array.from({ length: n }, () => totalMarks / n) : [];
+}
+
 export const PRESETS = {
   buraxilis: {
     id: "buraxilis",
@@ -71,6 +78,18 @@ export const PRESETS = {
       { type: "Cd", count: 4 },
     ],
     pointsPlan: bur9Plan,
+    negativeMarking: null,
+  },
+  dqt: {
+    id: "dqt",
+    label: "DQT (Dərsi Qiymətləndirmə Testi)",
+    totalMarks: 100,
+    // 10 sual, hər biri 10 bal. Standart 7 qapalı + 3 açıq — müəllim dəyişə bilər.
+    slots: [
+      { type: "Cm", count: 7 },
+      { type: "Co", count: 3 },
+    ],
+    pointsPlan: (count) => equalPlan(count, 100),
     negativeMarking: null,
   },
   "blok-1": {
