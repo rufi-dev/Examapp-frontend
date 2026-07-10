@@ -20,7 +20,6 @@ import {
   FiX,
   FiImage,
   FiCopy,
-  FiMove,
   FiCrop,
   FiChevronUp,
   FiChevronDown,
@@ -37,6 +36,7 @@ import {
   FiCheckCircle,
   FiEdit3,
 } from "react-icons/fi";
+import { RxDragHandleDots2 } from "react-icons/rx";
 import { questionPoints, hasAnswer } from "../../helper/helper";
 
 // Compact answered-progress ring for the preview sidebar (mirrors the live exam).
@@ -1885,24 +1885,24 @@ const StructuredBuilder = () => {
                   }`}
                 >
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        draggable
+                        onDragStart={() => setDragIdx(i)}
+                        onDragEnd={endDrag}
+                        className="-ml-1 grid h-7 w-6 shrink-0 cursor-grab place-items-center rounded-md text-muted/60 transition-colors hover:bg-surface2 hover:text-text active:cursor-grabbing"
+                        aria-label="Sürüklə"
+                        title="Sürükləyib yerini dəyiş"
+                      >
+                        <RxDragHandleDots2 className="text-lg" />
+                      </button>
                       <span className="font-display text-sm font-bold text-text">Sual {i + 1}</span>
                       <span className="rounded-full border border-line bg-surface2/60 px-2 py-0.5 text-xs font-semibold text-muted">
                         {Number((effPoints[i] || 0).toFixed(3))} bal
                       </span>
                     </div>
                     <div className="flex items-center gap-0.5">
-                        <button
-                          type="button"
-                          draggable
-                          onDragStart={() => setDragIdx(i)}
-                          onDragEnd={endDrag}
-                          className="grid h-7 w-7 cursor-grab place-items-center rounded-lg text-muted transition-colors hover:bg-surface2 hover:text-text active:cursor-grabbing"
-                          aria-label="Sürüklə"
-                          title="Sürükləyib yerini dəyiş"
-                        >
-                          <FiMove />
-                        </button>
                         <button
                           type="button"
                           onClick={() => moveQuestion(i, -1)}

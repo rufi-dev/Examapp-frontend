@@ -13,7 +13,8 @@ import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser"
 import Spinner from "../../components/Spinner";
 import Button from "../../components/ui/Button";
 import { inputClass } from "../../components/ui/Field";
-import { FiPlus, FiX, FiMove, FiChevronUp, FiChevronDown } from "react-icons/fi";
+import { FiPlus, FiX, FiChevronUp, FiChevronDown } from "react-icons/fi";
+import { RxDragHandleDots2 } from "react-icons/rx";
 import { questionPoints } from "../../helper/helper";
 import { PRESETS, presetTypes, presetPointsPlan, presetTotalMarks } from "../../helper/examPresets";
 import ScoringEditor from "../../components/ScoringEditor";
@@ -455,7 +456,18 @@ const QuestionAdd = () => {
                   >
                     <div className="mb-3">
                       <div className="flex items-center justify-between gap-3">
-                        <div className="flex min-w-0 items-center gap-2">
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <button
+                            type="button"
+                            draggable
+                            onDragStart={() => setDragIdx(i)}
+                            onDragEnd={endDrag}
+                            className="-ml-1 grid h-7 w-6 shrink-0 cursor-grab place-items-center rounded-md text-muted/60 transition-colors hover:bg-surface2 hover:text-text active:cursor-grabbing"
+                            aria-label="Sürüklə"
+                            title="Sürükləyib yerini dəyiş"
+                          >
+                            <RxDragHandleDots2 className="text-lg" />
+                          </button>
                           <span className="font-display text-sm font-bold text-text">
                             Sual {i + 1}
                           </span>
@@ -464,17 +476,6 @@ const QuestionAdd = () => {
                           </span>
                         </div>
                         <div className="flex shrink-0 items-center gap-0.5">
-                          <button
-                            type="button"
-                            draggable
-                            onDragStart={() => setDragIdx(i)}
-                            onDragEnd={endDrag}
-                            className="grid h-8 w-8 cursor-grab place-items-center rounded-lg text-muted transition-colors hover:bg-surface2 hover:text-text active:cursor-grabbing"
-                            aria-label="Sürüklə"
-                            title="Sürükləyib yerini dəyiş"
-                          >
-                            <FiMove />
-                          </button>
                           <button
                             type="button"
                             onClick={() => moveQuestion(i, -1)}
