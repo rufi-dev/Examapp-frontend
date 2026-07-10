@@ -453,23 +453,23 @@ const QuestionAdd = () => {
                         : "border-line"
                     }`}
                   >
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2">
-                        <span className="font-display text-sm font-bold text-text">
-                          Sual {i + 1}
-                        </span>
-                        <span className="rounded-full border border-line bg-surface px-2 py-0.5 text-xs font-semibold text-muted">
-                          {Number((effPoints[i] || 0).toFixed(3))} bal
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap items-center justify-end gap-2">
-                        <div className="flex items-center gap-0.5">
+                    <div className="mb-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="font-display text-sm font-bold text-text">
+                            Sual {i + 1}
+                          </span>
+                          <span className="shrink-0 rounded-full border border-line bg-surface px-2 py-0.5 text-xs font-semibold text-muted">
+                            {Number((effPoints[i] || 0).toFixed(3))} bal
+                          </span>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-0.5">
                           <button
                             type="button"
                             draggable
                             onDragStart={() => setDragIdx(i)}
                             onDragEnd={endDrag}
-                            className="grid h-7 w-7 cursor-grab place-items-center rounded-lg text-muted transition-colors hover:bg-surface hover:text-text active:cursor-grabbing"
+                            className="grid h-8 w-8 cursor-grab place-items-center rounded-lg text-muted transition-colors hover:bg-surface2 hover:text-text active:cursor-grabbing"
                             aria-label="Sürüklə"
                             title="Sürükləyib yerini dəyiş"
                           >
@@ -479,7 +479,7 @@ const QuestionAdd = () => {
                             type="button"
                             onClick={() => moveQuestion(i, -1)}
                             disabled={i === 0}
-                            className="grid h-7 w-7 place-items-center rounded-lg text-muted transition-colors hover:bg-surface hover:text-text disabled:opacity-30"
+                            className="grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors hover:bg-surface2 hover:text-text disabled:opacity-30"
                             aria-label="Yuxarı"
                           >
                             <FiChevronUp />
@@ -488,61 +488,45 @@ const QuestionAdd = () => {
                             type="button"
                             onClick={() => moveQuestion(i, 1)}
                             disabled={i === questions.length - 1}
-                            className="grid h-7 w-7 place-items-center rounded-lg text-muted transition-colors hover:bg-surface hover:text-text disabled:opacity-30"
+                            className="grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors hover:bg-surface2 hover:text-text disabled:opacity-30"
                             aria-label="Aşağı"
                           >
                             <FiChevronDown />
                           </button>
+                          {questions.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeQuestion(i)}
+                              className="grid h-8 w-8 place-items-center rounded-lg text-muted transition-colors hover:bg-danger/12 hover:text-danger"
+                              aria-label="Sualı sil"
+                            >
+                              <FiX />
+                            </button>
+                          )}
                         </div>
-                        <div className="flex rounded-lg border border-line bg-surface p-0.5 text-xs font-semibold">
+                      </div>
+                      {/* Type selector — full-width, equal buttons: 2×2 on mobile, 1×4 on desktop. */}
+                      <div className="mt-3 grid grid-cols-2 gap-1 rounded-xl border border-line bg-surface2/50 p-1 text-xs font-semibold sm:grid-cols-4">
+                        {[
+                          { t: "Cm", label: "Qapalı" },
+                          { t: "Co", label: "Açıq" },
+                          { t: "Cd", label: "Həll tələb", title: "Həlli tələb olunan açıq sual" },
+                          { t: "Cmu", label: "Uyğunluq" },
+                        ].map(({ t, label, title }) => (
                           <button
+                            key={t}
                             type="button"
-                            onClick={() => setType(i, "Cm")}
-                            className={`rounded-md px-3 py-1 transition-colors ${
-                              q.type === "Cm" ? "bg-primary text-primary-fg" : "text-muted"
+                            onClick={() => setType(i, t)}
+                            title={title}
+                            className={`rounded-lg px-2 py-1.5 text-center transition-colors ${
+                              q.type === t
+                                ? "bg-primary text-primary-fg shadow-soft"
+                                : "text-muted hover:text-text"
                             }`}
                           >
-                            Qapalı
+                            {label}
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => setType(i, "Co")}
-                            className={`rounded-md px-3 py-1 transition-colors ${
-                              q.type === "Co" ? "bg-primary text-primary-fg" : "text-muted"
-                            }`}
-                          >
-                            Açıq
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setType(i, "Cd")}
-                            title="Həlli tələb olunan açıq sual"
-                            className={`rounded-md px-3 py-1 transition-colors ${
-                              q.type === "Cd" ? "bg-primary text-primary-fg" : "text-muted"
-                            }`}
-                          >
-                            Həll tələb
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setType(i, "Cmu")}
-                            className={`rounded-md px-3 py-1 transition-colors ${
-                              q.type === "Cmu" ? "bg-primary text-primary-fg" : "text-muted"
-                            }`}
-                          >
-                            Uyğunluq
-                          </button>
-                        </div>
-                        {questions.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeQuestion(i)}
-                            className="grid h-7 w-7 place-items-center rounded-lg text-muted transition-colors hover:bg-danger/12 hover:text-danger"
-                            aria-label="Sualı sil"
-                          >
-                            <FiX />
-                          </button>
-                        )}
+                        ))}
                       </div>
                     </div>
 
