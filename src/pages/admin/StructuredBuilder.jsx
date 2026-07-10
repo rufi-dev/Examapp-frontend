@@ -982,7 +982,7 @@ const StructuredBuilder = () => {
         explanation: q.explanation || "",
       };
     }
-    const type = ["Cm", "Cs", "Co"].includes(q.type) ? q.type : "Cm";
+    const type = ["Cm", "Cs", "Co", "Cd"].includes(q.type) ? q.type : "Cm";
     const choices =
       Array.isArray(q.choices) && q.choices.length
         ? q.choices.map((c) => ({ text: foldMath(c?.text, c?.latex), image: "", latex: "" }))
@@ -1067,7 +1067,17 @@ const StructuredBuilder = () => {
       const fd = new FormData();
       fd.append("pdf", file);
       fd.append("provider", aiProvider);
-      const extra = aiExtraPrompt.trim();
+      // If this exam uses a preset with solution-required (Cd) questions, tell the
+      // AI so it types the "ətraflı yazın / həlli tələb olunan" section as Cd
+      // instead of plain Co (the teacher can still adjust afterwards).
+      const presetCfg = PRESETS[preset];
+      const cdCount = (presetCfg?.slots || [])
+        .filter((s) => s.type === "Cd")
+        .reduce((n, s) => n + (Number(s.count) || 0), 0);
+      const presetHint = cdCount
+        ? `Bu imtahan "${presetCfg.label}" strukturludur. Sonuncu ${cdCount} açıq sual "həlli tələb olunan / ətraflı yazın" bölməsindəndir — onları tip Cd (Həlli tələb olunan açıq sual) kimi işarələ; qısa açıq suallar isə Co olsun.`
+        : "";
+      const extra = [presetHint, aiExtraPrompt.trim()].filter(Boolean).join("\n\n");
       if (extra) fd.append("instructions", extra);
 
       const token = localStorage.getItem("token");
