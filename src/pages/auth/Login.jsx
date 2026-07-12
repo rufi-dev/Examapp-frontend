@@ -36,7 +36,21 @@ const Login = () => {
   };
 
   useEffect(() => {
-    if (isSuccess && isLoggedIn) navigate("/dashboard");
+    if (isSuccess && isLoggedIn) {
+      // Honor a return path (e.g. a pending exam submit that hit a 401 and routed
+      // through re-login) so the student lands back on the exam and resumes.
+      let dest = "/dashboard";
+      try {
+        const back = localStorage.getItem("postLoginRedirect");
+        if (back) {
+          dest = back;
+          localStorage.removeItem("postLoginRedirect");
+        }
+      } catch {
+        /* ignore */
+      }
+      navigate(dest);
+    }
     dispatch(RESET());
   }, [isLoggedIn, isSuccess, isError, email, dispatch, navigate]);
 

@@ -1,4 +1,5 @@
-import { memo, useState } from "react";
+import { memo, useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { FiFlag, FiCamera, FiX, FiAlertCircle } from "react-icons/fi";
 import { toast } from "react-toastify";
 import Math, { MathText } from "./Math";
@@ -20,17 +21,179 @@ const GRID_LETTERS = "abcdefghijklmnopqrstuvwxyz";
 
 const norm = (v) => String(v ?? "").trim();
 
-// Optional per-question "upload my worked solution" control (live exam only).
-// `capture` hints phones to open the camera so students photograph their work.
-const SolutionPhoto = ({ value, onChange }) => {
-  const [busy, setBusy] = useState(false);
-  const onFile = async (e) => {
+// In-page camera capture (getUserMedia). Runs a live preview INSIDE the exam tab,
+// so photographing a worked solution never backgrounds the app — no false anti-cheat
+// violation, and no OS gallery access (camera only). Falls back to a direct-camera
+// file input on devices without getUserMedia (that path DOES background, so it pings
+// onActivity for the anti-cheat grace). onUse receives a Blob/File to upload.
+const CameraCapture = ({ onUse, onClose, onActivity }) => {
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const [status, setStatus] = useState("loading"); // loading | live | error
+  const [shot, setShot] = useState(null); // { url, blob } while previewing
+
+  const stopStream = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+  }, []);
+
+  const startCamera = useCallback(async () => {
+    setStatus("loading");
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setStatus("error");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) videoRef.current.srcObject = stream;
+      setStatus("live");
+    } catch {
+      setStatus("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    startCamera();
+    return stopStream;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const capture = () => {
+    const v = videoRef.current;
+    if (!v || !v.videoWidth) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = v.videoWidth;
+    canvas.height = v.videoHeight;
+    canvas.getContext("2d").drawImage(v, 0, 0);
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return;
+        setShot({ url: URL.createObjectURL(blob), blob });
+        stopStream(); // free the camera while the student reviews the still
+      },
+      "image/jpeg",
+      0.92
+    );
+  };
+
+  const retake = () => {
+    if (shot) URL.revokeObjectURL(shot.url);
+    setShot(null);
+    startCamera();
+  };
+
+  const close = () => {
+    stopStream();
+    if (shot) URL.revokeObjectURL(shot.url);
+    onClose();
+  };
+
+  const onFallbackFile = (e) => {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file) return;
+    if (file) onUse(file);
+    else close();
+  };
+
+  // Portal to <body> so a parent <fieldset disabled> (the post-submit lock) can never
+  // disable/trap this modal's own controls mid-capture.
+  return createPortal(
+    <div className="fixed inset-0 z-[2200] flex flex-col bg-black">
+      <div className="flex items-center justify-between px-4 py-3 text-white">
+        <span className="text-sm font-semibold">Həll şəklini çək</span>
+        <button
+          type="button"
+          onClick={close}
+          aria-label="Bağla"
+          className="grid h-9 w-9 place-items-center rounded-full bg-white/10 hover:bg-white/20"
+        >
+          <FiX className="text-lg" />
+        </button>
+      </div>
+
+      <div className="relative flex min-h-0 flex-1 items-center justify-center">
+        {status === "error" ? (
+          <div className="p-6 text-center text-white">
+            <FiAlertCircle className="mx-auto mb-2 text-2xl" />
+            <p className="text-sm">Kameraya giriş yoxdur.</p>
+            <label className="mt-4 inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold hover:bg-white/20">
+              <FiCamera /> Kamera ilə çək
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onClick={() => onActivity?.()}
+                onChange={onFallbackFile}
+              />
+            </label>
+          </div>
+        ) : shot ? (
+          <img src={shot.url} alt="" className="max-h-full max-w-full object-contain" />
+        ) : (
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="max-h-full max-w-full object-contain"
+          />
+        )}
+      </div>
+
+      <div className="flex items-center justify-center gap-4 px-4 py-6">
+        {shot ? (
+          <>
+            <button
+              type="button"
+              onClick={retake}
+              className="rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/20"
+            >
+              Yenidən çək
+            </button>
+            <button
+              type="button"
+              onClick={() => onUse(shot.blob)}
+              className="rounded-xl bg-primary px-6 py-2 text-sm font-semibold text-white hover:opacity-90"
+            >
+              İstifadə et
+            </button>
+          </>
+        ) : status === "live" ? (
+          <button
+            type="button"
+            onClick={capture}
+            aria-label="Çək"
+            className="grid h-16 w-16 place-items-center rounded-full border-4 border-white transition active:scale-95"
+          >
+            <span className="h-12 w-12 rounded-full bg-white" />
+          </button>
+        ) : status === "loading" ? (
+          <Spinner size={28} className="text-white" />
+        ) : null}
+      </div>
+    </div>,
+    document.body
+  );
+};
+
+// Per-question "photograph my worked solution" control (live exam only). Camera
+// only — opens the in-page camera; no OS gallery selection.
+const SolutionPhoto = ({ value, onChange, disabled = false, onActivity }) => {
+  const [busy, setBusy] = useState(false);
+  const [camOpen, setCamOpen] = useState(false);
+  const useShot = async (blob) => {
+    setCamOpen(false);
+    if (!blob || disabled) return;
     setBusy(true);
     try {
-      onChange(await uploadImage(file));
+      onChange(await uploadImage(blob));
     } catch (err) {
       toast.error(err?.message || "Şəkil yüklənmədi");
     } finally {
@@ -49,9 +212,10 @@ const SolutionPhoto = ({ value, onChange }) => {
           />
           <button
             type="button"
-            onClick={() => onChange("")}
+            onClick={() => !disabled && onChange("")}
+            disabled={disabled}
             aria-label="Şəkli sil"
-            className="absolute -right-2 -top-2 grid h-7 w-7 place-items-center rounded-full border-2 border-surface bg-danger text-white shadow-soft"
+            className="absolute -right-2 -top-2 grid h-7 w-7 place-items-center rounded-full border-2 border-surface bg-danger text-white shadow-soft disabled:opacity-50"
           >
             <FiX className="text-sm" />
           </button>
@@ -60,17 +224,27 @@ const SolutionPhoto = ({ value, onChange }) => {
     );
   }
   return (
-    <label className="mt-3 inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-dashed border-line px-3 py-2 text-sm font-semibold text-muted transition-colors hover:border-primary hover:text-primary">
-      {busy ? <Spinner size={16} /> : <FiCamera />} Həll şəklini yüklə
-      <input
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={onFile}
-        disabled={busy}
-      />
-    </label>
+    <>
+      <button
+        type="button"
+        disabled={disabled || busy}
+        onClick={() => setCamOpen(true)}
+        className={`mt-3 inline-flex items-center gap-1.5 rounded-xl border border-dashed border-line px-3 py-2 text-sm font-semibold transition-colors ${
+          disabled
+            ? "cursor-not-allowed text-muted opacity-50"
+            : "cursor-pointer text-muted hover:border-primary hover:text-primary"
+        }`}
+      >
+        {busy ? <Spinner size={16} /> : <FiCamera />} Həll şəklini çək
+      </button>
+      {camOpen && (
+        <CameraCapture
+          onUse={useShot}
+          onClose={() => setCamOpen(false)}
+          onActivity={onActivity}
+        />
+      )}
+    </>
   );
 };
 // Normalize any choice-answer shape to a numeric-index array / set.
@@ -128,6 +302,13 @@ const QuestionType = ({
   // upload one per question; in review the stored photo is shown.
   allowPhoto = false,
   onPhotoChange,
+  // Called when the solution-photo picker is opened/returned, so the runner can
+  // pause anti-cheat (the camera/file dialog backgrounds the tab).
+  onPhotoActivity,
+  // Frozen after the student submits: dim the sheet + disable the photo control.
+  // (Answer/choice changes are already no-ops via the parent's guarded handlers,
+  // and controlled inputs render from state, so nothing can change while locked.)
+  locked = false,
 }) => {
   const selectedAnswers = review?.selectedAnswers || [];
   const isReview = selectedAnswers.length > 0;
@@ -166,7 +347,12 @@ const QuestionType = ({
     }
     if (!allowPhoto) return null;
     return (
-      <SolutionPhoto value={answers[i]?.photo} onChange={(url) => onPhotoChange?.(i, url)} />
+      <SolutionPhoto
+        value={answers[i]?.photo}
+        onChange={(url) => onPhotoChange?.(i, url)}
+        onActivity={onPhotoActivity}
+        disabled={locked}
+      />
     );
   };
 
@@ -381,12 +567,14 @@ const QuestionType = ({
     }
 
     return (
-      <MatchingQuestion
-        lefts={lefts}
-        rights={rights}
-        value={answers[i]?.answer}
-        onChange={(m) => setAnswer(i, m, "Cma")}
-      />
+      <div className={locked ? "pointer-events-none" : undefined}>
+        <MatchingQuestion
+          lefts={lefts}
+          rights={rights}
+          value={answers[i]?.answer}
+          onChange={(m) => setAnswer(i, m, "Cma")}
+        />
+      </div>
     );
   };
 
@@ -443,17 +631,25 @@ const QuestionType = ({
     }
 
     return (
-      <MatchingGridQuestion
-        leftCount={leftCount}
-        rightCount={Number(def.rightCount) || 0}
-        value={answers[i]?.answer}
-        onChange={(m) => setAnswer(i, m, "Cmu")}
-      />
+      <div className={locked ? "pointer-events-none" : undefined}>
+        <MatchingGridQuestion
+          leftCount={leftCount}
+          rightCount={Number(def.rightCount) || 0}
+          value={answers[i]?.answer}
+          onChange={(m) => setAnswer(i, m, "Cmu")}
+        />
+      </div>
     );
   };
 
   return (
-    <div className="flex flex-col gap-5">
+    // A native <fieldset disabled> disables EVERY control inside (choice buttons,
+    // textareas, mark, photo, matching) when the sheet is locked after submit —
+    // without affecting scrolling — so the whole sheet clearly reads as frozen.
+    <fieldset
+      disabled={locked}
+      className="m-0 flex min-w-0 flex-col gap-5 border-0 p-0 transition-opacity disabled:opacity-60"
+    >
       {defs.map((def, i) => {
         // Pagination: render only questions inside the active page window.
         if (range && (i < range.start || i >= range.end)) return null;
@@ -585,7 +781,7 @@ const QuestionType = ({
           </div>
         );
       })}
-    </div>
+    </fieldset>
   );
 };
 

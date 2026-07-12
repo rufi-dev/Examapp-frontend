@@ -156,10 +156,11 @@ const getPdfByExam = async ({examId}) => {
     const response = await axios.get(API_URL + "getPdfByExam/" + examId)
     return response.data
 }
-//Add Result
+//Add Result. Returns the whole payload ({ message, earnPoints, late }) so the
+//caller can read earnPoints; the fulfilled reducer toasts .message.
 const addResult = async (examId, resultData) => {
     const response = await axios.post(API_URL + "addResult/" + examId, resultData)
-    return response.data.message
+    return response.data
 }
 
 //Start (or resume) a server-tracked attempt (password required for protected exams)
@@ -169,12 +170,19 @@ const startAttempt = async (examId, password) => {
 }
 
 //Is there an exam in progress for this user (resume available)? Also used to
-//poll the shared attempt's live state (violations/terminated) across devices.
-export const getAttemptStatus = async (examId, counts) => {
-    // counts=1 also returns used/maxTry (extra DB counts) — only the details
-    // page needs it; the in-exam 8s poll omits it to stay cheap.
+//poll the shared attempt's live state (violations/terminated) across devices, and
+//by the Result page to poll a SPECIFIC attempt's terminal state.
+//opts: { counts } adds used/maxTry (details page); { attemptId } strictly pins the
+//status to one attempt (multi-try / result-page polling).
+export const getAttemptStatus = async (examId, opts = {}) => {
+    // Back-compat: an old truthy 2nd arg meant "counts".
+    const o = typeof opts === "object" && opts !== null ? opts : { counts: !!opts }
+    const params = new URLSearchParams()
+    if (o.counts) params.set("counts", "1")
+    if (o.attemptId) params.set("attemptId", String(o.attemptId))
+    const qs = params.toString()
     const response = await axios.get(
-        API_URL + "exam/" + examId + "/attemptStatus" + (counts ? "?counts=1" : "")
+        API_URL + "exam/" + examId + "/attemptStatus" + (qs ? "?" + qs : "")
     )
     return response.data
 }

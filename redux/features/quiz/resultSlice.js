@@ -14,17 +14,25 @@ const initialState = {
     review: []
 }
 
-//Add Result
+//Add Result. On failure rejects with a STRUCTURED value so the Quiz runner can
+//tell a retryable network/5xx drop (-> buffer + auto-retry, no scary toast) from
+//a real server rejection, and can branch on the server's reason code.
 export const addResult = createAsyncThunk(
     "result/addResult",
     async ({ examId, resultData }, thunkAPI) => {
         try {
             return await quizService.addResult(examId, resultData)
         } catch (error) {
-            const message = (error.response && error.response.data && error.response.data.message)
-                || error.message || error.toString()
-
-            return thunkAPI.rejectWithValue(message)
+            const data = error.response && error.response.data
+            const message = (data && data.message) || error.message || error.toString()
+            return thunkAPI.rejectWithValue({
+                message,
+                isNetwork: !error.response,
+                status: error.response ? error.response.status : 0,
+                reason: data ? data.reason : undefined,
+                unscorableReason: data ? data.unscorableReason : undefined,
+                attemptId: data ? data.attemptId : undefined,
+            })
         }
     }
 )
@@ -54,7 +62,10 @@ export const getResultsByUserByExam = createAsyncThunk(
             const message = (error.response && error.response.data && error.response.data.message)
                 || error.message || error.toString()
 
-            return thunkAPI.rejectWithValue(message)
+            return thunkAPI.rejectWithValue({
+                message,
+                status: error.response ? error.response.status : 0,
+            })
         }
     }
 )
@@ -127,16 +138,23 @@ const resultSlice = createSlice({
             //Add Result
             .addCase(addResult.pending, (state, action) => {
                 state.isLoading = true;
+                state.isError = false;
             })
             .addCase(addResult.fulfilled, (state, action) => {
                 state.isLoading = false;
                 state.isSuccess = true;
-                toast.success(action.payload)
+                // payload is now the whole object { message, earnPoints, late }
+                if (action.payload && action.payload.message) toast.success(action.payload.message)
             })
             .addCase(addResult.rejected, (state, action) => {
                 state.isLoading = false;
                 state.isError = true;
-                toast.error(action.payload)
+                const p = action.payload || {}
+                state.message = p.message
+                // Network drops and retryable server errors are handled by the Quiz
+                // runner's banner + auto-retry — don't show a scary toast for those.
+                const retryable = p.isNetwork || [408, 429, 502, 503, 504].includes(p.status)
+                if (!retryable && p.message && typeof p.message === "string") toast.error(p.message)
             })
 
             //Get Results By User
@@ -167,8 +185,12 @@ const resultSlice = createSlice({
             .addCase(getResultsByUserByExam.rejected, (state, action) => {
                 state.isLoading = false;
                 state.isError = true;
-                state.resultByExam = null;
-                toast.error(action.payload)
+                // Keep an ARRAY (never null) so the Result page can index it safely,
+                // and don't toast: 404/ownership noise is expected while polling for a
+                // just-finalized result. A 401 is handled by the Result page's
+                // return-path re-login (it reads action.payload.status).
+                state.resultByExam = [];
+                state.message = action.payload && action.payload.message;
             })
 
             //Get All Results By Exam

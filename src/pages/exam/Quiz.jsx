@@ -38,6 +38,59 @@ const DENY = {
 // Anti-cheat: auto-submit after this many leave-the-page violations.
 const ANTICHEAT_LIMIT = 3;
 
+// Max time the solution-photo picker may background the tab without counting as a
+// violation. Beyond this the student is treated as "away under cover of the picker".
+const PHOTO_GRACE_MS = 120000;
+
+// A pending final submit is kept for a 7-DAY hard cap (NOT expiresAt+1h) so a
+// student who loses network, closes the browser, and returns hours later never
+// loses their frozen submit. Only past-cap blobs are purged.
+const PENDING_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+// A pending blob is only usable if it is STRUCTURALLY VALID — a real ObjectId
+// attemptId, a finite in-TTL createdAt, and a selectedAnswers array. This stops a
+// stale/corrupt blob from hijacking exam start (and, without a valid attemptId,
+// falling into the backend's legacy "latest attempt" fallback).
+const isObjectIdStr = (v) => typeof v === "string" && /^[a-f\d]{24}$/i.test(v);
+const isValidPendingBlob = (b) => {
+  if (!b || typeof b !== "object") return false;
+  if (!isObjectIdStr(String(b.attemptId || ""))) return false;
+  const created = Number(b.createdAt);
+  if (!Number.isFinite(created) || created <= 0) return false;
+  if (Date.now() > created + PENDING_TTL_MS) return false;
+  if (!Array.isArray(b.selectedAnswers)) return false;
+  return true;
+};
+
+// Freshest VALID, non-stale pending final-submit blob for this user+exam (purges
+// anything invalid/past-cap).
+const scanPendingBlob = (examId, userId) => {
+  try {
+    const prefix = `examPendingSubmit_${examId}_${userId}_`;
+    let best = null;
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (!k || !k.startsWith(prefix)) continue;
+      let blob;
+      try {
+        blob = JSON.parse(localStorage.getItem(k));
+      } catch {
+        localStorage.removeItem(k);
+        continue;
+      }
+      if (!isValidPendingBlob(blob)) {
+        localStorage.removeItem(k);
+        continue;
+      }
+      const created = Number(blob.createdAt);
+      if (!best || created > (Number(best.createdAt) || 0)) best = blob;
+    }
+    return best;
+  } catch {
+    return null;
+  }
+};
+
 // Circular answered-progress indicator for the exam sidebar.
 const ProgressRing = ({ value = 0, total = 0, size = 56, stroke = 5 }) => {
   const r = (size - stroke) / 2;
@@ -81,22 +134,26 @@ const Quiz = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const answersKey = `examAnswers_${examId}`;
-  const vioKey = `examVio_${examId}`;
-
-  // Draft answers persist locally so a refresh/return doesn't lose them.
-  const [answers, setAnswers] = useState(() => {
+  // Current user's id (decoded from the JWT), used to scope local keys so a shared
+  // device can't leak or overwrite another user's draft / queued submit.
+  const userId = useMemo(() => {
     try {
-      const saved = localStorage.getItem(`examAnswers_${examId}`);
-      if (saved) return JSON.parse(saved);
+      const t = localStorage.getItem("token");
+      return (t && JSON.parse(atob(t.split(".")[1])).id) || "anon";
     } catch {
-      /* ignore */
+      return "anon";
     }
-    return Array.from({ length: 25 }, () => ({ answer: "", type: "" }));
-  });
+  }, []);
+
+  // Draft answers start EMPTY and are hydrated from the attempt-scoped key AFTER
+  // the attempt loads (the key includes attemptId, unknown until /start).
+  const [answers, setAnswers] = useState(() =>
+    Array.from({ length: 25 }, () => ({ answer: "", type: "" }))
+  );
 
   const [attempt, setAttempt] = useState(null); // { expiresAt, name, duration, questions }
   const [pdfData, setPdfData] = useState(null);
+  const [pdfFailed, setPdfFailed] = useState(false); // PDF fetch exhausted its retries
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mobileView, setMobileView] = useState("pdf"); // mobile: "pdf" | "answers"
   const [access, setAccess] = useState("checking"); // "checking" | "allowed" | "denied" | "password"
@@ -122,23 +179,72 @@ const Quiz = () => {
   answersRef.current = answers;
   const submittingRef = useRef(false);
 
+  // Attempt-scoped local-storage keys (unambiguous per user + attempt). Null until
+  // the attempt has loaded (attemptId is unknown before /start).
+  const attemptId = attempt?.attemptId || null;
+  const answersKey = attemptId ? `examAnswers_${examId}_${userId}_${attemptId}` : null;
+  const vioKey = attemptId ? `examVio_${examId}_${userId}_${attemptId}` : null;
+  const pendingKey = attemptId ? `examPendingSubmit_${examId}_${userId}_${attemptId}` : null;
+  // The just-submitted attempt, so the Result page selects THIS attempt's result
+  // (not the stale "latest"). User-scoped; kept until TTL / dismissal.
+  const lastSubmittedKey = `examLastSubmittedAttempt_${examId}_${userId}`;
+
+  // Submit state machine: idle -> submitting -> (done | pending -> submitting…) | fatal.
+  const [submitPhase, setSubmitPhaseState] = useState("idle");
+  const submitPhaseRef = useRef("idle");
+  const setSubmitPhase = (p) => {
+    submitPhaseRef.current = p;
+    setSubmitPhaseState(p);
+  };
+  const pendingRef = useRef(false);
+  const resumingPendingRef = useRef(false);
+  const snapshotRef = useRef(null);
+  const trySubmitRef = useRef(null);
+  const enterPendingRef = useRef(null);
+  const retryTimerRef = useRef(null);
+  const retryAfterUntilRef = useRef(0);
+  const onlineListenerRef = useRef(null);
+  const [locked, setLocked] = useState(false);
+  const lockedRef = useRef(false);
+  lockedRef.current = locked;
+  const [persistFailed, setPersistFailed] = useState(false);
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator !== "undefined" ? navigator.onLine : true
+  );
+
   // Anti-cheat violation tracking. The SERVER owns the real count; this local
-  // value is just a mirror restored from a cache for instant display, then
-  // overwritten by the authoritative server count on load and on every report.
-  const [violations, setViolations] = useState(() => {
-    try {
-      return Number(localStorage.getItem(`examVio_${examId}`)) || 0;
-    } catch {
-      return 0;
-    }
-  });
+  // value is just a mirror. It starts at 0 and is overwritten by the authoritative
+  // server count on load (and on every report / poll), so a reload can't lower it.
+  const [violations, setViolations] = useState(0);
   const violationsRef = useRef(violations);
   const lastVioRef = useRef(0);
   const terminatedRef = useRef(false); // auto-submitted due to violations
+  // Suppress anti-cheat violations WHILE the solution-photo picker is open (the
+  // camera/file dialog backgrounds the tab, which must NOT count as leaving). The
+  // flag is CLEARED the moment the student returns to the page, so it can't be
+  // abused as a 2-minute free pass — only the picker round-trip is graced. A hard
+  // cap covers the never-returns case.
+  const photoPickerOpenRef = useRef(false);
+  const photoCapTimerRef = useRef(null);
+  const registerViolationRef = useRef(null); // set by the anti-cheat effect
+  const onPhotoActivity = useCallback(() => {
+    photoPickerOpenRef.current = true;
+    if (photoCapTimerRef.current) clearTimeout(photoCapTimerRef.current);
+    // ACTIVE cap: if the student is STILL away (tab backgrounded / window unfocused)
+    // when the grace elapses, they're away under cover of the picker — count a
+    // violation and stop suppressing. A quick return cancels this timer (clearPhotoGrace).
+    photoCapTimerRef.current = setTimeout(() => {
+      photoCapTimerRef.current = null;
+      const away = document.hidden || !document.hasFocus();
+      photoPickerOpenRef.current = false;
+      if (away && registerViolationRef.current) registerViolationRef.current("photo_timeout");
+    }, PHOTO_GRACE_MS);
+  }, []);
 
   // Cache the latest known count so a reload shows it immediately (the server
   // value still overrides it, so editing this can't lower the real tally).
   const persistVio = (n) => {
+    if (!vioKey) return;
     try {
       localStorage.setItem(vioKey, String(n));
     } catch {
@@ -157,15 +263,14 @@ const Quiz = () => {
   const [marked, setMarked] = useState([]);
   // useCallback so these stay reference-stable across the 1s timer ticks, which
   // lets the memoized QuestionType / QuestionNav skip re-rendering each second.
-  const toggleMark = useCallback(
-    (i) =>
-      setMarked((prev) => {
-        const next = [...prev];
-        next[i] = !next[i];
-        return next;
-      }),
-    []
-  );
+  const toggleMark = useCallback((i) => {
+    if (lockedRef.current) return; // frozen after submit
+    setMarked((prev) => {
+      const next = [...prev];
+      next[i] = !next[i];
+      return next;
+    });
+  }, []);
   const jumpToQuestion = useCallback((i) => {
     // When paginated, switch to the page that holds this question first.
     const { perPage, pageSize, forwardOnly, page } = pagingRef.current;
@@ -243,6 +348,25 @@ const Quiz = () => {
     page: safeExamPage,
   };
 
+  // Fetch the questions PDF with a few retries (a flaky network shouldn't leave a
+  // PDF exam stuck on a spinner while the timer burns). Callable by a retry button.
+  const loadPdf = useCallback(
+    (tries = 0) => {
+      setPdfFailed(false);
+      dispatch(getPdfByExam({ examId }))
+        .unwrap()
+        .then((pdf) => {
+          if (!cancelledRef.current) setPdfData(pdf?.path || null);
+        })
+        .catch(() => {
+          if (cancelledRef.current) return;
+          if (tries < 4) setTimeout(() => loadPdf(tries + 1), 1500);
+          else setPdfFailed(true); // give up quietly — the answer sheet stays usable
+        });
+    },
+    [dispatch, examId]
+  );
+
   // Start (or resume) the attempt. The server gates access (verification,
   // window, max tries, AND the exam password) and returns the questions without
   // the answer key. A password-protected exam rejects until the right password
@@ -253,6 +377,22 @@ const Quiz = () => {
     try {
       const data = await dispatch(startAttempt({ examId, password })).unwrap();
       if (cancelledRef.current) return;
+      // The attempt is already finished server-side (a Result exists) — go straight
+      // to the result, carrying THIS attempt's id so the Result page selects it.
+      if (data && data.finished) {
+        if (data.attemptId) {
+          try {
+            localStorage.setItem(
+              lastSubmittedKey,
+              JSON.stringify({ attemptId: data.attemptId, at: Date.now() })
+            );
+          } catch {
+            /* ignore */
+          }
+        }
+        navigate(`/exam/${examId}/result`);
+        return;
+      }
       setAttempt(data);
       setAccess("allowed");
       // Restore the server-truth anti-cheat tally so a reload / iOS app-kill /
@@ -267,29 +407,20 @@ const Quiz = () => {
         // can't be used to keep writing after a termination.
         terminatedRef.current = true;
         toast.error("İmtahan pozuntulara görə dayandırılıb.");
-        setTimeout(() => submitAnswerSheet(), 0);
+        setTimeout(() => submitAnswerSheet("terminated_on_start"), 0);
         return;
       }
       // Structured exams have no PDF — skip the fetch (and its 404).
-      if (data.mode !== "structured") {
-        dispatch(getPdfByExam({ examId }))
-          .unwrap()
-          .then((pdf) => {
-            // eslint-disable-next-line no-console
-            console.log("[PDF] getPdfByExam ->", pdf?.path);
-            if (!cancelledRef.current) setPdfData(pdf?.path || null);
-          })
-          .catch((e) => {
-            // eslint-disable-next-line no-console
-            console.error("[PDF] getPdfByExam failed:", e);
-          });
-      }
+      if (data.mode !== "structured") loadPdf();
     } catch (err) {
       if (cancelledRef.current) return;
       const reason = err?.reason;
       if (reason === "password_required" || reason === "password_wrong") {
         setAccess("password");
         if (reason === "password_wrong") setPwError("Şifrə yanlışdır");
+      } else if (resumingPendingRef.current) {
+        // A pending submit is resuming off its own snapshot (e.g. reload after the
+        // deadline) — don't redirect away; the retry will finalize + navigate.
       } else {
         const rule = DENY[reason];
         toast.error(rule ? rule.msg : err?.message || "İmtahana giriş alınmadı");
@@ -303,7 +434,21 @@ const Quiz = () => {
 
   useEffect(() => {
     cancelledRef.current = false;
-    attemptStart(""); // try without a password first; protected exams prompt
+    // Resume a pending FINAL submit BEFORE /start: if /start runs first it may
+    // finalize an already-expired attempt (from autosave), after which the retry can
+    // only reconcile (never create). Resuming first lets the retry submit — within the
+    // deadline grace the server scores the submitted answers; PAST grace it scores the
+    // deadline-cut autosave (anti-cheat). Either way the attempt finalizes + navigates.
+    const blob = scanPendingBlob(examId, userId);
+    if (blob) {
+      resumingPendingRef.current = true;
+      snapshotRef.current = blob;
+      setLocked(true);
+      if (enterPendingRef.current) enterPendingRef.current();
+      if (trySubmitRef.current) trySubmitRef.current();
+    } else {
+      attemptStart(""); // try without a password first; protected exams prompt
+    }
     return () => {
       cancelledRef.current = true;
     };
@@ -361,14 +506,44 @@ const Quiz = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [safeExamPage]);
 
-  // Persist draft answers on change.
+  // Persist draft answers on change (only once the attempt-scoped key is known).
   useEffect(() => {
+    if (!answersKey) return;
     try {
       localStorage.setItem(answersKey, JSON.stringify(answers));
     } catch {
       /* ignore */
     }
   }, [answers, answersKey]);
+
+  // Once the attempt loads: hydrate this attempt's saved draft (same-device
+  // reload) and purge THIS exam's draft/vio keys that belong to a different user
+  // or attempt (so a shared device can't hydrate someone else's answers).
+  useEffect(() => {
+    if (!attemptId) return;
+    try {
+      const suffix = `_${userId}_${attemptId}`;
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (!k) continue;
+        if (
+          (k.startsWith(`examAnswers_${examId}_`) || k.startsWith(`examVio_${examId}_`)) &&
+          !k.endsWith(suffix)
+        ) {
+          localStorage.removeItem(k);
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    try {
+      const saved = answersKey && localStorage.getItem(answersKey);
+      if (saved) setAnswers(JSON.parse(saved));
+    } catch {
+      /* ignore */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attemptId]);
 
   // Live-watch telemetry (kept in a ref so the autosave callback stays stable):
   // which question the student is on (1-based, first question of the current
@@ -479,7 +654,7 @@ const Quiz = () => {
       if (rem <= 0 && clockSyncedRef.current) {
         clearInterval(id);
         toast.info("Vaxt bitdi! Cavablar avtomatik təqdim olunur...");
-        submitAnswerSheet();
+        submitAnswerSheet("timer");
       }
     };
     tick();
@@ -508,52 +683,254 @@ const Quiz = () => {
     };
   }, [access]);
 
-  const submitAnswerSheet = async () => {
-    if (submittingRef.current) return;
-    submittingRef.current = true;
-    setIsSubmitting(true);
+  // ── Submit + network-drop resilience ────────────────────────────────────────
+  // Freeze the current answers into the submit payload (pressing submit is terminal).
+  const buildResultData = () => {
+    const latest = answersRef.current || [];
+    const len = questions.length || latest.length;
+    return {
+      selectedAnswers: latest.slice(0, len).map((a) => ({
+        type: a?.type,
+        answer: a?.answer,
+        ...(a?.photo ? { photo: a.photo } : {}),
+      })),
+      violations: violationsRef.current,
+      terminated: terminatedRef.current,
+      attemptId,
+    };
+  };
+
+  // Remove ONLY the keys for the attempt that just finished — the current
+  // attempt's draft/vio/pending, and the resumed snapshot's own pending key (its
+  // attemptId may differ). Does NOT wipe other same-exam pending blobs (they could
+  // be another nonterminal queued submit). Keeps lastSubmittedKey (Result needs it).
+  const clearAttemptKeys = () => {
     try {
-      const latest = answersRef.current;
-      const len = questions.length || latest.length;
-      const selectedAnswers = latest
-        .slice(0, len)
-        .map((a) => ({
-          type: a?.type,
-          answer: a?.answer,
-          ...(a?.photo ? { photo: a.photo } : {}),
-        }));
-      // The server scores it (the browser never had the answer key).
-      await dispatch(
-        addResult({
-          examId,
-          resultData: {
-            selectedAnswers,
-            violations: violationsRef.current,
-            terminated: terminatedRef.current,
-            attemptId: attempt?.attemptId,
-          },
-        })
-      ).unwrap();
-      localStorage.removeItem(answersKey);
-      localStorage.removeItem(vioKey);
-      navigate(`/exam/${examId}/result`);
-    } catch (error) {
-      // If the attempt is already over (finished on another device, claimed, or
-      // expired) there's nothing left to submit — just open the result page
-      // instead of leaving the student stuck on a dead exam.
-      const msg = String((error && error.message) || error || "");
-      if (/bağlan|tapılmad|vaxt|bitib|already/i.test(msg)) {
-        localStorage.removeItem(answersKey);
-        localStorage.removeItem(vioKey);
-        navigate(`/exam/${examId}/result`);
-        return;
+      if (answersKey) localStorage.removeItem(answersKey);
+      if (vioKey) localStorage.removeItem(vioKey);
+      if (pendingKey) localStorage.removeItem(pendingKey);
+      const said = snapshotRef.current && snapshotRef.current.attemptId;
+      if (said) localStorage.removeItem(`examPendingSubmit_${examId}_${userId}_${said}`);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  // Persist the frozen pending submit (try/catch + readback). On quota/private-mode
+  // failure, evict only STALE (past-cap) or corrupt pending blobs — NEVER another
+  // nonterminal queued submit; if still failing, keep it in-memory only.
+  const persistPendingSnapshot = (snap) => {
+    if (!pendingKey) return false;
+    const write = () => {
+      localStorage.setItem(pendingKey, JSON.stringify(snap));
+      return localStorage.getItem(pendingKey) != null;
+    };
+    try {
+      if (write()) return true;
+    } catch {
+      /* fall through to eviction */
+    }
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (!k || !k.startsWith("examPendingSubmit_") || k === pendingKey) continue;
+        let stale = false;
+        try {
+          const b = JSON.parse(localStorage.getItem(k));
+          const c = Number(b && b.createdAt) || 0;
+          stale = !b || (c && Date.now() > c + PENDING_TTL_MS);
+        } catch {
+          stale = true; // corrupt -> safe to drop
+        }
+        if (stale) localStorage.removeItem(k);
       }
-      // otherwise: a real error; the addResult slice already toasted it
+      if (write()) return true;
+    } catch {
+      /* ignore */
+    }
+    return false;
+  };
+
+  const rememberSubmittedAttempt = (aid) => {
+    try {
+      localStorage.setItem(
+        lastSubmittedKey,
+        JSON.stringify({ attemptId: aid || attemptId, at: Date.now() })
+      );
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const stopRetry = () => {
+    pendingRef.current = false;
+    if (retryTimerRef.current) {
+      clearInterval(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+    if (onlineListenerRef.current) {
+      window.removeEventListener("online", onlineListenerRef.current);
+      onlineListenerRef.current = null;
+    }
+  };
+
+  const finishToResult = (aid) => {
+    rememberSubmittedAttempt(aid);
+    clearAttemptKeys();
+    stopRetry();
+    setSubmitPhase("done");
+    navigate(`/exam/${examId}/result`);
+  };
+
+  const startRetryLoop = () => {
+    if (!retryTimerRef.current) {
+      // Jitter so a fleet of students doesn't retry in lockstep on API recovery.
+      const period = 7000 + Math.floor(Math.random() * 3000);
+      retryTimerRef.current = setInterval(() => {
+        if (submitPhaseRef.current !== "pending") return;
+        if (Date.now() < retryAfterUntilRef.current) return;
+        if (trySubmitRef.current) trySubmitRef.current();
+      }, period);
+    }
+    if (!onlineListenerRef.current) {
+      const onOnline = () => {
+        if (submitPhaseRef.current === "pending" && trySubmitRef.current) trySubmitRef.current();
+      };
+      window.addEventListener("online", onOnline);
+      onlineListenerRef.current = onOnline;
+    }
+  };
+
+  const enterPending = (err) => {
+    pendingRef.current = true;
+    setSubmitPhase("pending");
+    if (snapshotRef.current) {
+      const expMs = attempt?.expiresAt ? new Date(attempt.expiresAt).getTime() : 0;
+      const snap = {
+        ...snapshotRef.current,
+        examId,
+        userId,
+        attemptId: snapshotRef.current.attemptId || attemptId,
+        expiresAt: Number(snapshotRef.current.expiresAt) || Number(expMs) || 0,
+        createdAt: snapshotRef.current.createdAt || Date.now(),
+      };
+      snapshotRef.current = snap;
+      // A resumed blob is already on disk — don't re-persist (and pendingKey may
+      // not match its original key); only persist a freshly-frozen snapshot.
+      if (!resumingPendingRef.current) setPersistFailed(!persistPendingSnapshot(snap));
+    }
+    const ra = err && Number(err.retryAfter);
+    if (ra) retryAfterUntilRef.current = Date.now() + ra * 1000;
+    startRetryLoop();
+  };
+
+  const isDoneReason = (reason, msg) =>
+    reason === "already_submitted" ||
+    reason === "expired" ||
+    /bağlan|tapılmad|vaxt|bitib|already/i.test(String(msg || ""));
+
+  const trySubmit = async () => {
+    if (submittingRef.current) return;
+    if (submitPhaseRef.current === "done" || submitPhaseRef.current === "fatal") return;
+    submittingRef.current = true;
+    if (submitPhaseRef.current !== "pending") setSubmitPhase("submitting");
+    setIsSubmitting(true);
+    const aid = (snapshotRef.current && snapshotRef.current.attemptId) || attemptId;
+    try {
+      await dispatch(
+        addResult({ examId, resultData: snapshotRef.current || buildResultData() })
+      ).unwrap();
+      finishToResult(aid);
+    } catch (error) {
+      const p = error || {};
+      if (p.reason === "unscorable") {
+        finishToResult(p.attemptId || aid);
+      } else if (p.reason === "invalid_attempt") {
+        // Not our attempt / doesn't exist — fatal, but still open the result page.
+        clearAttemptKeys();
+        stopRetry();
+        setSubmitPhase("fatal");
+        navigate(`/exam/${examId}/result`);
+      } else if (p.reason === "max_tries") {
+        // The submit-time maxTry backstop is gone; confirm terminality before
+        // discarding the queued submit.
+        let terminal = false;
+        try {
+          const st = await getAttemptStatus(examId, { attemptId: aid });
+          terminal = !!(st && (st.finished || st.hasResult || st.unscorable));
+        } catch {
+          terminal = false;
+        }
+        if (terminal) finishToResult(aid);
+        else enterPending(p);
+      } else if (isDoneReason(p.reason, p.message)) {
+        finishToResult(aid);
+      } else if (p.status === 401) {
+        // Keep the snapshot + banner, route through re-login, resume after auth.
+        enterPending(p);
+        try {
+          localStorage.setItem("postLoginRedirect", `/exam/${examId}/start`);
+          localStorage.removeItem("token"); // hard-clear so RedirectIfAuth won't bounce
+        } catch {
+          /* ignore */
+        }
+        navigate("/login");
+      } else if (
+        p.isNetwork ||
+        !navigator.onLine ||
+        [408, 429, 502, 503, 504].includes(p.status)
+      ) {
+        enterPending(p);
+      } else {
+        // Genuine 400/403 — the slice already toasted. Stop the loop; offer nav.
+        stopRetry();
+        setSubmitPhase("fatal");
+      }
     } finally {
       submittingRef.current = false;
       setIsSubmitting(false);
     }
   };
+  trySubmitRef.current = trySubmit;
+  enterPendingRef.current = enterPending;
+
+  // Public entry (manual button, timer expiry, anti-cheat, terminated-on-start).
+  // Freezes the payload ONCE and locks the sheet — submit is terminal.
+  const submitAnswerSheet = (reason = "manual") => {
+    if (submitPhaseRef.current === "done") return;
+    if (!snapshotRef.current) {
+      snapshotRef.current = { ...buildResultData(), reason, createdAt: Date.now() };
+    }
+    setLocked(true);
+    setConfirmFinish(false);
+    trySubmit();
+  };
+
+  // Clean up the retry loop + the photo-cap timer on unmount.
+  useEffect(
+    () => () => {
+      stopRetry();
+      if (photoCapTimerRef.current) clearTimeout(photoCapTimerRef.current);
+    },
+    []
+  );
+
+  // Live online/offline indicator for the pending banner.
+  useEffect(() => {
+    const on = () => setIsOnline(true);
+    const off = () => setIsOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
+
+  // (Pending-submit recovery now runs in the mount effect above, BEFORE /start, so
+  // a reload after a failed final submit lets the retry submit first — scoring the
+  // submitted answers within the deadline grace, or the deadline-cut autosave past
+  // grace — rather than /start finalizing from autosave before the retry runs.)
 
   // Multi-device sync: the same attempt can be open on another device, which may
   // add violations, terminate, or submit it. Poll the server so this device's
@@ -563,30 +940,25 @@ const Quiz = () => {
     if (access !== "allowed") return;
     let stopped = false;
 
-    const goToResult = (msg) => {
-      if (submittingRef.current) return;
-      submittingRef.current = true; // stop the deadline timer from re-firing
-      if (msg) toast.info(msg);
-      try {
-        localStorage.removeItem(answersKey);
-        localStorage.removeItem(vioKey);
-      } catch {
-        /* ignore */
-      }
-      navigate(`/exam/${examId}/result`);
-    };
-
     const poll = async () => {
+      // While a submit is queued (offline retry), the retry owns navigation —
+      // don't let the poll redirect underneath it.
+      if (pendingRef.current) return;
       let s;
       try {
         s = await getAttemptStatus(examId);
       } catch {
         return; // transient; retry next tick
       }
-      if (stopped || submittingRef.current || !s) return;
-      // Finished/expired on another device — open the result here too.
+      if (stopped || submittingRef.current || pendingRef.current || !s) return;
+      // Finished/expired elsewhere, OR our own attempt just expired. SUBMIT our
+      // LOCAL answers rather than blindly navigating: if a Result already exists it
+      // reconciles idempotently (no overwrite); if the attempt expired but isn't
+      // finalized yet, this creates the Result from the REAL in-browser answers,
+      // which beats the finalizer's older autosave.
       if (s.active === false) {
-        goToResult("İmtahan başqa cihazda bağlandı.");
+        toast.info("İmtahan bağlanır…");
+        submitAnswerSheet("multidevice");
         return;
       }
       // Mirror the server-truth violation count (never moves backward).
@@ -599,7 +971,7 @@ const Quiz = () => {
       if (s.terminated && !terminatedRef.current) {
         terminatedRef.current = true;
         toast.error("İmtahan pozuntulara görə dayandırıldı.");
-        submitAnswerSheet(); // submits, or redirects if already claimed
+        submitAnswerSheet("anticheat"); // submits, or redirects if already claimed
       }
     };
 
@@ -680,7 +1052,7 @@ const Quiz = () => {
         if (terminatedRef.current) return;
         terminatedRef.current = true;
         toast.error("Çoxlu pozuntu aşkarlandı — imtahan dayandırılır.");
-        submitAnswerSheet();
+        submitAnswerSheet("anticheat");
       } else {
         toast.warn(`Diqqət! İmtahandan çıxmaq qadağandır (${count}/${ANTICHEAT_LIMIT}).`);
       }
@@ -688,6 +1060,11 @@ const Quiz = () => {
 
     const registerViolation = (reason) => {
       if (submittingRef.current || terminatedRef.current) return;
+      // The solution-photo picker is open — the camera/file dialog backgrounds the
+      // tab, which is NOT leaving the exam. Suppress only while it's genuinely open;
+      // the ACTIVE cap timer (onPhotoActivity) counts a violation if the student is
+      // still away when the grace elapses, and a return clears the flag.
+      if (photoPickerOpenRef.current) return;
       // Don't count while a gate is showing (exam not truly started yet)...
       if (!examActiveRef.current) return;
       // ...nor during the settle window right after (re)entering the exam, which
@@ -713,8 +1090,24 @@ const Quiz = () => {
         .catch(() => applyCount(optimistic, false)); // offline: enforce locally, reconciles later
     };
 
+    // Publish registerViolation so the photo-cap timer (defined outside this effect)
+    // can count a violation when the picker grace elapses while still away.
+    registerViolationRef.current = registerViolation;
+
+    // Returning to the page ends the photo-picker grace (a short settle absorbs the
+    // return transition itself) and cancels the active cap timer, so the grace lasts
+    // only the picker round-trip.
+    const clearPhotoGrace = () =>
+      setTimeout(() => {
+        photoPickerOpenRef.current = false;
+        if (photoCapTimerRef.current) {
+          clearTimeout(photoCapTimerRef.current);
+          photoCapTimerRef.current = null;
+        }
+      }, 900);
     const onVisibility = () => {
       if (document.visibilityState === "hidden") registerViolation("hidden");
+      else clearPhotoGrace();
     };
     // Window lost focus (another window/app came forward). Confirm after a beat
     // so a transient dialog that returns focus quickly isn't penalised.
@@ -730,6 +1123,7 @@ const Quiz = () => {
         clearTimeout(blurTimer);
         blurTimer = null;
       }
+      clearPhotoGrace();
     };
     const onFs = () => setIsFs(!!document.fullscreenElement);
     setIsFs(!!document.fullscreenElement);
@@ -781,6 +1175,7 @@ const Quiz = () => {
   }, [attempt?.antiCheat, isFs, fsBypass, fsSupported, secondScreen]);
 
   const handleAnswerChange = useCallback((e, index, type) => {
+    if (lockedRef.current) return; // frozen after submit — no post-submit edits
     const value = e.target.value;
     setAnswers((prev) => {
       const updated = [...prev];
@@ -791,6 +1186,7 @@ const Quiz = () => {
 
   // Attach (or clear, with "") the worked-solution photo URL for a question.
   const handlePhotoChange = useCallback((index, url) => {
+    if (lockedRef.current) return; // frozen after submit
     setAnswers((prev) => {
       const updated = [...prev];
       updated[index] = { ...updated[index], photo: url };
@@ -819,10 +1215,62 @@ const Quiz = () => {
     if (i >= 0) jumpToQuestion(i);
   };
 
+  // Network-drop banner (rendered OUTSIDE the access gate, above every overlay).
+  // "pending" = a submit is queued and auto-retrying; "fatal" = a real rejection
+  // the student can't retry away — offer a way to the result page.
+  const pendingBanner =
+    submitPhase === "pending" || submitPhase === "fatal" ? (
+      <div className="fixed inset-x-0 bottom-0 z-[2100] flex justify-center p-3 sm:p-4">
+        <div className="flex w-full max-w-md items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 shadow-lift">
+          {submitPhase === "pending" ? (
+            <>
+              <Spinner size={20} className="shrink-0 text-primary" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-text">
+                  Cavablarınız saxlanılır, internet gözlənilir…
+                </p>
+                <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
+                  <span
+                    className={`inline-block h-2 w-2 rounded-full ${
+                      isOnline ? "bg-emerald-500" : "bg-amber-500"
+                    }`}
+                  />
+                  {isOnline ? "İnternet var — təqdim edilir" : "İnternet gözlənilir"}
+                  {persistFailed ? " · Bu səhifəni bağlamayın" : ""}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => trySubmitRef.current && trySubmitRef.current()}
+                className="shrink-0 rounded-lg border border-line bg-surface2 px-3 py-1.5 text-xs font-semibold text-text transition hover:bg-surface"
+              >
+                Yenidən cəhd et
+              </button>
+            </>
+          ) : (
+            <>
+              <FiInfo className="shrink-0 text-[20px] text-danger" />
+              <p className="min-w-0 flex-1 text-sm font-semibold text-text">
+                Təqdim zamanı xəta baş verdi.
+              </p>
+              <button
+                type="button"
+                onClick={() => navigate(`/exam/${examId}/result`)}
+                className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90"
+              >
+                Nəticəyə keç
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    ) : null;
+
   // Password-protected exam: prompt before anything loads.
   if (access === "password") {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-bg p-4">
+        {pendingBanner}
         <form
           onSubmit={submitPassword}
           className="w-full max-w-sm rounded-3xl border border-line bg-surface p-7 shadow-lift"
@@ -865,6 +1313,7 @@ const Quiz = () => {
   if (access !== "allowed") {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-bg">
+        {pendingBanner}
         <Spinner size={44} className="text-primary" />
       </div>
     );
@@ -872,6 +1321,7 @@ const Quiz = () => {
 
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-bg">
+      {pendingBanner}
       {/* Second-monitor gate: hide the questions while an extended display is
           connected; clears automatically when it's disconnected. */}
       {attempt?.antiCheat && secondScreen && (
@@ -961,7 +1411,8 @@ const Quiz = () => {
                 lockBefore={forwardOnly ? safeExamPage * examPageSize : 0}
                 onJump={jumpToQuestion}
                 onFinish={structured ? () => setConfirmFinish(true) : undefined}
-                finishing={isSubmitting}
+                finishing={isSubmitting || locked}
+                locked={locked}
               />
             </span>
           </div>
@@ -1016,7 +1467,8 @@ const Quiz = () => {
                 lockBefore={forwardOnly ? safeExamPage * examPageSize : 0}
                 onJump={jumpToQuestion}
                 onFinish={() => setConfirmFinish(true)}
-                finishing={isSubmitting}
+                finishing={isSubmitting || locked}
+                locked={locked}
               />
             </div>
           </aside>
@@ -1049,6 +1501,8 @@ const Quiz = () => {
                   range={examRange}
                   allowPhoto={allowPhoto}
                   onPhotoChange={handlePhotoChange}
+                  onPhotoActivity={onPhotoActivity}
+                  locked={locked}
                 />
               </div>
             </div>
@@ -1075,7 +1529,7 @@ const Quiz = () => {
                       <Button
                         type="button"
                         onClick={() => setConfirmFinish(true)}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || locked}
                         className="bg-success text-white hover:brightness-105"
                       >
                         {isSubmitting ? (
@@ -1098,7 +1552,7 @@ const Quiz = () => {
                 ) : (
                   <Button
                     onClick={() => setConfirmFinish(true)}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || locked}
                     size="lg"
                     className="w-full bg-success text-white hover:brightness-105"
                   >
@@ -1173,7 +1627,24 @@ const Quiz = () => {
               İmtahan sualları (PDF)
             </div>
             <div className="min-h-0 flex-1">
-              <PdfOpener pdfFile={pdfData} />
+              {pdfData ? (
+                <PdfOpener pdfFile={pdfData} />
+              ) : pdfFailed ? (
+                <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+                  <FiInfo className="text-2xl text-danger" />
+                  <p className="text-sm font-semibold text-text">PDF yüklənmədi</p>
+                  <p className="text-xs text-muted">
+                    İnternet bağlantısı zəif ola bilər. Cavab verməyə davam edə bilərsiniz.
+                  </p>
+                  <Button variant="secondary" size="sm" onClick={() => loadPdf()}>
+                    PDF-i yenidən yüklə
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex h-full items-center justify-center">
+                  <Spinner size={36} className="text-primary" />
+                </div>
+              )}
             </div>
           </div>
 
@@ -1184,27 +1655,25 @@ const Quiz = () => {
             }`}
           >
             <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
-              {pdfData ? (
-                <QuestionType
-                  answers={answers}
-                  questions={questions}
-                  handleAnswerChange={handleAnswerChange}
-                  marked={marked}
-                  onToggleMark={toggleMark}
-                  allowPhoto={allowPhoto}
-                  onPhotoChange={handlePhotoChange}
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center">
-                  <Spinner size={36} className="text-primary" />
-                </div>
-              )}
+              {/* Answer inputs render even if the PDF is still loading/failed, so a
+                  stuck PDF fetch never blocks answering while the timer runs. */}
+              <QuestionType
+                answers={answers}
+                questions={questions}
+                handleAnswerChange={handleAnswerChange}
+                marked={marked}
+                onToggleMark={toggleMark}
+                allowPhoto={allowPhoto}
+                onPhotoChange={handlePhotoChange}
+                onPhotoActivity={onPhotoActivity}
+                locked={locked}
+              />
             </div>
 
             <div className="shrink-0 border-t border-line p-3 sm:p-4">
               <Button
                 onClick={() => setConfirmFinish(true)}
-                disabled={isSubmitting}
+                disabled={isSubmitting || locked}
                 size="lg"
                 className="w-full"
               >
@@ -1224,7 +1693,7 @@ const Quiz = () => {
       <ConfirmDialog
         open={confirmFinish}
         onClose={() => setConfirmFinish(false)}
-        onConfirm={submitAnswerSheet}
+        onConfirm={() => submitAnswerSheet("manual")}
         title="İmtahanı bitirmək istəyirsiniz?"
         confirmLabel="Bəli, təqdim et"
         cancelLabel="Geri qayıt"

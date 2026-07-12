@@ -7,24 +7,29 @@ const useRedirectLoggedOutUser = (path) => {
     const navigate = useNavigate()
 
     useEffect(() => {
-        let isLoggedIn;
+        let cancelled = false
 
         const redirectLoggedOutUser = async () => {
+            let isLoggedIn
+            let resolved = false
             try {
                 isLoggedIn = await authService.getLoginStatus()
+                resolved = true
             } catch (error) {
+                // Network / server hiccup — the login status is UNKNOWN, not "logged
+                // out". Do NOT redirect (a transient blip must never kick a student to
+                // /login mid-exam-prep). Only a CONFIRMED false redirects.
                 console.log("useRedirect catch:", error.message)
             }
-            console.log("useRedirect", isLoggedIn)
-            if (!isLoggedIn) {
+            if (cancelled) return
+            if (resolved && !isLoggedIn) {
                 toast.info("Session expired, please login to continue")
                 navigate(path)
-                // navigate()
-                return;
             }
         }
 
         redirectLoggedOutUser()
+        return () => { cancelled = true }
     }, [path, navigate])
 }
 

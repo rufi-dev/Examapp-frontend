@@ -204,6 +204,27 @@ export const getExam = createAsyncThunk(
   }
 );
 
+// Silent variant of getExam for the Result page: a finished student's exam may be
+// archived / un-assigned (403/404) AFTER they took it, and their result must still
+// render. Same fetch, but its rejected reducer does NOT toast (it's expected noise).
+export const getExamSilent = createAsyncThunk(
+  "quiz/getExamSilent",
+  async (id, thunkAPI) => {
+    try {
+      return await quizService.getExam(id);
+    } catch (error) {
+      const message =
+        (error.response && error.response.data && error.response.data.message) ||
+        error.message ||
+        error.toString();
+      return thunkAPI.rejectWithValue({
+        message,
+        status: error.response ? error.response.status : 0,
+      });
+    }
+  }
+);
+
 //Edit Exam
 export const editExam = createAsyncThunk(
   "quiz/editExam",
@@ -545,7 +566,7 @@ export const getAttemptStatus = createAsyncThunk(
   async (examId, thunkAPI) => {
     try {
       // The details page (only caller of this thunk) needs used/maxTry.
-      return await quizService.getAttemptStatus(examId, true);
+      return await quizService.getAttemptStatus(examId, { counts: true });
     } catch (error) {
       const message =
         (error.response && error.response.data && error.response.data.message) ||
@@ -770,6 +791,15 @@ const quizSlice = createSlice({
         state.isError = true;
         state.message = action.payload;
         toast.error(action.payload);
+      })
+
+      //Get Exam (silent — Result page). No toast on reject; 401 handled by the page.
+      .addCase(getExamSilent.fulfilled, (state, action) => {
+        state.isSuccess = true;
+        state.singleExam = action.payload;
+      })
+      .addCase(getExamSilent.rejected, (state, action) => {
+        state.message = action.payload && action.payload.message;
       })
 
       //Edit Exam

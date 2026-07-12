@@ -1,18 +1,37 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import Loader from "../../components/Loader";
+import Spinner from "../../components/Spinner";
 import ResultTable from "../../components/ResultTable";
-import { RESET_QUIZ, getExam, getExamRank } from "../../../redux/features/quiz/quizSlice";
+import { RESET_QUIZ, getExamSilent, getExamRank } from "../../../redux/features/quiz/quizSlice";
 import {
   RESET_RESULT,
   getResultsByUserByExam,
 } from "../../../redux/features/quiz/resultSlice";
+import { getAttemptStatus } from "../../../redux/features/quiz/quizService";
 import ResultCard from "../../components/ResultCard";
 import AccountLayout from "../../components/AccountLayout";
 import Button from "../../components/ui/Button";
 import { isSelectionCorrect } from "../../helper/helper";
 import { FiRotateCcw, FiList, FiAlertTriangle } from "react-icons/fi";
+
+// The attempt whose result to show — persisted by the Quiz runner on submit so a
+// multi-try student sees THIS attempt's result, not the stale "latest". Kept until
+// a 7-day TTL (never cleared on success — an old pending sweep could otherwise make
+// a newer result look like "latest").
+const readExpectedAttempt = (examId) => {
+  try {
+    const t = localStorage.getItem("token");
+    const uid = (t && JSON.parse(atob(t.split(".")[1])).id) || "anon";
+    const raw = localStorage.getItem(`examLastSubmittedAttempt_${examId}_${uid}`);
+    if (!raw) return null;
+    const o = JSON.parse(raw);
+    if (o && o.at && Date.now() - o.at > 7 * 24 * 60 * 60 * 1000) return null;
+    return o && o.attemptId ? String(o.attemptId) : null;
+  } catch {
+    return null;
+  }
+};
 
 const ScoreRing = ({ value = 0 }) => {
   const r = 34;
@@ -40,22 +59,152 @@ const ScoreRing = ({ value = 0 }) => {
 
 const Result = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { examId } = useParams();
-  const { resultByExam, isLoading } = useSelector((state) => state.result);
-  const lastResult = resultByExam[resultByExam.length - 1];
+  const { resultByExam } = useSelector((state) => state.result);
+  const [expectedAttemptId, setExpectedAttemptId] = useState(() => readExpectedAttempt(examId));
   const [rank, setRank] = useState(null);
+  const [preparing, setPreparing] = useState(true);
+  const [terminalReason, setTerminalReason] = useState(null); // unscorable -> no result
+  const pollRef = useRef(null);
+  const triesRef = useRef(0);
 
+  // Null-safe list; select the EXPECTED attempt's result (string compare — an
+  // ObjectId wrapper vs string would silently miss). Fall back to the latest only
+  // when there's no expected-attempt context (browsing past results).
+  const list = Array.isArray(resultByExam) ? resultByExam : [];
+  const lastResult = expectedAttemptId
+    ? list.find((r) => String(r.attemptId) === expectedAttemptId)
+    : list[list.length - 1];
+
+  // Initial loads. The exam is fetched SILENTLY — a finished student's exam may be
+  // archived / un-assigned (403/404) and their result must still render with no toast.
   useEffect(() => {
     dispatch(getResultsByUserByExam(examId));
-    dispatch(getExam(examId));
+    dispatch(getExamSilent(examId));
     dispatch(getExamRank(examId))
       .unwrap()
       .then((r) => setRank(r))
       .catch(() => setRank(null));
   }, [dispatch, examId]);
 
-  if (isLoading || !lastResult) {
-    return <Loader />;
+  // Bounded polling (local timer, NOT redux isLoading): if the expected result
+  // isn't present yet (server still finalizing), poll ~3s up to ~120s, and check
+  // attemptStatus for a terminal `unscorable` (no result will ever arrive).
+  useEffect(() => {
+    const stop = () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+    if (lastResult) {
+      setPreparing(false);
+      stop();
+      return;
+    }
+    setPreparing(true);
+    const MAX = 40; // ~40 * 3s ≈ 120s
+    const tick = async () => {
+      triesRef.current += 1;
+      try {
+        const st = await getAttemptStatus(
+          examId,
+          expectedAttemptId ? { attemptId: expectedAttemptId } : {}
+        );
+        if (st && st.unscorable) {
+          setTerminalReason(st.reason || "unscorable");
+          setPreparing(false);
+          stop();
+          return;
+        }
+      } catch (e) {
+        const status = e && e.response && e.response.status;
+        const reason = e && e.response && e.response.data && e.response.data.reason;
+        if (status === 401) {
+          try {
+            localStorage.setItem("postLoginRedirect", `/exam/${examId}/result`);
+            localStorage.removeItem("token");
+          } catch {
+            /* ignore */
+          }
+          stop();
+          navigate("/login");
+          return;
+        }
+        if (reason === "invalid_attempt") {
+          // The stored expected attempt is stale/foreign — clear it and fall back
+          // to the latest result (don't get stuck polling a bad attempt forever).
+          try {
+            const t = localStorage.getItem("token");
+            const uid = (t && JSON.parse(atob(t.split(".")[1])).id) || "anon";
+            localStorage.removeItem(`examLastSubmittedAttempt_${examId}_${uid}`);
+          } catch {
+            /* ignore */
+          }
+          setExpectedAttemptId(null);
+          // fall through: re-fetch results; lastResult now uses the latest.
+        }
+        // other 404 etc. — keep polling for the result.
+      }
+      dispatch(getResultsByUserByExam(examId))
+        .unwrap()
+        .catch(() => {});
+      if (triesRef.current >= MAX) {
+        setPreparing(false);
+        stop();
+      }
+    };
+    pollRef.current = setInterval(tick, 3000);
+    tick();
+    return stop;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastResult, examId, expectedAttemptId]);
+
+  // Terminal unscorable (deleted exam/user, retired duplicate) — no Result exists.
+  if (!lastResult && terminalReason) {
+    return (
+      <AccountLayout title="İmtahan nəticəsi" subtitle="">
+        <div className="mx-auto max-w-lg rounded-3xl border border-line bg-surface p-8 text-center shadow-soft">
+          <FiAlertTriangle className="mx-auto mb-3 text-3xl text-danger" />
+          <p className="font-display text-lg font-bold text-text">Nəticə mövcud deyil</p>
+          <p className="mt-1 text-sm text-muted">
+            Bu cəhd qiymətləndirilə bilmədi (imtahan və ya hesab silinib). Müəlliminizlə əlaqə saxlayın.
+          </p>
+          <Button className="mt-5" onClick={() => navigate("/dashboard")}>
+            Ana səhifə
+          </Button>
+        </div>
+      </AccountLayout>
+    );
+  }
+
+  // Still finalizing — "preparing" state (never an endless spinner).
+  if (!lastResult && preparing) {
+    return (
+      <AccountLayout title="İmtahan nəticəsi" subtitle="">
+        <div className="mx-auto flex max-w-lg flex-col items-center gap-4 rounded-3xl border border-line bg-surface p-10 text-center shadow-soft">
+          <Spinner size={32} className="text-primary" />
+          <p className="font-display text-base font-semibold text-text">Nəticə hazırlanır…</p>
+          <p className="text-sm text-muted">Cavablarınız qeydə alındı. Bir neçə saniyə çəkə bilər.</p>
+        </div>
+      </AccountLayout>
+    );
+  }
+
+  // Gave up after polling — gentle manual-refresh fallback (still no endless loader).
+  if (!lastResult) {
+    return (
+      <AccountLayout title="İmtahan nəticəsi" subtitle="">
+        <div className="mx-auto max-w-lg rounded-3xl border border-line bg-surface p-8 text-center shadow-soft">
+          <p className="font-display text-lg font-bold text-text">Nəticə hazırlanır</p>
+          <p className="mt-1 text-sm text-muted">Bir azdan səhifəni yeniləyin.</p>
+          <Button className="mt-5" onClick={() => window.location.reload()}>
+            Yenilə
+          </Button>
+        </div>
+      </AccountLayout>
+    );
   }
 
   const correctAnswers = lastResult.correctAnswers || [];
