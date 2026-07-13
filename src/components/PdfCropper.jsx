@@ -43,6 +43,10 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
   // this, the first touch immediately started a selection and the page could
   // never be scrolled on a phone.
   const [cropMode, setCropMode] = useState(false);
+  // Base render width fits the visible container (so the page never spills off a
+  // phone screen), capped at PAGE_W on desktop. Zoom multiplies it.
+  const [baseW, setBaseW] = useState(PAGE_W);
+  const scrollRef = useRef(null);
   const wrapRef = useRef(null);
   const drag = useRef(null);
   const pdfRef = useRef(null); // the loaded pdf.js document (for fresh crops)
@@ -62,7 +66,26 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
     }
   }, [file]);
 
-  const renderW = Math.round(PAGE_W * zoom);
+  const renderW = Math.round(baseW * zoom);
+
+  // Keep the base width in sync with the visible container (handles phones and
+  // orientation changes). A width change invalidates the current selection.
+  useEffect(() => {
+    const measure = () => {
+      const el = scrollRef.current;
+      if (!el) return;
+      const next = clamp(el.clientWidth - 32, 240, PAGE_W); // 32 = p-4 padding
+      setBaseW((prev) => (prev === next ? prev : next));
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [src]);
+  useEffect(() => {
+    setSel(null);
+    setPreview(null);
+    cropCanvasRef.current = null;
+  }, [baseW]);
   // Changing zoom resizes the page, so the old selection box no longer lines up
   // — clear it. The crop itself stays sharp because it reads the canvas's real
   // device pixels, which grow with zoom (a bigger, higher-resolution crop).
@@ -189,16 +212,24 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-[1600] flex flex-col bg-bg">
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-surface px-4 py-3 sm:px-6">
-        <div className="min-w-0">
-          <h2 className="truncate font-display text-lg font-bold text-text">Şəkli PDF-dən kəs</h2>
-          <p className="text-xs text-muted">
-            {cropMode
-              ? "Şəklin/qrafikin üzərində barmağınızı/mausu sürüşdürərək sahəni seçin."
-              : "PDF-i sərbəst sürüşdürün, uyğun yerə çatanda «Kəsməyə başla»-ya toxunun."}
-          </p>
+      <header className="shrink-0 border-b border-line bg-surface">
+        {/* Row 1: title + close (always fits) */}
+        <div className="flex items-center justify-between gap-3 px-4 pt-3 sm:px-6">
+          <h2 className="truncate font-display text-base font-bold text-text sm:text-lg">
+            Şəkli PDF-dən kəs
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-surface2 hover:text-text"
+            aria-label="Bağla"
+          >
+            <FiX />
+          </button>
         </div>
-        <div className="flex items-center gap-2">
+        {/* Row 2: toolbar — wraps onto multiple lines on small screens instead of
+            overflowing off the side. */}
+        <div className="flex flex-wrap items-center gap-2 px-4 pb-2 pt-2.5 sm:px-6">
           <div className="flex items-center gap-1 rounded-xl border border-line bg-surface px-1 py-0.5">
             <button
               type="button"
@@ -247,6 +278,8 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
               </button>
             </div>
           )}
+          {/* pushes the crop actions to the right on wide screens; harmless on wrap */}
+          <div className="grow" />
           <button
             type="button"
             onClick={() => {
@@ -273,18 +306,16 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
           >
             {busy ? <Spinner size={16} /> : <FiCrop />} Kəs və əlavə et
           </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="grid h-9 w-9 place-items-center rounded-lg text-muted transition-colors hover:bg-surface2 hover:text-text"
-            aria-label="Bağla"
-          >
-            <FiX />
-          </button>
         </div>
+        {/* mode hint — full width, so it never squeezes the toolbar */}
+        <p className="px-4 pb-2.5 text-xs text-muted sm:px-6">
+          {cropMode
+            ? "Şəklin/qrafikin üzərində barmağınızı sürüşdürərək sahəni seçin, sonra «Kəs və əlavə et»."
+            : "PDF-i sərbəst sürüşdürün, uyğun yerə çatanda «Kəsməyə başla»-ya toxunun."}
+        </p>
       </header>
 
-      <div className="scrollbar-brand min-h-0 flex-1 overflow-auto bg-surface2/40 p-4">
+      <div ref={scrollRef} className="scrollbar-brand min-h-0 flex-1 overflow-auto bg-surface2/40 p-4">
         {!src ? (
           <div className="mx-auto mt-10 max-w-sm rounded-2xl border border-dashed border-line bg-surface p-8 text-center">
             <FiUploadCloud className="mx-auto text-3xl text-primary" />
