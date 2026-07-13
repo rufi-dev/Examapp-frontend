@@ -140,7 +140,7 @@ const Profile = () => {
     <AccountLayout>
       {!user ? (
         <div className="flex justify-center py-24">
-          <TailSpin height="80" width="80" color="oklch(0.55 0.185 270)" visible />
+          <TailSpin height="80" width="80" color="rgb(74 100 220)" visible />
         </div>
       ) : (
           <>

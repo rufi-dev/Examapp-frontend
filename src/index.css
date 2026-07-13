@@ -5,46 +5,46 @@
 @layer base {
   :root {
     /* OKLCH tokens as bare "L C H" triplets — Calm Indigo, light theme */
-    --bg: 0.972 0.005 270;
-    --surface: 0.995 0.0025 270;
-    --surface-2: 0.945 0.007 270;
-    --border: 0.905 0.008 268;
-    --text: 0.27 0.022 268;
-    --text-muted: 0.53 0.02 268;
-    --primary: 0.55 0.185 270;
-    --primary-hover: 0.5 0.19 270;
-    --primary-fg: 0.99 0.004 270;
-    --accent-2: 0.66 0.155 292;
-    --success: 0.7 0.14 158;
-    --warning: 0.8 0.13 80;
-    --danger: 0.58 0.2 25;
-    --ring: 0.55 0.185 270;
-    --shadow: 0.2 0.03 268;
+    --bg: 244 246 249;
+    --surface: 253 253 255;
+    --surface-2: 235 237 242;
+    --border: 221 223 229;
+    --text: 34 38 49;
+    --text-muted: 103 108 120;
+    --primary: 74 100 220;
+    --primary-hover: 60 83 205;
+    --primary-fg: 251 252 255;
+    --accent-2: 150 125 232;
+    --success: 61 184 124;
+    --warning: 233 180 82;
+    --danger: 215 51 55;
+    --ring: 74 100 220;
+    --shadow: 16 21 36;
     /* Defaults so `advanced`/`navy` classes resolve outside .blueprint too. */
-    --advanced: 0.66 0.155 292;
-    --navy: 0.32 0.06 268;
+    --advanced: 150 125 232;
+    --navy: 38 49 81;
     --font-display: "Bricolage Grotesque", Fraunces, system-ui, sans-serif;
     color-scheme: light;
   }
 
   .dark {
-    --bg: 0.185 0.01 268;
-    --surface: 0.235 0.013 268;
-    --surface-2: 0.285 0.015 268;
-    --border: 0.33 0.016 268;
-    --text: 0.95 0.006 270;
-    --text-muted: 0.7 0.013 268;
-    --primary: 0.62 0.17 272;
-    --primary-hover: 0.68 0.16 272;
-    --primary-fg: 0.16 0.02 270;
-    --accent-2: 0.7 0.14 292;
-    --success: 0.74 0.14 160;
-    --warning: 0.82 0.13 82;
-    --danger: 0.66 0.19 27;
-    --ring: 0.62 0.17 272;
-    --shadow: 0.03 0.02 268;
-    --advanced: 0.7 0.14 292;
-    --navy: 0.28 0.05 268;
+    --bg: 17 19 23;
+    --surface: 27 30 36;
+    --surface-2: 39 42 50;
+    --border: 50 53 62;
+    --text: 237 238 243;
+    --text-muted: 155 158 167;
+    --primary: 100 123 235;
+    --primary-hover: 119 143 250;
+    --primary-fg: 10 13 22;
+    --accent-2: 161 141 238;
+    --success: 71 197 140;
+    --warning: 238 187 88;
+    --danger: 240 87 78;
+    --ring: 100 123 235;
+    --shadow: 0 0 1;
+    --advanced: 161 141 238;
+    --navy: 30 40 66;
     color-scheme: dark;
   }
 
@@ -56,51 +56,51 @@
      every token-based component re-themes automatically inside this subtree.
      ────────────────────────────────────────────────────────────────────── */
   .blueprint {
-    --bg: 0.975 0.006 250;          /* #F7F9FC paper */
-    --surface: 0.999 0.002 250;     /* #FFFFFF card */
-    --surface-2: 0.955 0.009 250;   /* #EEF3FA soft */
-    --border: 0.915 0.012 252;
-    --text: 0.28 0.05 258;          /* #10233E */
-    --text-muted: 0.5 0.032 252;    /* #52657A */
-    --primary: 0.53 0.19 264;       /* #2457E6 cobalt */
-    --primary-hover: 0.48 0.2 264;
-    --primary-fg: 0.995 0.004 250;
-    --accent-2: 0.71 0.11 200;      /* #15B8C8 cyan */
-    --advanced: 0.52 0.21 293;      /* #6D3DE8 purple */
-    --navy: 0.32 0.11 264;          /* #12306B deep navy */
-    --success: 0.55 0.14 152;       /* #15803D */
-    --warning: 0.68 0.16 60;        /* #D97706 */
-    --danger: 0.55 0.19 27;         /* #C62828 */
-    --ring: 0.53 0.19 264;
-    --shadow: 0.28 0.07 262;
+    --bg: 244 247 251;          /* #F7F9FC paper */
+    --surface: 254 255 255;     /* #FFFFFF card */
+    --surface-2: 236 241 246;   /* #EEF3FA soft */
+    --border: 221 228 235;
+    --text: 25 41 65;          /* #10233E */
+    --text-muted: 86 101 117;    /* #52657A */
+    --primary: 48 97 216;       /* #2457E6 cobalt */
+    --primary-hover: 31 79 204;
+    --primary-fg: 251 254 255;
+    --accent-2: 48 182 188;      /* #15B8C8 cyan */
+    --advanced: 115 66 211;      /* #6D3DE8 purple */
+    --navy: 20 46 106;          /* #12306B deep navy */
+    --success: 16 136 70;       /* #15803D */
+    --warning: 222 124 0;        /* #D97706 */
+    --danger: 201 48 45;         /* #C62828 */
+    --ring: 48 97 216;
+    --shadow: 21 40 75;
     --font-display: "Plus Jakarta Sans", Inter, system-ui, sans-serif;
   }
 
   /* Dark public theme = the navy "mathematical workspace". */
   .dark .blueprint {
-    --bg: 0.215 0.028 258;          /* #0D1B2A workspace */
-    --surface: 0.265 0.038 258;     /* #12253D panel */
-    --surface-2: 0.31 0.042 258;
-    --border: 0.36 0.04 258;
-    --text: 0.96 0.006 250;
-    --text-muted: 0.72 0.02 250;
-    --primary: 0.62 0.17 264;
-    --primary-hover: 0.68 0.16 264;
-    --primary-fg: 0.16 0.03 260;
-    --accent-2: 0.74 0.11 200;
-    --advanced: 0.64 0.18 293;
-    --navy: 0.215 0.028 258;
-    --success: 0.7 0.14 154;
-    --warning: 0.78 0.14 62;
-    --danger: 0.66 0.18 27;
-    --ring: 0.62 0.17 264;
-    --shadow: 0.02 0.02 258;
+    --bg: 17 26 38;          /* #0D1B2A workspace */
+    --surface: 25 38 56;     /* #12253D panel */
+    --surface-2: 35 49 70;
+    --border: 48 62 82;
+    --text: 239 242 246;
+    --text-muted: 155 166 177;
+    --primary: 80 128 235;
+    --primary-hover: 101 148 250;
+    --primary-fg: 6 13 26;
+    --accent-2: 62 191 198;
+    --advanced: 147 113 238;
+    --navy: 17 26 38;
+    --success: 74 183 117;
+    --warning: 246 161 79;
+    --danger: 236 92 82;
+    --ring: 80 128 235;
+    --shadow: 0 0 1;
   }
 
   *,
   ::before,
   ::after {
-    border-color: oklch(var(--border) / 1);
+    border-color: rgb(var(--border) / 1);
   }
 
   html {
@@ -134,7 +134,7 @@
   }
 
   ::selection {
-    background: oklch(var(--primary) / 0.2);
+    background: rgb(var(--primary) / 0.2);
   }
 }
 
@@ -145,56 +145,89 @@
 
   /* Subtle cool dot texture for hero + section backgrounds */
   .bg-grid {
-    background-image: radial-gradient(oklch(var(--text) / 0.05) 1px, transparent 1px);
+    background-image: radial-gradient(rgb(var(--text) / 0.05) 1px, transparent 1px);
     background-size: 22px 22px;
   }
 
   /* ── Mathematical Blueprint backgrounds (graph paper / axes / dots) ──
      Token-driven, kept faint (≤6%) so they never hurt text contrast. */
   .bg-graph {
-    background-image: linear-gradient(oklch(var(--text) / 0.05) 1px, transparent 1px),
-      linear-gradient(90deg, oklch(var(--text) / 0.05) 1px, transparent 1px);
+    background-image: linear-gradient(rgb(var(--text) / 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--text) / 0.05) 1px, transparent 1px);
     background-size: 28px 28px;
   }
   .bg-graph-fine {
-    background-image: linear-gradient(oklch(var(--text) / 0.04) 1px, transparent 1px),
-      linear-gradient(90deg, oklch(var(--text) / 0.04) 1px, transparent 1px);
+    background-image: linear-gradient(rgb(var(--text) / 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--text) / 0.04) 1px, transparent 1px);
     background-size: 16px 16px;
   }
   .bg-dots {
-    background-image: radial-gradient(oklch(var(--text) / 0.06) 1px, transparent 1px);
+    background-image: radial-gradient(rgb(var(--text) / 0.06) 1px, transparent 1px);
     background-size: 20px 20px;
   }
   /* Light grid for use ON dark navy sections (white lines instead of ink). */
   .bg-graph-on-dark {
-    background-image: linear-gradient(oklch(1 0 0 / 0.06) 1px, transparent 1px),
-      linear-gradient(90deg, oklch(1 0 0 / 0.06) 1px, transparent 1px);
+    background-image: linear-gradient(rgb(255 255 255 / 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(255 255 255 / 0.06) 1px, transparent 1px);
     background-size: 30px 30px;
   }
   /* Always-dark "mathematical workspace" marketing section. Authored CSS (not a
      config token) so it renders correctly even before a Tailwind config reload.
      Reads the scoped --navy var, so it still adapts between light/dark theme. */
   .section-navy {
-    background-color: oklch(var(--navy) / 1);
+    background-color: rgb(var(--navy) / 1);
     color: #fff;
   }
 }
 
-/* Themed scrollbar */
+/* Themed scrollbar — brand-tinted and clearly visible so it reads as a grab
+   handle (not a faint hairline). Firefox gets the same via scrollbar-color. */
+* {
+  scrollbar-width: auto;
+  scrollbar-color: rgb(var(--primary) / 0.55) rgb(var(--surface-2) / 0.6);
+}
 ::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
 }
 ::-webkit-scrollbar-track {
-  background: oklch(var(--bg) / 1);
+  background: rgb(var(--surface-2) / 0.6);
+  border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb {
-  background: oklch(var(--border) / 1);
+  background: rgb(var(--primary) / 0.55);
   border-radius: 999px;
-  border: 3px solid oklch(var(--bg) / 1);
+  border: 3px solid rgb(var(--bg) / 1);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: oklch(var(--text-muted) / 1);
+  background: rgb(var(--primary) / 0.85);
+}
+::-webkit-scrollbar-thumb:active {
+  background: rgb(var(--primary) / 1);
+}
+
+/* A prominent, easy-to-grab scrollbar for scrollable panels (PDF cropper, long
+   modals). `.scrollbar-thin` comes from tailwind-scrollbar; we override it so the
+   handle is a chunky brand-colored pill that's obvious to drag on any device. */
+.scrollbar-brand {
+  scrollbar-width: auto;
+  scrollbar-color: rgb(var(--primary) / 0.7) rgb(var(--surface-2) / 0.8);
+}
+.scrollbar-brand::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+.scrollbar-brand::-webkit-scrollbar-track {
+  background: rgb(var(--surface-2) / 0.8);
+  border-radius: 999px;
+}
+.scrollbar-brand::-webkit-scrollbar-thumb {
+  background: rgb(var(--primary) / 0.7);
+  border-radius: 999px;
+  border: 3px solid rgb(var(--surface) / 1);
+}
+.scrollbar-brand::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--primary) / 1);
 }
 
 @keyframes float {
@@ -235,18 +268,18 @@
 }
 .Toastify__toast {
   border-radius: 16px !important;
-  background: oklch(var(--surface) / 1) !important;
-  color: oklch(var(--text) / 1) !important;
-  border: 1px solid oklch(var(--border) / 1) !important;
-  box-shadow: 0 14px 32px -10px oklch(var(--shadow) / 0.5),
-    0 4px 10px -4px oklch(var(--shadow) / 0.3) !important;
+  background: rgb(var(--surface) / 1) !important;
+  color: rgb(var(--text) / 1) !important;
+  border: 1px solid rgb(var(--border) / 1) !important;
+  box-shadow: 0 14px 32px -10px rgb(var(--shadow) / 0.5),
+    0 4px 10px -4px rgb(var(--shadow) / 0.3) !important;
   padding: 12px 14px;
   margin-bottom: 12px;
   font-family: inherit;
   min-height: 0;
 }
 .Toastify__toast-body {
-  color: oklch(var(--text) / 1);
+  color: rgb(var(--text) / 1);
   font-size: 0.9rem;
   font-weight: 500;
   line-height: 1.45;
@@ -259,7 +292,7 @@
   margin-inline-end: 12px;
 }
 .Toastify__close-button {
-  color: oklch(var(--text-muted) / 1);
+  color: rgb(var(--text-muted) / 1);
   opacity: 0.6;
   align-self: center;
   transition: opacity 0.15s ease, color 0.15s ease;
@@ -270,7 +303,7 @@
 }
 .Toastify__close-button:hover {
   opacity: 1;
-  color: oklch(var(--text) / 1);
+  color: rgb(var(--text) / 1);
 }
 .Toastify__progress-bar {
   height: 3px;
@@ -280,28 +313,28 @@
 
 /* Per-type accent: coloured icon + progress bar */
 .Toastify__toast--success .Toastify__toast-icon svg {
-  fill: oklch(var(--success) / 1);
+  fill: rgb(var(--success) / 1);
 }
 .Toastify__progress-bar--success {
-  background: oklch(var(--success) / 1) !important;
+  background: rgb(var(--success) / 1) !important;
 }
 .Toastify__toast--error .Toastify__toast-icon svg {
-  fill: oklch(var(--danger) / 1);
+  fill: rgb(var(--danger) / 1);
 }
 .Toastify__progress-bar--error {
-  background: oklch(var(--danger) / 1) !important;
+  background: rgb(var(--danger) / 1) !important;
 }
 .Toastify__toast--warning .Toastify__toast-icon svg {
-  fill: oklch(var(--warning) / 1);
+  fill: rgb(var(--warning) / 1);
 }
 .Toastify__progress-bar--warning {
-  background: oklch(var(--warning) / 1) !important;
+  background: rgb(var(--warning) / 1) !important;
 }
 .Toastify__toast--info .Toastify__toast-icon svg,
 .Toastify__toast--default .Toastify__toast-icon svg {
-  fill: oklch(var(--primary) / 1);
+  fill: rgb(var(--primary) / 1);
 }
 .Toastify__progress-bar--info,
 .Toastify__progress-bar--default {
-  background: oklch(var(--primary) / 1) !important;
+  background: rgb(var(--primary) / 1) !important;
 }

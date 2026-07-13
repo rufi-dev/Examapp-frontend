@@ -15,8 +15,8 @@ const CookieConsent = () => {
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-[1200] animate-fade-rise p-4 sm:p-6">
-      <div className="mx-auto flex max-w-3xl flex-col gap-4 rounded-2xl border border-line bg-surface/95 p-4 shadow-lift backdrop-blur-xl sm:flex-row sm:items-center sm:gap-5 sm:p-5">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
+      <div className="mx-auto flex max-w-3xl flex-col gap-4 rounded-2xl border border-line bg-surface p-4 shadow-lift sm:flex-row sm:items-center sm:gap-5 sm:p-5">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
           <LuCookie className="text-[22px]" />
         </span>
         <p className="flex-1 text-sm leading-relaxed text-muted">

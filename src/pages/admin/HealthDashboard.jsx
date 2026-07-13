@@ -426,7 +426,7 @@ const HealthDashboard = () => {
               type="checkbox"
               checked={auto}
               onChange={(e) => setAuto(e.target.checked)}
-              className="h-4 w-4 accent-[oklch(var(--primary))]"
+              className="h-4 w-4 accent-[rgb(var(--primary))]"
             />
             Avto-yenilə (30s)
           </label>

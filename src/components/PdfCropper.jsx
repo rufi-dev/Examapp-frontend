@@ -8,6 +8,7 @@ import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.js?url";
 import {
   FiX,
   FiCrop,
+  FiMove,
   FiChevronLeft,
   FiChevronRight,
   FiUploadCloud,
@@ -37,6 +38,11 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
   const [loadErr, setLoadErr] = useState(null);
   const [zoom, setZoom] = useState(1);
   const [preview, setPreview] = useState(null); // data URL of the pending crop
+  // Pan by default so touch devices can freely scroll/position the PDF; the
+  // teacher taps "Kəsməyə başla" to arm crop mode, THEN drags a box. Without
+  // this, the first touch immediately started a selection and the page could
+  // never be scrolled on a phone.
+  const [cropMode, setCropMode] = useState(false);
   const wrapRef = useRef(null);
   const drag = useRef(null);
   const pdfRef = useRef(null); // the loaded pdf.js document (for fresh crops)
@@ -72,6 +78,7 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
     return { x: clamp(e.clientX - r.left, 0, r.width), y: clamp(e.clientY - r.top, 0, r.height) };
   };
   const onDown = (e) => {
+    if (!cropMode) return; // pan mode: let the touch scroll the page freely
     if (e.button != null && e.button !== 0) return;
     e.preventDefault();
     const p = pos(e);
@@ -186,7 +193,9 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
         <div className="min-w-0">
           <h2 className="truncate font-display text-lg font-bold text-text">Şəkli PDF-dən kəs</h2>
           <p className="text-xs text-muted">
-            Şəklin/qrafikin üzərində mausu sürüşdürərək sahəni seçin.
+            {cropMode
+              ? "Şəklin/qrafikin üzərində barmağınızı/mausu sürüşdürərək sahəni seçin."
+              : "PDF-i sərbəst sürüşdürün, uyğun yerə çatanda «Kəsməyə başla»-ya toxunun."}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -240,8 +249,26 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
           )}
           <button
             type="button"
+            onClick={() => {
+              setCropMode((m) => !m);
+              setSel(null);
+              setPreview(null);
+              cropCanvasRef.current = null;
+            }}
+            disabled={!ready}
+            className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-bold transition-colors disabled:opacity-40 ${
+              cropMode
+                ? "border-primary bg-primary text-primary-fg shadow-soft"
+                : "border-line bg-surface text-text hover:border-primary/60 hover:text-primary"
+            }`}
+          >
+            {cropMode ? <FiMove /> : <FiCrop />}
+            {cropMode ? "Sürüşdür" : "Kəsməyə başla"}
+          </button>
+          <button
+            type="button"
             onClick={apply}
-            disabled={busy || !ready || !sel || sel.w < 8}
+            disabled={busy || !ready || !cropMode || !sel || sel.w < 8}
             className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-fg shadow-soft transition-colors hover:bg-primary-hover disabled:opacity-50"
           >
             {busy ? <Spinner size={16} /> : <FiCrop />} Kəs və əlavə et
@@ -257,7 +284,7 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
         </div>
       </header>
 
-      <div className="scrollbar-thin min-h-0 flex-1 overflow-auto bg-surface2/40 p-4">
+      <div className="scrollbar-brand min-h-0 flex-1 overflow-auto bg-surface2/40 p-4">
         {!src ? (
           <div className="mx-auto mt-10 max-w-sm rounded-2xl border border-dashed border-line bg-surface p-8 text-center">
             <FiUploadCloud className="mx-auto text-3xl text-primary" />
@@ -319,8 +346,13 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
                 onPointerDown={onDown}
                 onPointerMove={onMove}
                 onPointerUp={onUp}
-                className="relative cursor-crosshair select-none rounded-lg border border-line bg-white shadow-soft"
-                style={{ width: renderW, touchAction: "none" }}
+                className={`relative select-none rounded-lg border shadow-soft ${
+                  cropMode ? "cursor-crosshair border-primary" : "cursor-grab border-line"
+                } bg-white`}
+                // In pan mode allow the browser to scroll on touch; only lock
+                // gestures (touchAction:none) once crop mode is armed so the drag
+                // draws a box instead of scrolling.
+                style={{ width: renderW, touchAction: cropMode ? "none" : "auto" }}
               >
                 <Page
                   pageNumber={page}
