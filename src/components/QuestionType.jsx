@@ -212,6 +212,67 @@ const CameraCapture = ({ onUse, onClose, onActivity }) => {
   );
 };
 
+// Normalize a captured photo into a clean, bounded, NAMED sRGB JPEG File before
+// upload. A raw getUserMedia canvas blob can be large and wide-gamut (Display P3)
+// and, appended to FormData without a filename, iOS Safari can round-trip it
+// through Cloudinary as a BLACK image even though it previews fine locally. Re-
+// decoding + re-drawing onto a white-based canvas produces plain sRGB that stores
+// correctly. Falls back to a named File wrapper if decoding fails.
+const normalizeImageBlob = (blob) =>
+  new Promise((resolve) => {
+    const asFile = (b) => (b instanceof File ? b : new File([b], "solution.jpg", { type: "image/jpeg" }));
+    let done = false;
+    const finish = (b) => {
+      if (done) return;
+      done = true;
+      resolve(asFile(b));
+    };
+    // Bulletproof: if decode/encode stalls (iOS), upload the original valid blob
+    // (still named) after a short wait so the button can never spin forever.
+    const timer = setTimeout(() => finish(blob), 4000);
+    try {
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        clearTimeout(timer);
+        URL.revokeObjectURL(url);
+        try {
+          const MAX = 1600;
+          const scale = Math.min(1, MAX / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+          const w = Math.max(1, Math.round((img.naturalWidth || 1) * scale));
+          const h = Math.max(1, Math.round((img.naturalHeight || 1) * scale));
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+          // Synchronous toDataURL — reliable on iOS Safari, unlike toBlob whose
+          // callback can NEVER fire there (which hangs the whole upload). Then
+          // decode the base64 to bytes -> a named sRGB JPEG File.
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+          const b64 = dataUrl.split(",")[1] || "";
+          const bin = atob(b64);
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          finish(new File([bytes], "solution.jpg", { type: "image/jpeg" }));
+        } catch {
+          finish(blob);
+        }
+      };
+      img.onerror = () => {
+        clearTimeout(timer);
+        URL.revokeObjectURL(url);
+        finish(blob);
+      };
+      img.src = url;
+    } catch {
+      clearTimeout(timer);
+      finish(blob);
+    }
+  });
+
 // Per-question "photograph my worked solution" control (live exam only). Camera
 // only — opens the in-page camera; no OS gallery selection.
 const SolutionPhoto = ({ value, onChange, disabled = false, onActivity }) => {
@@ -222,7 +283,8 @@ const SolutionPhoto = ({ value, onChange, disabled = false, onActivity }) => {
     if (!blob || disabled) return;
     setBusy(true);
     try {
-      onChange(await uploadImage(blob));
+      const file = await normalizeImageBlob(blob);
+      onChange(await uploadImage(file));
     } catch (err) {
       toast.error(err?.message || "Şəkil yüklənmədi");
     } finally {

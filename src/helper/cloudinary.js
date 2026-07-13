@@ -13,7 +13,9 @@ export async function uploadImage(file) {
     throw new Error("Şəkil yükləmə konfiqurasiya olunmayıb (Cloudinary)");
   }
   const fd = new FormData();
-  fd.append("file", file);
+  // Always send a filename — iOS Safari can transmit a filename-less Blob in
+  // multipart/form-data incorrectly (Cloudinary then stores a corrupt/black image).
+  fd.append("file", file, (file && file.name) || "upload.jpg");
   fd.append("cloud_name", CLOUD_NAME);
   fd.append("upload_preset", UPLOAD_PRESET);
   const res = await fetch(
