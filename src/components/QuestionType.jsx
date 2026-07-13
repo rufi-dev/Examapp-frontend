@@ -220,7 +220,11 @@ const CameraCapture = ({ onUse, onClose, onActivity }) => {
 // correctly. Falls back to a named File wrapper if decoding fails.
 const normalizeImageBlob = (blob) =>
   new Promise((resolve) => {
-    const asFile = (b) => (b instanceof File ? b : new File([b], "solution.jpg", { type: "image/jpeg" }));
+    // UNIQUE name per photo — if the Cloudinary preset uses the filename as the
+    // public_id without uniquifying, a fixed name would overwrite every prior
+    // upload (so every question would show the same latest image).
+    const name = `solution-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+    const asFile = (b) => (b instanceof File ? b : new File([b], name, { type: "image/jpeg" }));
     let done = false;
     const finish = (b) => {
       if (done) return;
@@ -256,7 +260,7 @@ const normalizeImageBlob = (blob) =>
           const bin = atob(b64);
           const bytes = new Uint8Array(bin.length);
           for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-          finish(new File([bytes], "solution.jpg", { type: "image/jpeg" }));
+          finish(new File([bytes], name, { type: "image/jpeg" }));
         } catch {
           finish(blob);
         }
