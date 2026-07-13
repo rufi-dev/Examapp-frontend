@@ -87,14 +87,97 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
     cropCanvasRef.current = null;
   }, [baseW]);
   // Changing zoom resizes the page, so the old selection box no longer lines up
-  // — clear it. The crop itself stays sharp because it reads the canvas's real
-  // device pixels, which grow with zoom (a bigger, higher-resolution crop).
-  const changeZoom = (z) => {
-    setZoom(clamp(z, MIN_ZOOM, MAX_ZOOM));
+  // — clear it (for buttons, wheel, AND pinch). The crop itself stays sharp
+  // because it reads the canvas's real device pixels, which grow with zoom.
+  useEffect(() => {
     setSel(null);
     setPreview(null);
     cropCanvasRef.current = null;
-  };
+  }, [zoom]);
+  const changeZoom = (z) => setZoom(clamp(z, MIN_ZOOM, MAX_ZOOM));
+
+  // Latest zoom for the imperative gesture handlers (bound once, below).
+  const zoomRef = useRef(zoom);
+  useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
+
+  // Pinch-to-zoom (mobile, two fingers) + Ctrl/⌘-wheel or touchpad-pinch zoom
+  // (desktop). Native, non-passive listeners so preventDefault actually stops
+  // the browser's own page-zoom/scroll. Pinch steps are quantized to 0.25 so the
+  // PDF page re-renders a bounded number of times per gesture.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const q = (v) => clamp(Math.round(v * 4) / 4, MIN_ZOOM, MAX_ZOOM);
+    let startZoom = 1;
+
+    // Desktop: Ctrl/⌘ + wheel zooms; plain wheel keeps scrolling. Touchpad pinch
+    // arrives as a wheel event with ctrlKey set, so this covers it too.
+    const onWheel = (e) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      const step = e.deltaY < 0 ? 0.25 : -0.25;
+      setZoom((z) => q(z + step));
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+
+    // iOS Safari drives pinch through its own gesture events (and would page-zoom
+    // unless we preventDefault them). `e.scale` is relative to gesture start.
+    const iosGestures = "ongesturestart" in window;
+    const onGestureStart = (e) => {
+      e.preventDefault();
+      startZoom = zoomRef.current;
+    };
+    const onGestureChange = (e) => {
+      e.preventDefault();
+      const next = q(startZoom * e.scale);
+      setZoom((z) => (z === next ? z : next));
+    };
+    const onGestureEnd = (e) => e.preventDefault();
+
+    // Android/Chrome (and everything else): compute pinch from two touch points.
+    let startDist = 0;
+    let pinching = false;
+    const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    const onTouchStart = (e) => {
+      if (e.touches.length === 2) {
+        pinching = true;
+        startDist = dist(e.touches) || 1;
+        startZoom = zoomRef.current;
+      }
+    };
+    const onTouchMove = (e) => {
+      if (!pinching || e.touches.length < 2) return;
+      e.preventDefault();
+      const next = q(startZoom * (dist(e.touches) / startDist));
+      setZoom((z) => (z === next ? z : next));
+    };
+    const onTouchEnd = (e) => {
+      if (e.touches.length < 2) pinching = false;
+    };
+
+    if (iosGestures) {
+      el.addEventListener("gesturestart", onGestureStart, { passive: false });
+      el.addEventListener("gesturechange", onGestureChange, { passive: false });
+      el.addEventListener("gestureend", onGestureEnd, { passive: false });
+    } else {
+      el.addEventListener("touchstart", onTouchStart, { passive: false });
+      el.addEventListener("touchmove", onTouchMove, { passive: false });
+      el.addEventListener("touchend", onTouchEnd);
+      el.addEventListener("touchcancel", onTouchEnd);
+    }
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      el.removeEventListener("gesturestart", onGestureStart);
+      el.removeEventListener("gesturechange", onGestureChange);
+      el.removeEventListener("gestureend", onGestureEnd);
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("touchcancel", onTouchEnd);
+    };
+  }, [src]);
 
   const pos = (e) => {
     const r = wrapRef.current.getBoundingClientRect();
@@ -311,7 +394,7 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
         <p className="px-4 pb-2.5 text-xs text-muted sm:px-6">
           {cropMode
             ? "Şəklin/qrafikin üzərində barmağınızı sürüşdürərək sahəni seçin, sonra «Kəs və əlavə et»."
-            : "PDF-i sərbəst sürüşdürün, uyğun yerə çatanda «Kəsməyə başla»-ya toxunun."}
+            : "PDF-i sərbəst sürüşdürün, iki barmaqla yaxınlaşdırın (və ya düymələrlə), uyğun yerə çatanda «Kəsməyə başla»-ya toxunun."}
         </p>
       </header>
 
