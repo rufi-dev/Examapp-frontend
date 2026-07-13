@@ -51,7 +51,18 @@ const CameraCapture = ({ onUse, onClose, onActivity }) => {
         audio: false,
       });
       streamRef.current = stream;
-      if (videoRef.current) videoRef.current.srcObject = stream;
+      const v = videoRef.current;
+      if (v) {
+        v.srcObject = stream;
+        // Explicitly start playback so a REAL frame exists before capture — on
+        // iOS/Android the autoplay attributes can otherwise leave the first frames
+        // black, which then export as a solid-black JPEG.
+        try {
+          await v.play();
+        } catch {
+          /* autoPlay + playsInline cover browsers that reject the play() promise */
+        }
+      }
       setStatus("live");
     } catch {
       setStatus("error");
@@ -64,13 +75,18 @@ const CameraCapture = ({ onUse, onClose, onActivity }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const capture = () => {
+  // Draw the CURRENT painted video frame to a canvas and hand up a JPEG blob. A
+  // white base first, so even a partial/empty draw can never come out solid black.
+  const grabFrame = () => {
     const v = videoRef.current;
     if (!v || !v.videoWidth) return;
     const canvas = document.createElement("canvas");
     canvas.width = v.videoWidth;
     canvas.height = v.videoHeight;
-    canvas.getContext("2d").drawImage(v, 0, 0);
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
     canvas.toBlob(
       (blob) => {
         if (!blob) return;
@@ -80,6 +96,19 @@ const CameraCapture = ({ onUse, onClose, onActivity }) => {
       "image/jpeg",
       0.92
     );
+  };
+
+  const capture = () => {
+    const v = videoRef.current;
+    if (!v || !v.videoWidth || v.readyState < 2) return; // wait for a painted frame
+    // Capture on the NEXT presented video frame so the canvas is never empty
+    // (an empty canvas exports as a solid-black JPEG). requestVideoFrameCallback
+    // guarantees a real frame; fall back to rAF where it's unsupported (iOS < 16).
+    if (typeof v.requestVideoFrameCallback === "function") {
+      v.requestVideoFrameCallback(() => grabFrame());
+    } else {
+      requestAnimationFrame(() => grabFrame());
+    }
   };
 
   const retake = () => {
