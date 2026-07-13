@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { BsFacebook, BsInstagram, BsWhatsapp } from "react-icons/bs";
+import { BsFacebook, BsInstagram, BsWhatsapp, BsTiktok } from "react-icons/bs";
 import { FiPhone, FiMail } from "react-icons/fi";
 import BunkerMathLogo from "./blueprint/BunkerMathLogo";
 
@@ -58,6 +58,15 @@ const Footer = () => {
                 className="grid h-10 w-10 place-items-center rounded-full border border-white/15 bg-white/5 text-white transition-colors hover:bg-primary"
               >
                 <BsFacebook />
+              </a>
+              <a
+                href="https://www.tiktok.com/@eliyar_riyaziyyat"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="TikTok"
+                className="grid h-10 w-10 place-items-center rounded-full border border-white/15 bg-white/5 text-white transition-colors hover:bg-primary"
+              >
+                <BsTiktok />
               </a>
             </div>
           </div>
