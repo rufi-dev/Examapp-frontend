@@ -220,10 +220,13 @@ const CameraCapture = ({ onUse, onClose, onActivity }) => {
 // correctly. Falls back to a named File wrapper if decoding fails.
 const normalizeImageBlob = (blob) =>
   new Promise((resolve) => {
+    // NOTE: this file imports a LaTeX component named `Math`, which SHADOWS the
+    // global Math object here — so reach the real one via `window.Math`.
+    const M = window.Math;
     // UNIQUE name per photo — if the Cloudinary preset uses the filename as the
     // public_id without uniquifying, a fixed name would overwrite every prior
     // upload (so every question would show the same latest image).
-    const name = `solution-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+    const name = `solution-${Date.now()}-${M.random().toString(36).slice(2, 8)}.jpg`;
     const asFile = (b) => (b instanceof File ? b : new File([b], name, { type: "image/jpeg" }));
     let done = false;
     const finish = (b) => {
@@ -242,9 +245,9 @@ const normalizeImageBlob = (blob) =>
         URL.revokeObjectURL(url);
         try {
           const MAX = 1600;
-          const scale = Math.min(1, MAX / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
-          const w = Math.max(1, Math.round((img.naturalWidth || 1) * scale));
-          const h = Math.max(1, Math.round((img.naturalHeight || 1) * scale));
+          const scale = M.min(1, MAX / M.max(img.naturalWidth || 1, img.naturalHeight || 1));
+          const w = M.max(1, M.round((img.naturalWidth || 1) * scale));
+          const h = M.max(1, M.round((img.naturalHeight || 1) * scale));
           const canvas = document.createElement("canvas");
           canvas.width = w;
           canvas.height = h;
