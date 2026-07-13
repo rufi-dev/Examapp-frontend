@@ -398,7 +398,14 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
         </p>
       </header>
 
-      <div ref={scrollRef} className="scrollbar-brand min-h-0 flex-1 overflow-auto bg-surface2/40 p-4">
+      <div
+        ref={scrollRef}
+        className="scrollbar-brand min-h-0 flex-1 overflow-auto bg-surface2/40 p-4"
+        // pan-x pan-y keeps one-finger scrolling but tells the browser NOT to
+        // handle pinch-zoom itself — otherwise it claims the two-finger gesture
+        // and zooms the whole page before our handler can preventDefault it.
+        style={{ touchAction: "pan-x pan-y" }}
+      >
         {!src ? (
           <div className="mx-auto mt-10 max-w-sm rounded-2xl border border-dashed border-line bg-surface p-8 text-center">
             <FiUploadCloud className="mx-auto text-3xl text-primary" />
@@ -463,10 +470,10 @@ const PdfCropper = ({ file, onCrop, onClose }) => {
                 className={`relative select-none rounded-lg border shadow-soft ${
                   cropMode ? "cursor-crosshair border-primary" : "cursor-grab border-line"
                 } bg-white`}
-                // In pan mode allow the browser to scroll on touch; only lock
-                // gestures (touchAction:none) once crop mode is armed so the drag
-                // draws a box instead of scrolling.
-                style={{ width: renderW, touchAction: cropMode ? "none" : "auto" }}
+                // pan-x pan-y: one-finger scroll works, but the browser won't
+                // pinch-zoom the page (we handle pinch ourselves). Crop mode locks
+                // all gestures (none) so a drag draws a box instead of scrolling.
+                style={{ width: renderW, touchAction: cropMode ? "none" : "pan-x pan-y" }}
               >
                 <Page
                   pageNumber={page}
