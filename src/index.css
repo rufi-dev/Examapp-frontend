@@ -181,53 +181,57 @@
 }
 
 /* Themed scrollbar — brand-tinted and clearly visible so it reads as a grab
-   handle (not a faint hairline). Firefox gets the same via scrollbar-color. */
-* {
-  scrollbar-width: auto;
-  scrollbar-color: rgb(var(--primary) / 0.55) rgb(var(--surface-2) / 0.6);
-}
-::-webkit-scrollbar {
-  width: 14px;
-  height: 14px;
-}
-::-webkit-scrollbar-track {
-  background: rgb(var(--surface-2) / 0.6);
-  border-radius: 999px;
-}
-::-webkit-scrollbar-thumb {
-  background: rgb(var(--primary) / 0.55);
-  border-radius: 999px;
-  border: 3px solid rgb(var(--bg) / 1);
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgb(var(--primary) / 0.85);
-}
-::-webkit-scrollbar-thumb:active {
-  background: rgb(var(--primary) / 1);
-}
+   handle (not a faint hairline). DESKTOP ONLY: scoped to `pointer: fine` (a
+   mouse/trackpad) so phones/tablets keep their native, unobtrusive overlay
+   scrollbar. Firefox gets the same via scrollbar-color. */
+@media (pointer: fine) {
+  * {
+    scrollbar-width: auto;
+    scrollbar-color: rgb(var(--primary) / 0.55) rgb(var(--surface-2) / 0.6);
+  }
+  ::-webkit-scrollbar {
+    width: 16px;
+    height: 16px;
+  }
+  ::-webkit-scrollbar-track {
+    background: rgb(var(--surface-2) / 0.6);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--primary) / 0.55);
+    border-radius: 999px;
+    border: 4px solid rgb(var(--bg) / 1);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--primary) / 0.85);
+  }
+  ::-webkit-scrollbar-thumb:active {
+    background: rgb(var(--primary) / 1);
+  }
 
-/* A prominent, easy-to-grab scrollbar for scrollable panels (PDF cropper, long
-   modals). `.scrollbar-thin` comes from tailwind-scrollbar; we override it so the
-   handle is a chunky brand-colored pill that's obvious to drag on any device. */
-.scrollbar-brand {
-  scrollbar-width: auto;
-  scrollbar-color: rgb(var(--primary) / 0.7) rgb(var(--surface-2) / 0.8);
-}
-.scrollbar-brand::-webkit-scrollbar {
-  width: 14px;
-  height: 14px;
-}
-.scrollbar-brand::-webkit-scrollbar-track {
-  background: rgb(var(--surface-2) / 0.8);
-  border-radius: 999px;
-}
-.scrollbar-brand::-webkit-scrollbar-thumb {
-  background: rgb(var(--primary) / 0.7);
-  border-radius: 999px;
-  border: 3px solid rgb(var(--surface) / 1);
-}
-.scrollbar-brand::-webkit-scrollbar-thumb:hover {
-  background: rgb(var(--primary) / 1);
+  /* A prominent, easy-to-grab scrollbar for scrollable panels (PDF cropper, long
+     modals). `.scrollbar-thin` comes from tailwind-scrollbar; we override it so
+     the handle is a chunky brand-colored pill that's obvious to drag. */
+  .scrollbar-brand {
+    scrollbar-width: auto;
+    scrollbar-color: rgb(var(--primary) / 0.7) rgb(var(--surface-2) / 0.8);
+  }
+  .scrollbar-brand::-webkit-scrollbar {
+    width: 16px;
+    height: 16px;
+  }
+  .scrollbar-brand::-webkit-scrollbar-track {
+    background: rgb(var(--surface-2) / 0.8);
+    border-radius: 999px;
+  }
+  .scrollbar-brand::-webkit-scrollbar-thumb {
+    background: rgb(var(--primary) / 0.7);
+    border-radius: 999px;
+    border: 4px solid rgb(var(--surface) / 1);
+  }
+  .scrollbar-brand::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--primary) / 1);
+  }
 }
 
 @keyframes float {
