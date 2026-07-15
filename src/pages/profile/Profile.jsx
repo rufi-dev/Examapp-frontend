@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import AccountLayout from "../../components/AccountLayout";
 import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser";
 import { useDispatch, useSelector } from "react-redux";
@@ -7,7 +7,7 @@ import { toast } from "react-toastify";
 import { NavLink } from "react-router-dom";
 import { TailSpin } from "react-loader-spinner";
 import { RiArrowDropDownLine } from "react-icons/ri";
-import { FiCamera } from "react-icons/fi";
+import { FiCamera, FiTrash2, FiCopy, FiCheck, FiAlertCircle } from "react-icons/fi";
 import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
 import Spinner from "../../components/Spinner";
@@ -33,6 +33,48 @@ const roleLabels = {
   suspended: "Bloklanıb",
 };
 
+const AZ_MONTHS = [
+  "Yanvar", "Fevral", "Mart", "Aprel", "May", "İyun",
+  "İyul", "Avqust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr",
+];
+
+const initialsOf = (name) =>
+  (name || "?")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() || "")
+    .join("") || "?";
+
+// Circular profile-completeness meter (SVG so it animates + stays crisp).
+const CompletenessRing = ({ percent }) => {
+  const r = 26;
+  const circumference = 2 * Math.PI * r;
+  const offset = circumference - (percent / 100) * circumference;
+  return (
+    <div className="relative h-16 w-16 shrink-0">
+      <svg viewBox="0 0 64 64" className="h-16 w-16 -rotate-90">
+        <circle cx="32" cy="32" r={r} fill="none" stroke="rgb(var(--surface-2))" strokeWidth="6" />
+        <circle
+          cx="32"
+          cy="32"
+          r={r}
+          fill="none"
+          stroke="rgb(var(--primary))"
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          className="transition-all duration-700 ease-out"
+        />
+      </svg>
+      <span className="absolute inset-0 grid place-items-center text-sm font-bold text-text">
+        {percent}%
+      </span>
+    </div>
+  );
+};
+
 const Profile = () => {
   const dispatch = useDispatch();
 
@@ -54,12 +96,23 @@ const Profile = () => {
   const [profileData, setProfileData] = useState(initialState);
   const [profileImage, setProfileImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [photoCleared, setPhotoCleared] = useState(false);
 
   const { name, email, phone, bio, role, isVerified, whatsappOptIn, grade } = profileData;
 
   const handleImageChange = (e) => {
-    setProfileImage(e.target.files[0]);
-    setImagePreview(URL.createObjectURL(e.target.files[0]));
+    const file = e.target.files[0];
+    if (!file) return;
+    setProfileImage(file);
+    setImagePreview(URL.createObjectURL(file));
+    setPhotoCleared(false);
+  };
+
+  const removePhoto = () => {
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setProfileImage(null);
+    setImagePreview(null);
+    setPhotoCleared(true);
   };
 
   const handleInputChange = (e) => {
@@ -67,10 +120,56 @@ const Profile = () => {
     setProfileData({ ...profileData, [name]: value });
   };
 
+  // The photo the UI is currently showing / would save.
+  const effectivePhoto = imagePreview !== null ? imagePreview : photoCleared ? "" : user?.photo || "";
+  const hasPhoto = !!effectivePhoto;
+
+  // Live completeness — recomputes as the user edits so the ring reacts.
+  const { pct, missing } = useMemo(() => {
+    const checks = [
+      { label: "şəkil", done: hasPhoto },
+      { label: "ad", done: !!name?.trim() },
+      { label: "telefon", done: !!phone?.trim() },
+      { label: "haqqında", done: !!bio?.trim() },
+      ...(role === "student" ? [{ label: "sinif", done: !!grade }] : []),
+    ];
+    const done = checks.filter((c) => c.done).length;
+    return {
+      pct: Math.round((done / checks.length) * 100),
+      missing: checks.filter((c) => !c.done).map((c) => c.label),
+    };
+  }, [hasPhoto, name, phone, bio, grade, role]);
+
+  // Dirty tracking — Save stays disabled until something actually changed.
+  const dirty =
+    name !== (user?.name || "") ||
+    phone !== (user?.phone || "") ||
+    bio !== (user?.bio || "") ||
+    (whatsappOptIn ?? true) !== (user?.whatsappOptIn ?? true) ||
+    grade !== (user?.grade || "") ||
+    profileImage !== null ||
+    photoCleared;
+
+  // Loose international-format check — non-blocking, just a hint.
+  const phoneValid = !phone?.trim() || /^\+?\d[\d\s()-]{7,}$/.test(phone.trim());
+
+  const memberSince = user?.createdAt
+    ? `${AZ_MONTHS[new Date(user.createdAt).getMonth()]} ${new Date(user.createdAt).getFullYear()}`
+    : null;
+
+  const copyEmail = async () => {
+    try {
+      await navigator.clipboard.writeText(email);
+      toast.success("Email kopyalandı");
+    } catch {
+      toast.error("Kopyalanmadı");
+    }
+  };
+
   const handleUpdate = async (e) => {
     e.preventDefault();
-    // Default to the existing photo; only replaced if a new upload succeeds.
-    let imageUrl = profileData.photo;
+    // Baseline: keep current, clear on explicit remove, replace on new upload.
+    let imageUrl = photoCleared && !profileImage ? "" : profileData.photo;
     try {
       if (
         profileImage !== null &&
@@ -83,7 +182,7 @@ const Profile = () => {
         }
 
         const image = new FormData();
-        image.append("file", profileImage);
+        image.append("file", profileImage, profileImage.name || "avatar.jpg");
         image.append("cloud_name", cloud_name);
         image.append("upload_preset", upload_preset);
 
@@ -108,6 +207,9 @@ const Profile = () => {
         ...(profileData.grade ? { grade: profileData.grade } : {}),
       };
       await dispatch(updateUser(userData));
+      setProfileImage(null);
+      setImagePreview(null);
+      setPhotoCleared(false);
       toast.success("Profil yeniləndi");
     } catch (error) {
       toast.error(error.message);
@@ -143,106 +245,188 @@ const Profile = () => {
           <TailSpin height="80" width="80" color="rgb(74 100 220)" visible />
         </div>
       ) : (
-          <>
-            {/* Header */}
-            <div className="flex flex-col items-center gap-6 rounded-3xl border border-line bg-surface p-6 shadow-soft sm:flex-row sm:p-8">
-              <label htmlFor="image" className="group relative shrink-0 cursor-pointer">
-                <img
-                  src={imagePreview === null ? user.photo : imagePreview}
-                  alt={user.name}
-                  className="h-28 w-28 rounded-full border border-line object-cover shadow-soft"
-                />
-                <span className="absolute inset-0 grid place-items-center rounded-full bg-black/45 text-white opacity-0 transition-opacity group-hover:opacity-100">
-                  <FiCamera className="text-2xl" />
-                </span>
-              </label>
-              <input
-                type="file"
-                className="hidden"
-                accept="image/*"
-                id="image"
-                name="image"
-                onChange={handleImageChange}
-              />
-              <div className="text-center sm:text-left">
-                <div className="flex flex-wrap items-center justify-center gap-2.5 sm:justify-start">
-                  <h1 className="font-display text-2xl font-bold text-text">{profileData?.name}</h1>
-                  <Badge tone={role === "admin" ? "primary" : role === "teacher" ? "accent" : "neutral"}>
-                    {roleLabels[role] || role}
-                  </Badge>
-                  {isVerified ? (
-                    <Badge tone="success">Təsdiqlənib</Badge>
-                  ) : (
-                    <Badge tone="warning">Təsdiqlənməyib</Badge>
-                  )}
-                </div>
-                <p className="mt-1.5 text-muted">{profileData?.email}</p>
-                <p className="mt-1 text-sm text-muted">Profil şəklini dəyişmək üçün şəklin üzərinə kliklə.</p>
-              </div>
+        <>
+          {/* ── Hero with cover + overlapping avatar + completeness ── */}
+          <div className="overflow-hidden rounded-3xl border border-line bg-surface shadow-soft">
+            <div className="relative h-28 bg-gradient-to-br from-primary via-primary to-accent2 sm:h-32">
+              <div aria-hidden className="absolute inset-0 bg-graph-on-dark opacity-60" />
             </div>
 
-            {/* Form */}
-            <form
-              onSubmit={handleUpdate}
-              className="mt-6 rounded-3xl border border-line bg-surface p-6 shadow-soft sm:p-8"
-            >
-              <div className="grid gap-6 md:grid-cols-2">
-                <Field label="Ad və Soyad" htmlFor="name">
-                  <input id="name" name="name" value={name} onChange={handleInputChange} className={inputClass} />
-                </Field>
-                <Field label="Email" htmlFor="email" hint="Email dəyişdirilə bilməz">
-                  <input id="email" name="email" type="email" disabled value={email} className={inputClass} />
-                </Field>
+            <div className="px-6 pb-6 sm:px-8">
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+                <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-end">
+                  {/* avatar */}
+                  <div className="-mt-14 flex flex-col items-center gap-2 sm:-mt-16">
+                    <label htmlFor="image" className="group relative cursor-pointer">
+                      {hasPhoto ? (
+                        <img
+                          src={effectivePhoto}
+                          alt={user.name}
+                          className="h-28 w-28 rounded-full border-4 border-surface object-cover shadow-lift"
+                        />
+                      ) : (
+                        <span className="grid h-28 w-28 place-items-center rounded-full border-4 border-surface bg-primary/15 font-display text-3xl font-bold text-primary shadow-lift">
+                          {initialsOf(name)}
+                        </span>
+                      )}
+                      <span className="absolute inset-0 grid place-items-center rounded-full bg-black/45 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                        <FiCamera className="text-2xl" />
+                      </span>
+                    </label>
+                    {hasPhoto && (
+                      <button
+                        type="button"
+                        onClick={removePhoto}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-muted transition-colors hover:text-danger"
+                      >
+                        <FiTrash2 /> Şəkli sil
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    id="image"
+                    name="image"
+                    onChange={handleImageChange}
+                  />
+
+                  <div className="pb-1 text-center sm:pb-2 sm:text-left">
+                    <div className="flex flex-wrap items-center justify-center gap-2.5 sm:justify-start">
+                      <h1 className="font-display text-2xl font-bold text-text">{name}</h1>
+                      <Badge tone={role === "admin" ? "primary" : role === "teacher" ? "accent" : "neutral"}>
+                        {roleLabels[role] || role}
+                      </Badge>
+                      {isVerified ? (
+                        <Badge tone="success">Təsdiqlənib</Badge>
+                      ) : (
+                        <Badge tone="warning">Təsdiqlənməyib</Badge>
+                      )}
+                    </div>
+                    <p className="mt-1.5 text-muted">{email}</p>
+                    {memberSince && (
+                      <p className="mt-0.5 text-sm text-muted">Üzv olub: {memberSince}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* completeness */}
+                <div className="flex items-center gap-3 rounded-2xl border border-line bg-surface2/40 p-3 sm:pb-2">
+                  <CompletenessRing percent={pct} />
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-text">
+                      {pct === 100 ? "Profil tamamlanıb 🎉" : `Profil ${pct}% tamamlanıb`}
+                    </p>
+                    {pct < 100 && (
+                      <p className="mt-0.5 text-xs text-muted">Əlavə et: {missing.join(", ")}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Form ── */}
+          <form
+            onSubmit={handleUpdate}
+            className="mt-6 rounded-3xl border border-line bg-surface p-6 shadow-soft sm:p-8"
+          >
+            <div className="grid gap-6 md:grid-cols-2">
+              <Field label="Ad və Soyad" htmlFor="name">
+                <input id="name" name="name" value={name} onChange={handleInputChange} className={inputClass} />
+              </Field>
+
+              <Field label="Email" htmlFor="email" hint="Email dəyişdirilə bilməz">
+                <div className="relative">
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    disabled
+                    value={email}
+                    className={`${inputClass} pr-11`}
+                  />
+                  <button
+                    type="button"
+                    onClick={copyEmail}
+                    aria-label="Email-i kopyala"
+                    className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg text-muted transition-colors hover:bg-surface2 hover:text-text"
+                  >
+                    <FiCopy />
+                  </button>
+                </div>
+              </Field>
+
+              <div>
                 <Field label="Telefon" htmlFor="phone">
                   <input id="phone" name="phone" value={phone} onChange={handleInputChange} className={inputClass} />
                 </Field>
-                {role === "student" && (
-                  <Field label="Sinif">
-                    <Select
-                      value={grade}
-                      onChange={(v) => setProfileData((p) => ({ ...p, grade: v }))}
-                      options={GRADES.map((g) => ({ value: g, label: gradeLabel(g) }))}
-                      placeholder="Sinif seç"
-                    />
-                  </Field>
-                )}
-                <Field label="Haqqımda" htmlFor="bio">
-                  <textarea id="bio" name="bio" value={bio} onChange={handleInputChange} className={textareaClass} />
-                </Field>
+                {phone?.trim() &&
+                  (phoneValid ? (
+                    <p className="mt-1.5 flex items-center gap-1 text-xs text-success">
+                      <FiCheck /> Format düzgündür
+                    </p>
+                  ) : (
+                    <p className="mt-1.5 flex items-center gap-1 text-xs text-warning">
+                      <FiAlertCircle /> Beynəlxalq formatda yazın (məs. +99450...)
+                    </p>
+                  ))}
               </div>
 
-              {/* WhatsApp notification opt-in. Requires a phone number on file. */}
-              <label className="mt-6 flex cursor-pointer items-start justify-between gap-4 rounded-2xl border border-line bg-surface2/40 p-4">
-                <span className="min-w-0">
-                  <span className="block font-semibold text-text">WhatsApp bildirişləri</span>
-                  <span className="mt-0.5 block text-sm text-muted">
-                    Yeni imtahan əlavə olunduqda WhatsApp-a avtomatik bildiriş al. Telefon nömrən
-                    beynəlxalq formatda olmalıdır (məs. +99450...).
-                  </span>
-                </span>
-                <input
-                  type="checkbox"
-                  checked={!!whatsappOptIn}
-                  onChange={(e) =>
-                    setProfileData((p) => ({ ...p, whatsappOptIn: e.target.checked }))
-                  }
-                  className="mt-1 h-5 w-5 shrink-0 accent-primary"
-                />
-              </label>
+              {role === "student" && (
+                <Field label="Sinif">
+                  <Select
+                    value={grade}
+                    onChange={(v) => setProfileData((p) => ({ ...p, grade: v }))}
+                    options={GRADES.map((g) => ({ value: g, label: gradeLabel(g) }))}
+                    placeholder="Sinif seç"
+                  />
+                </Field>
+              )}
 
-              <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
-                <Button type="submit" disabled={isLoading}>
+              <Field label="Haqqımda" htmlFor="bio">
+                <textarea id="bio" name="bio" value={bio} onChange={handleInputChange} className={textareaClass} />
+              </Field>
+            </div>
+
+            {/* WhatsApp notification opt-in. Requires a phone number on file. */}
+            <label className="mt-6 flex cursor-pointer items-start justify-between gap-4 rounded-2xl border border-line bg-surface2/40 p-4">
+              <span className="min-w-0">
+                <span className="block font-semibold text-text">WhatsApp bildirişləri</span>
+                <span className="mt-0.5 block text-sm text-muted">
+                  Yeni imtahan əlavə olunduqda WhatsApp-a avtomatik bildiriş al. Telefon nömrən
+                  beynəlxalq formatda olmalıdır (məs. +99450...).
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                checked={!!whatsappOptIn}
+                onChange={(e) =>
+                  setProfileData((p) => ({ ...p, whatsappOptIn: e.target.checked }))
+                }
+                className="mt-1 h-5 w-5 shrink-0 accent-primary"
+              />
+            </label>
+
+            <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Button type="submit" disabled={isLoading || !dirty}>
                   {isLoading ? <Spinner /> : "Yadda saxla"}
                 </Button>
-                <Button to="/classes" variant="soft">
-                  İmtahanlar
-                </Button>
+                {dirty && !isLoading && (
+                  <span className="text-sm text-muted">Saxlanılmamış dəyişikliklər var</span>
+                )}
               </div>
-            </form>
+              <Button to="/classes" variant="soft">
+                İmtahanlar
+              </Button>
+            </div>
+          </form>
 
-            <ChangePasswordCard />
-          </>
-        )}
+          <ChangePasswordCard />
+        </>
+      )}
     </AccountLayout>
   );
 };
