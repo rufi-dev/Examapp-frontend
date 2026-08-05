@@ -243,7 +243,7 @@ const Profile = () => {
     <AccountLayout title="Profil" subtitle="Hesab məlumatların, təhlükəsizlik və bildirişlər.">
       {!user ? (
         <div className="flex justify-center py-24">
-          <TailSpin height="80" width="80" color="rgb(74 100 220)" visible />
+          <TailSpin height="80" width="80" color="rgb(30 122 43)" visible />
         </div>
       ) : (
         <>

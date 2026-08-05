@@ -214,7 +214,7 @@ const QuestionList = () => {
                                 </button>
                             </div>
                             {isLoading ? (
-                                <button className="bg-[#6dabe4] w-[120px] flex justify-center text-white py-2 px-4 rounded-md text-sm" disabled>
+                                <button className="bg-primary/70 w-[120px] flex justify-center text-white py-2 px-4 rounded-md text-sm" disabled>
                                     <Spinner />
                                 </button>
                             ) : (

@@ -11,14 +11,14 @@
     --border: 221 223 229;
     --text: 34 38 49;
     --text-muted: 103 108 120;
-    --primary: 74 100 220;
-    --primary-hover: 60 83 205;
+    --primary: 30 122 43;
+    --primary-hover: 24 100 36;
     --primary-fg: 251 252 255;
     --accent-2: 150 125 232;
     --success: 61 184 124;
     --warning: 233 180 82;
     --danger: 215 51 55;
-    --ring: 74 100 220;
+    --ring: 30 122 43;
     --shadow: 16 21 36;
     /* Defaults so `advanced`/`navy` classes resolve outside .blueprint too. */
     --advanced: 150 125 232;
@@ -34,14 +34,14 @@
     --border: 50 53 62;
     --text: 237 238 243;
     --text-muted: 155 158 167;
-    --primary: 100 123 235;
-    --primary-hover: 119 143 250;
+    --primary: 52 185 74;
+    --primary-hover: 74 210 96;
     --primary-fg: 10 13 22;
     --accent-2: 161 141 238;
     --success: 71 197 140;
     --warning: 238 187 88;
     --danger: 240 87 78;
-    --ring: 100 123 235;
+    --ring: 52 185 74;
     --shadow: 0 0 1;
     --advanced: 161 141 238;
     --navy: 30 40 66;
@@ -62,8 +62,8 @@
     --border: 221 228 235;
     --text: 25 41 65;          /* #10233E */
     --text-muted: 86 101 117;    /* #52657A */
-    --primary: 48 97 216;       /* #2457E6 cobalt */
-    --primary-hover: 31 79 204;
+    --primary: 30 122 43;       /* forest green (logo) */
+    --primary-hover: 24 100 36;
     --primary-fg: 251 254 255;
     --accent-2: 48 182 188;      /* #15B8C8 cyan */
     --advanced: 115 66 211;      /* #6D3DE8 purple */
@@ -71,7 +71,7 @@
     --success: 16 136 70;       /* #15803D */
     --warning: 222 124 0;        /* #D97706 */
     --danger: 201 48 45;         /* #C62828 */
-    --ring: 48 97 216;
+    --ring: 30 122 43;
     --shadow: 21 40 75;
     --font-display: "Plus Jakarta Sans", Inter, system-ui, sans-serif;
   }
@@ -84,8 +84,8 @@
     --border: 48 62 82;
     --text: 239 242 246;
     --text-muted: 155 166 177;
-    --primary: 80 128 235;
-    --primary-hover: 101 148 250;
+    --primary: 52 185 74;
+    --primary-hover: 74 210 96;
     --primary-fg: 6 13 26;
     --accent-2: 62 191 198;
     --advanced: 147 113 238;
@@ -93,7 +93,7 @@
     --success: 74 183 117;
     --warning: 246 161 79;
     --danger: 236 92 82;
-    --ring: 80 128 235;
+    --ring: 52 185 74;
     --shadow: 0 0 1;
   }
 

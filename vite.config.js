@@ -32,7 +32,7 @@ export default defineConfig(({ mode }) => {
         scope: '/',
         display: 'standalone',
         background_color: '#f6f7fb',
-        theme_color: '#f6f7fb',
+        theme_color: '#1E7A2B',
         categories: ['education'],
         icons: [
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
