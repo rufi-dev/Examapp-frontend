@@ -26,7 +26,7 @@ const Footer = () => {
         <div className="grid gap-12 lg:grid-cols-[1.7fr_1fr_1fr]">
           {/* brand */}
           <div className="max-w-sm">
-            <BunkerMathLogo variant="full" size={92} />
+            <BunkerMathLogo size={52} textClassName="text-white" />
             <p className="mt-4 text-sm leading-relaxed text-white/70">
               Riyaziyyat imtahanına daha ağıllı və planlı hazırlaş. Real imtahan formatında
               sınaqlar, mərhələli həllər və nəticələrinə uyğun şəxsi məşq planı.
