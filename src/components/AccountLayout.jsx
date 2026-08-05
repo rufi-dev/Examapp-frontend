@@ -24,6 +24,7 @@ import {
   FiActivity,
 } from "react-icons/fi";
 import { LuGraduationCap } from "react-icons/lu";
+import BunkerMathLogo from "./blueprint/BunkerMathLogo";
 
 const navItems = [
   { to: "/dashboard", label: "İcmal", icon: FiGrid, end: true },
@@ -133,12 +134,7 @@ export default function AccountLayout({ title, subtitle, actions, children }) {
     <div className="flex h-full flex-col">
       <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-line px-5">
         <Link to="/" onClick={close} className="flex items-center">
-          <img
-            src="/bunker-logo.png"
-            alt="BunkerMath"
-            className="h-11 w-auto select-none object-contain"
-            draggable={false}
-          />
+          <BunkerMathLogo size={42} />
         </Link>
         <button
           onClick={close}
@@ -241,12 +237,7 @@ export default function AccountLayout({ title, subtitle, actions, children }) {
               <FiMenu className="text-[20px]" />
             </button>
             <Link to="/" className="flex items-center lg:hidden">
-              <img
-                src="/bunker-logo.png"
-                alt="BunkerMath"
-                className="h-9 w-auto select-none object-contain"
-                draggable={false}
-              />
+              <BunkerMathLogo size={32} />
             </Link>
             {/* Desktop: pressable location breadcrumb (the left is otherwise
                 empty here — logo/menu are mobile-only). */}
