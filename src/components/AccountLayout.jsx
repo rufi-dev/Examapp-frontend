@@ -134,7 +134,7 @@ export default function AccountLayout({ title, subtitle, actions, children }) {
     <div className="flex h-full flex-col">
       <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-line px-5">
         <Link to="/" onClick={close} className="flex items-center">
-          <BunkerMathLogo size={42} />
+          <BunkerMathLogo size={46} />
         </Link>
         <button
           onClick={close}
