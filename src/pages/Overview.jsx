@@ -68,6 +68,29 @@ const Overview = () => {
       title={`Salam, ${firstName} 👋`}
       subtitle="Hesabının icmalı və ən son imtahanlar."
     >
+      {/* Create-exam banner — staff only, pinned to the very top. */}
+      {isStaff && (
+        <div className="relative mb-8 overflow-hidden rounded-3xl border border-line bg-gradient-to-r from-primary/10 via-accent2/10 to-primary/10 p-6 shadow-soft sm:p-7">
+          <div aria-hidden className="absolute inset-0 bg-dots opacity-50" />
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-4">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-primary text-primary-fg shadow-glow">
+                <FiPlus className="text-2xl" />
+              </span>
+              <div>
+                <h2 className="font-display text-xl font-bold text-text">Yeni imtahan yarat</h2>
+                <p className="mt-1 max-w-md text-sm text-muted">
+                  Sinif seç və yeni sınaq/imtahan əlavə et — şagirdlərə dərhal görünəcək.
+                </p>
+              </div>
+            </div>
+            <Button to="/classes" className="shrink-0">
+              <FiPlus /> İmtahan əlavə et
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Latest exams — the dashboard shortcut to a just-published exam. */}
       <div>
         <div className="mb-4 flex items-center justify-between gap-3">
@@ -102,29 +125,20 @@ const Overview = () => {
         )}
       </div>
 
-      {/* Quick links */}
-      <div className="mt-8 grid gap-4 sm:grid-cols-2">
-        <div className="flex items-center justify-between gap-4 rounded-3xl border border-line bg-surface p-6 shadow-soft">
-          <div>
-            <h3 className="font-display text-lg font-bold text-text">
-              {isStaff ? "İmtahan əlavə et" : "İmtahanlara bax"}
-            </h3>
-            <p className="mt-1 text-sm text-muted">
-              {isStaff ? "Sinif seç və yeni imtahan yarat." : "Siniflərdən sınaq seç və başla."}
-            </p>
+      {/* Quick links — staff already have the create banner up top, so they only
+          need the "İmtahanlarım" shortcut here; students also get a browse card. */}
+      <div className={`mt-8 grid gap-4 ${isStaff ? "" : "sm:grid-cols-2"}`}>
+        {!isStaff && (
+          <div className="flex items-center justify-between gap-4 rounded-3xl border border-line bg-surface p-6 shadow-soft">
+            <div>
+              <h3 className="font-display text-lg font-bold text-text">İmtahanlara bax</h3>
+              <p className="mt-1 text-sm text-muted">Siniflərdən sınaq seç və başla.</p>
+            </div>
+            <Button to="/classes" size="sm">
+              <FiBookOpen /> Bax
+            </Button>
           </div>
-          <Button to="/classes" size="sm">
-            {isStaff ? (
-              <>
-                <FiPlus /> Əlavə et
-              </>
-            ) : (
-              <>
-                <FiBookOpen /> Bax
-              </>
-            )}
-          </Button>
-        </div>
+        )}
         <div className="flex items-center justify-between gap-4 rounded-3xl border border-line bg-surface p-6 shadow-soft">
           <div>
             <h3 className="font-display text-lg font-bold text-text">İmtahanlarım</h3>
