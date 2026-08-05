@@ -132,13 +132,13 @@ export default function AccountLayout({ title, subtitle, actions, children }) {
   const SidebarInner = () => (
     <div className="flex h-full flex-col">
       <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-line px-5">
-        <Link to="/" onClick={close} className="flex items-center gap-2.5">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary font-display text-lg font-extrabold text-primary-fg shadow-glow">
-            B
-          </span>
-          <span className="font-display text-xl font-bold tracking-tight text-text">
-            Bunker<span className="text-primary">Math</span>
-          </span>
+        <Link to="/" onClick={close} className="flex items-center">
+          <img
+            src="/bunker-logo.png"
+            alt="BunkerMath"
+            className="h-11 w-auto select-none object-contain"
+            draggable={false}
+          />
         </Link>
         <button
           onClick={close}
@@ -240,13 +240,13 @@ export default function AccountLayout({ title, subtitle, actions, children }) {
             >
               <FiMenu className="text-[20px]" />
             </button>
-            <Link to="/" className="flex items-center gap-2 lg:hidden">
-              <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary font-display text-base font-extrabold text-primary-fg">
-                B
-              </span>
-              <span className="font-display text-lg font-bold tracking-tight text-text">
-                Bunker<span className="text-primary">Math</span>
-              </span>
+            <Link to="/" className="flex items-center lg:hidden">
+              <img
+                src="/bunker-logo.png"
+                alt="BunkerMath"
+                className="h-9 w-auto select-none object-contain"
+                draggable={false}
+              />
             </Link>
             {/* Desktop: pressable location breadcrumb (the left is otherwise
                 empty here — logo/menu are mobile-only). */}
