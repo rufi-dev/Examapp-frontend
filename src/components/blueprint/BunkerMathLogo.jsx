@@ -28,7 +28,7 @@ const BunkerMathLogo = ({
   return (
     <span className={`inline-flex items-center gap-2.5 ${className}`} {...rest}>
       <img
-        src="/bunker-emblem.png"
+        src="/bunker-shield.png"
         alt={showText ? "" : "BunkerMath"}
         style={{ height: size }}
         className="w-auto select-none object-contain"
