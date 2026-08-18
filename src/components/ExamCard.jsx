@@ -93,9 +93,8 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
       onClick={openCard}
       className="group flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft ring-1 ring-transparent transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:border-primary/30 hover:shadow-lift hover:ring-primary/10"
     >
-      {/* Cover — a tall frame that carries the card. The title + stats sit ON the
-          artwork in a frosted-glass panel; only the action button lives below. */}
-      <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden">
+      {/* Cover — kept fully visible (no overlay panel) so the artwork reads clearly. */}
+      <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden">
         {exam.coverImage ? (
           <img
             src={exam.coverImage}
@@ -108,9 +107,8 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
             className="transition-transform duration-500 ease-out-quint group-hover:scale-[1.05]"
           />
         )}
-        {/* scrims — top for the badges, bottom to seat the glass panel */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/45 to-transparent" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/70 via-black/25 to-transparent" />
+        {/* light top scrim so the badges stay legible over any cover */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/40 to-transparent" />
         <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-2">
           <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold shadow-sm ring-1 ring-white/25 ${statusSolid}`}>
             {upcoming ? <FiClock className="text-[12px]" /> : <span className="h-1.5 w-1.5 rounded-full bg-white" />}
@@ -133,92 +131,86 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
             </span>
           </div>
         </div>
-
-        {/* One frosted-glass "shelf" — name, stats AND the action live together on
-            the artwork, so the card reads as a single object with no loose button. */}
-        <div className="absolute inset-x-2.5 bottom-2.5" onClick={(e) => e.stopPropagation()}>
-          <div className="rounded-2xl border border-white/20 bg-black/35 p-3 shadow-lg backdrop-blur-md">
-            <h3 className="line-clamp-1 font-display text-[15px] font-bold leading-snug text-white drop-shadow">
-              {exam.name}
-            </h3>
-            <div className="mt-2 grid grid-cols-3 divide-x divide-white/20">
-              <div className="px-1 text-center">
-                <p className="font-display text-base font-extrabold leading-none tabular-nums text-white">{qCount}</p>
-                <p className="mt-1 text-[9px] font-semibold uppercase tracking-wide text-white/65">Sual</p>
-              </div>
-              <div className="px-1 text-center">
-                <p className="font-display text-base font-extrabold leading-none tabular-nums text-white">
-                  {Math.round((exam.duration || 0) / 60)}
-                </p>
-                <p className="mt-1 text-[9px] font-semibold uppercase tracking-wide text-white/65">Dəq</p>
-              </div>
-              <div className="px-1 text-center">
-                <p className="font-display text-base font-extrabold leading-none tabular-nums text-white">
-                  {exam.totalMarks ?? "—"}
-                </p>
-                <p className="mt-1 text-[9px] font-semibold uppercase tracking-wide text-white/65">Bal</p>
-              </div>
-            </div>
-
-            <div className="mt-3">
-              {publicView ? (
-                <Button onClick={openCard} size="md" className="w-full">
-                  {!free && !owned && !isStaff ? (
-                    `Ödəniş et və başla · ${exam.price} ₼`
-                  ) : (
-                    <>
-                      <FiPlay /> Başla
-                    </>
-                  )}
-                </Button>
-              ) : taken ? (
-                <div className="flex flex-col gap-2">
-                  <Button to={`/exam/${exam._id}/result`} size="md" className="w-full bg-success text-white hover:brightness-105">
-                    <FiBarChart2 /> Nəticəni gör
-                  </Button>
-                  <Button
-                    to={`/exam/details/${exam._id}`}
-                    size="md"
-                    className="w-full border border-white/30 bg-white/10 text-white hover:bg-white/20"
-                  >
-                    İmtahana bax
-                  </Button>
-                </div>
-              ) : upcoming ? (
-                <Button disabled size="md" className="w-full">
-                  <FiClock /> Tezliklə · {fmtDate(exam.startDate)}
-                </Button>
-              ) : ended ? (
-                <Button disabled size="md" className="w-full">
-                  İmtahan bitib
-                </Button>
-              ) : owned ? (
-                <Button to={`/exam/details/${exam._id}`} size="md" className="w-full">
-                  <FiPlay /> İmtahana başla
-                </Button>
-              ) : (
-                <Button onClick={buy} size="md" className="w-full">
-                  {free ? (
-                    <>
-                      <FiCheckCircle /> Pulsuz əldə et
-                    </>
-                  ) : (
-                    `Ödəniş et və qoşul · ${exam.price} AZN`
-                  )}
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
       </div>
 
-      {/* Owner/admin tools only — a slim footer under the artwork (students never
-          see this, so their card is pure image + glass). */}
-      {!publicView && canManage && (
-        <div className="p-2.5" onClick={(e) => e.stopPropagation()}>
-          <ExamAdminActions exam={exam} onChanged={onChanged} />
+      {/* Info block — solid surface, dark readable text. Title, stats and the
+          action sit together as one unit directly under the cover. */}
+      <div className="flex flex-1 flex-col p-4">
+        <h3 className="line-clamp-2 min-h-[2.75rem] font-display text-[16px] font-bold leading-snug text-text transition-colors group-hover:text-primary">
+          {exam.name}
+        </h3>
+
+        <div className="mt-3 grid grid-cols-3 divide-x divide-line overflow-hidden rounded-xl border border-line bg-surface2/50">
+          <div className="px-1 py-2.5 text-center">
+            <p className="font-display text-lg font-extrabold leading-none tabular-nums text-text">{qCount}</p>
+            <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-muted">Sual</p>
+          </div>
+          <div className="px-1 py-2.5 text-center">
+            <p className="font-display text-lg font-extrabold leading-none tabular-nums text-text">
+              {Math.round((exam.duration || 0) / 60)}
+            </p>
+            <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-muted">Dəq</p>
+          </div>
+          <div className="px-1 py-2.5 text-center">
+            <p className="font-display text-lg font-extrabold leading-none tabular-nums text-text">
+              {exam.totalMarks ?? "—"}
+            </p>
+            <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-muted">Bal</p>
+          </div>
         </div>
-      )}
+
+        <div className="mt-3" onClick={(e) => e.stopPropagation()}>
+          {publicView ? (
+            <Button onClick={openCard} size="md" className="w-full">
+              {!free && !owned && !isStaff ? (
+                `Ödəniş et və başla · ${exam.price} ₼`
+              ) : (
+                <>
+                  <FiPlay /> Başla
+                </>
+              )}
+            </Button>
+          ) : taken ? (
+            <div className="flex flex-col gap-2">
+              <Button to={`/exam/${exam._id}/result`} size="md" className="w-full bg-success text-white hover:brightness-105">
+                <FiBarChart2 /> Nəticəni gör
+              </Button>
+              <Button to={`/exam/details/${exam._id}`} variant="outline" size="md" className="w-full">
+                İmtahana bax
+              </Button>
+            </div>
+          ) : upcoming ? (
+            <Button disabled size="md" className="w-full">
+              <FiClock /> Tezliklə · {fmtDate(exam.startDate)}
+            </Button>
+          ) : ended ? (
+            <Button disabled size="md" className="w-full">
+              İmtahan bitib
+            </Button>
+          ) : owned ? (
+            <Button to={`/exam/details/${exam._id}`} size="md" className="w-full">
+              <FiPlay /> İmtahana başla
+            </Button>
+          ) : (
+            <Button onClick={buy} size="md" className="w-full">
+              {free ? (
+                <>
+                  <FiCheckCircle /> Pulsuz əldə et
+                </>
+              ) : (
+                `Ödəniş et və qoşul · ${exam.price} AZN`
+              )}
+            </Button>
+          )}
+        </div>
+
+        {/* Owner/admin tools only — students never see this row. */}
+        {!publicView && canManage && (
+          <div className="mt-3 border-t border-line pt-3" onClick={(e) => e.stopPropagation()}>
+            <ExamAdminActions exam={exam} onChanged={onChanged} />
+          </div>
+        )}
+      </div>
     </div>
   );
 };
