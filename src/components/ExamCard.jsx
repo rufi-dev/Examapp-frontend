@@ -90,9 +90,9 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
       onClick={openCard}
       className="group flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft ring-1 ring-transparent transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:border-primary/30 hover:shadow-lift hover:ring-primary/10"
     >
-      {/* Cover banner with status + price overlaid — a wide 16:10 frame so the
-          artwork scales with the card and stays the dominant element. */}
-      <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden">
+      {/* Cover — a tall frame that carries the card. The title + stats sit ON the
+          artwork in a frosted-glass panel; only the action button lives below. */}
+      <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden">
         {exam.coverImage ? (
           <img
             src={exam.coverImage}
@@ -105,8 +105,9 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
             className="transition-transform duration-500 ease-out-quint group-hover:scale-[1.05]"
           />
         )}
-        {/* light top scrim so the badges stay legible over any cover */}
+        {/* scrims — top for the badges, bottom to seat the glass panel */}
         <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/45 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/70 via-black/25 to-transparent" />
         <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-2">
           <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold shadow-sm ring-1 ring-white/25 ${statusSolid}`}>
             {upcoming ? <FiClock className="text-[12px]" /> : <span className="h-1.5 w-1.5 rounded-full bg-white" />}
@@ -129,37 +130,39 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
             </span>
           </div>
         </div>
-      </div>
 
-      <div className="flex flex-1 flex-col p-4 sm:p-5">
-        {/* Title — clean surface below the cover, room for two lines */}
-        <h3 className="line-clamp-2 min-h-[2.9rem] font-display text-[17px] font-bold leading-snug text-text transition-colors group-hover:text-primary">
-          {exam.name}
-        </h3>
-
-        {/* Stats: Sual / Dəq / Bal — a clean numeric row, hairline dividers, no icons */}
-        <div className="mt-3 grid grid-cols-3 divide-x divide-line overflow-hidden rounded-xl border border-line bg-surface2/40">
-          <div className="px-2 py-2.5 text-center">
-            <p className="font-display text-lg font-extrabold leading-none tabular-nums text-text">{qCount}</p>
-            <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-muted">Sual</p>
-          </div>
-          <div className="px-2 py-2.5 text-center">
-            <p className="font-display text-lg font-extrabold leading-none tabular-nums text-text">
-              {Math.round((exam.duration || 0) / 60)}
-            </p>
-            <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-muted">Dəq</p>
-          </div>
-          <div className="px-2 py-2.5 text-center">
-            <p className="font-display text-lg font-extrabold leading-none tabular-nums text-text">
-              {exam.totalMarks ?? "—"}
-            </p>
-            <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-muted">Bal</p>
+        {/* Frosted-glass panel: exam name + stats, sitting inside the image */}
+        <div className="absolute inset-x-2.5 bottom-2.5">
+          <div className="rounded-xl border border-white/25 bg-white/10 p-3 shadow-lg backdrop-blur-md">
+            <h3 className="line-clamp-1 font-display text-[15px] font-bold leading-snug text-white drop-shadow">
+              {exam.name}
+            </h3>
+            <div className="mt-2 grid grid-cols-3 divide-x divide-white/25">
+              <div className="px-1 text-center">
+                <p className="font-display text-base font-extrabold leading-none tabular-nums text-white">{qCount}</p>
+                <p className="mt-1 text-[9px] font-semibold uppercase tracking-wide text-white/70">Sual</p>
+              </div>
+              <div className="px-1 text-center">
+                <p className="font-display text-base font-extrabold leading-none tabular-nums text-white">
+                  {Math.round((exam.duration || 0) / 60)}
+                </p>
+                <p className="mt-1 text-[9px] font-semibold uppercase tracking-wide text-white/70">Dəq</p>
+              </div>
+              <div className="px-1 text-center">
+                <p className="font-display text-base font-extrabold leading-none tabular-nums text-white">
+                  {exam.totalMarks ?? "—"}
+                </p>
+                <p className="mt-1 text-[9px] font-semibold uppercase tracking-wide text-white/70">Bal</p>
+              </div>
+            </div>
           </div>
         </div>
+      </div>
 
+      <div className="flex flex-1 flex-col p-3.5">
         {/* Footer: owner tools + action button(s). Stop card navigation so these
             controls do their own thing. */}
-        <div className="mt-auto pt-4" onClick={(e) => e.stopPropagation()}>
+        <div className="mt-auto" onClick={(e) => e.stopPropagation()}>
           {!publicView && (
             <ExamAdminActions exam={exam} onChanged={onChanged} className="mb-3 border-t border-line pt-3" />
           )}

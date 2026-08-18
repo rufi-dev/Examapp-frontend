@@ -294,13 +294,29 @@ const ClassList = () => {
                   </>
                 )}
 
-                <h3
-                  className={`absolute inset-x-4 line-clamp-2 font-display text-[19px] font-extrabold leading-tight text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.55)] ${
-                    _class.coverImage ? "bottom-4" : "bottom-7"
-                  }`}
-                >
-                  {label}
-                </h3>
+                {/* Frosted-glass panel: class name + counts, sitting inside the board */}
+                <div className="absolute inset-x-3 bottom-3">
+                  <div className="rounded-xl border border-white/25 bg-white/10 px-3.5 py-2.5 shadow-lg backdrop-blur-md">
+                    <h3 className="line-clamp-1 font-display text-[16px] font-extrabold leading-tight text-white drop-shadow">
+                      {label}
+                    </h3>
+                    <div className="mt-1.5 flex items-center gap-2.5 text-white/90">
+                      <span className="text-xs">
+                        <b className="font-display text-sm font-extrabold tabular-nums text-white">
+                          {_class.students ?? 0}
+                        </b>{" "}
+                        Şagird
+                      </span>
+                      <span className="h-3 w-px bg-white/30" />
+                      <span className="text-xs">
+                        <b className="font-display text-sm font-extrabold tabular-nums text-white">
+                          {_class.exams ?? 0}
+                        </b>{" "}
+                        İmtahan
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
                 {/* the chalk ledge, with two pieces of chalk resting on it */}
                 {!_class.coverImage && (
@@ -312,36 +328,11 @@ const ClassList = () => {
                 )}
               </button>
 
-              {/* ── body: what is actually inside the class ────────────── */}
+              {/* ── body: creator, join code, and the actions ─────────── */}
               <div className="flex flex-1 flex-col p-4">
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="flex items-center gap-2.5 rounded-xl border border-line bg-surface2/60 px-3 py-2.5">
-                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/12 text-primary">
-                      <FiUsers className="text-[15px]" />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block font-display text-lg font-extrabold leading-none text-text">
-                        {_class.students ?? 0}
-                      </span>
-                      <span className="text-[11px] text-muted">Şagird</span>
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2.5 rounded-xl border border-line bg-surface2/60 px-3 py-2.5">
-                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-accent2/12 text-accent2">
-                      <FiFileText className="text-[15px]" />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block font-display text-lg font-extrabold leading-none text-text">
-                        {_class.exams ?? 0}
-                      </span>
-                      <span className="text-[11px] text-muted">İmtahan</span>
-                    </span>
-                  </div>
-                </div>
-
                 {/* Admin only: who created this class. */}
                 {me?.role === "admin" && _class.ownerName && (
-                  <p className="mt-3 flex items-center gap-1.5 truncate text-[11.5px] text-muted">
+                  <p className="flex items-center gap-1.5 truncate text-[11.5px] text-muted">
                     <FiUser className="shrink-0 text-[12px]" /> Yaradan:{" "}
                     <span className="truncate font-semibold text-text">{_class.ownerName}</span>
                   </p>
@@ -375,16 +366,16 @@ const ClassList = () => {
                   {locked ? (
                     <span
                       title="Sinif doludur — müəlliminizlə əlaqə saxlayın"
-                      className="inline-flex h-9 flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-line bg-surface2 px-3.5 text-sm font-semibold text-muted"
+                      className="inline-flex h-12 flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-line bg-surface2 px-4 text-[15px] font-semibold text-muted"
                     >
                       <FiLock /> Gözləmədə
                     </span>
                   ) : (
                     <Link
                       to={`/exam/${_class._id}`}
-                      className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-3.5 text-sm font-semibold text-primary-fg shadow-soft transition-all duration-200 ease-out-quint hover:bg-primary-hover hover:shadow-glow"
+                      className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-[15px] font-bold text-primary-fg shadow-soft transition-all duration-200 ease-out-quint hover:-translate-y-0.5 hover:bg-primary-hover hover:shadow-glow"
                     >
-                      <FiFileText /> İmtahanlar
+                      <FiFileText className="text-[17px]" /> İmtahanlar
                     </Link>
                   )}
                   {mine && (
@@ -394,7 +385,7 @@ const ClassList = () => {
                         onClick={() => setRosterClass(_class)}
                         title="Şagirdlər"
                         aria-label="Şagirdlər"
-                        className={`relative grid h-9 w-9 shrink-0 place-items-center rounded-xl border transition-colors ${
+                        className={`relative grid h-12 w-12 shrink-0 place-items-center rounded-xl border transition-colors ${
                           pending > 0
                             ? "border-warning/50 text-warning hover:bg-warning/10"
                             : "border-line text-muted hover:border-primary/40 hover:text-primary"
@@ -409,7 +400,7 @@ const ClassList = () => {
                         to={`/class/edit/${_class._id}`}
                         title="Düzəliş et"
                         aria-label="Düzəliş et"
-                        className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-line text-muted transition-colors hover:border-primary/40 hover:text-primary"
+                        className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-line text-muted transition-colors hover:border-primary/40 hover:text-primary"
                       >
                         <FiEdit2 />
                       </Link>
@@ -418,7 +409,7 @@ const ClassList = () => {
                         onClick={() => setConfirmClass(_class)}
                         title="Sil"
                         aria-label="Sil"
-                        className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-line text-muted transition-colors hover:border-danger/40 hover:text-danger"
+                        className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-line text-muted transition-colors hover:border-danger/40 hover:text-danger"
                       >
                         <FiTrash2 />
                       </button>
