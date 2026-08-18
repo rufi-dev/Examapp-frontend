@@ -6,17 +6,6 @@ import Hero from "../components/Hero";
 import SectionTitle from "../components/ui/SectionTitle";
 import ExamCard from "../components/ExamCard";
 
-// The exam systems BunkerMath prepares students for. Rendered as a hairline
-// matrix (numbers as the visual anchor), not an icon-card grid.
-const SYSTEMS = [
-  { t: "Buraxılış", d: "9 və 11-ci sinif buraxılış imtahanları — real formatda." },
-  { t: "Qəbul", d: "Ali məktəblərə qəbul imtahanına hədəfli hazırlıq." },
-  { t: "Blok imtahanları", d: "İxtisas bloklarına uyğun tam sınaqlar." },
-  { t: "Mövzu sınaqları", d: "Zəif mövzunu tap, mövzu üzrə məşq et." },
-  { t: "Sinif imtahanları", d: "Müəllimin sinif üçün qurduğu sınaqlar." },
-  { t: "Sərbəst məşq", d: "İstənilən vaxt əlavə test və məşq." },
-];
-
 const Home = () => {
   // Newest exams from OPEN (public) classes — real content, no auth needed.
   const [publicExams, setPublicExams] = useState([]);
@@ -57,42 +46,7 @@ const Home = () => {
       {/* 1 — HERO */}
       <Hero />
 
-      {/* 2 — EXAM SYSTEMS (hairline matrix — structure, not icon-cards) */}
-      <section className="container-app py-16 sm:py-20">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
-              Hazırlıq istiqamətləri
-            </p>
-            <h2 className="mt-2 max-w-xl font-display text-3xl font-extrabold tracking-tight text-text sm:text-4xl">
-              Hansı imtahana hazırlaşırsan?
-            </h2>
-          </div>
-          <p className="max-w-sm text-[15px] leading-relaxed text-muted">
-            Hər istiqamət üçün ayrıca sınaqlar — real imtahan formatında, ani nəticə və
-            mərhələli həllərlə.
-          </p>
-        </div>
-
-        <div className="mt-10 grid gap-px overflow-hidden rounded-3xl border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
-          {SYSTEMS.map((s, i) => (
-            <div
-              key={s.t}
-              className="group relative bg-surface p-6 transition-colors duration-200 ease-out-quint hover:bg-surface2/60 sm:p-7"
-            >
-              <span className="font-display text-sm font-extrabold tabular-nums text-primary/70">
-                0{i + 1}
-              </span>
-              <h3 className="mt-3 font-display text-lg font-bold text-text transition-colors group-hover:text-primary">
-                {s.t}
-              </h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-muted">{s.d}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* 3 — LATEST OPEN EXAMS. Stays mounted while loading (skeletons) so the
+      {/* 2 — LATEST OPEN EXAMS. Stays mounted while loading (skeletons) so the
           layout doesn't collapse and the dark section below doesn't jump up on
           every refresh. Hidden only once we KNOW there are no public exams. */}
       {(loadingExams || publicExams.length > 0) && (
