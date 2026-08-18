@@ -132,7 +132,7 @@ const Hero = () => (
             Sınaqlara bax
           </a>
         </div>
-        <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
+        <ul className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-2">
           {proof.map((p) => (
             <li key={p} className="flex items-center gap-1.5 text-[12.5px] font-medium text-emerald-50">
               <FiCheckCircle className="shrink-0 text-amber-300" /> {p}
