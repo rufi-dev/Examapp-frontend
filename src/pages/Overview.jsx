@@ -9,7 +9,7 @@ import { getResultsByUser } from "../../redux/features/quiz/resultSlice";
 import AccountLayout from "../components/AccountLayout";
 import Spinner from "../components/Spinner";
 import Button from "../components/ui/Button";
-import { FiEye, FiBookOpen, FiArrowRight, FiPlus } from "react-icons/fi";
+import { FiEye, FiBookOpen, FiArrowRight, FiPlus, FiAward } from "react-icons/fi";
 import ExamCard from "../components/ExamCard";
 import WhatsAppGroupCard from "../components/WhatsAppGroupCard";
 
@@ -69,49 +69,46 @@ const Overview = () => {
       title={`Salam, ${firstName} 👋`}
       subtitle="Hesabının icmalı və ən son imtahanlar."
     >
-      {/* Optional WhatsApp exam-notifications group — visible up top, no longer a
-          mandatory popup. Hides itself when no invite link is configured. */}
-      <WhatsAppGroupCard />
-
-      {/* Create-exam banner — staff only, pinned to the very top. */}
-      {isStaff && (
-        <div className="relative mb-8 overflow-hidden rounded-3xl border border-line bg-gradient-to-r from-primary/10 via-accent2/10 to-primary/10 p-6 shadow-soft sm:p-7">
-          <div aria-hidden className="absolute inset-0 bg-dots opacity-50" />
-          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-4">
-              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-primary text-primary-fg shadow-glow">
-                <FiPlus className="text-2xl" />
+      {/* Compact action row — WhatsApp group + create/my-exams — kept small so the
+          exam list stays the focus and sits high on the page. */}
+      <div className="mb-8 grid gap-4 sm:grid-cols-2">
+        <WhatsAppGroupCard />
+        {isStaff ? (
+          <div className="flex h-full flex-col justify-between gap-3 rounded-2xl border border-line bg-gradient-to-br from-primary/10 to-primary/5 p-4">
+            <div className="flex items-center gap-2.5">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-fg">
+                <FiPlus className="text-lg" />
               </span>
-              <div>
-                <h2 className="font-display text-xl font-bold text-text">Yeni imtahan yarat</h2>
-                <p className="mt-1 max-w-md text-sm text-muted">
-                  Sinif seç və yeni sınaq/imtahan əlavə et — şagirdlərə dərhal görünəcək.
-                </p>
-              </div>
+              <h2 className="font-display text-[15px] font-bold text-text">Yeni imtahan yarat</h2>
             </div>
-            <Button to="/classes" className="shrink-0">
-              <FiPlus /> İmtahan əlavə et
+            <div className="flex gap-2">
+              <Button to="/classes" size="sm" className="flex-1">
+                <FiPlus /> Əlavə et
+              </Button>
+              <Button to="/classes" size="sm" variant="secondary" className="flex-1">
+                <FiBookOpen /> Bax
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex h-full flex-col justify-between gap-3 rounded-2xl border border-line bg-surface p-4">
+            <div className="flex items-center gap-2.5">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
+                <FiAward className="text-lg" />
+              </span>
+              <h2 className="font-display text-[15px] font-bold text-text">İmtahanlarım</h2>
+            </div>
+            <Button to="/myExams" size="sm" variant="soft" className="w-full">
+              <FiArrowRight /> Aç
             </Button>
           </div>
-          {/* Secondary browse action at the bottom of the box. */}
-          <div className="relative mt-5 border-t border-line/60 pt-4">
-            <Link
-              to="/classes"
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary transition-colors hover:underline"
-            >
-              <FiBookOpen /> İmtahanlara bax <FiArrowRight />
-            </Link>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Latest exams — the dashboard shortcut to a just-published exam. */}
+      {/* Exams — the focus of the page. */}
       <div>
         <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="font-display text-lg font-bold text-text">Son əlavə olunan imtahanlar</h2>
-            <p className="text-sm text-muted">Yeni imtahanı tez tap və başla.</p>
-          </div>
+          <h2 className="font-display text-xl font-bold text-text">İmtahanlar</h2>
           <Link to="/classes" className="shrink-0 text-sm font-semibold text-primary hover:underline">
             Hamısı
           </Link>
@@ -137,31 +134,6 @@ const Overview = () => {
             ))}
           </div>
         )}
-      </div>
-
-      {/* Quick links — staff already have the create banner up top, so they only
-          need the "İmtahanlarım" shortcut here; students also get a browse card. */}
-      <div className={`mt-8 grid gap-4 ${isStaff ? "" : "sm:grid-cols-2"}`}>
-        {!isStaff && (
-          <div className="flex items-center justify-between gap-4 rounded-3xl border border-line bg-surface p-6 shadow-soft">
-            <div>
-              <h3 className="font-display text-lg font-bold text-text">İmtahanlara bax</h3>
-              <p className="mt-1 text-sm text-muted">Siniflərdən sınaq seç və başla.</p>
-            </div>
-            <Button to="/classes" size="sm">
-              <FiBookOpen /> Bax
-            </Button>
-          </div>
-        )}
-        <div className="flex items-center justify-between gap-4 rounded-3xl border border-line bg-surface p-6 shadow-soft">
-          <div>
-            <h3 className="font-display text-lg font-bold text-text">İmtahanlarım</h3>
-            <p className="mt-1 text-sm text-muted">Əldə etdiyin imtahanları gör.</p>
-          </div>
-          <Button to="/myExams" size="sm" variant="soft">
-            <FiArrowRight /> Aç
-          </Button>
-        </div>
       </div>
 
       {/* Recent results */}
