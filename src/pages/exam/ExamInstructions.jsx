@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
-import { getExam, getAttemptStatus } from "../../../redux/features/quiz/quizSlice";
+import { getExam, getAttemptStatus, getExamsByUser } from "../../../redux/features/quiz/quizSlice";
 import { getResultsByUserByExam } from "../../../redux/features/quiz/resultSlice";
 import Loader from "../../components/Loader";
 import { toast } from "react-toastify";
@@ -20,7 +20,8 @@ const ExamInstructions = () => {
   const [confirmStart, setConfirmStart] = useState(false);
   const [resumeActive, setResumeActive] = useState(false);
   const [usage, setUsage] = useState(null); // server-truth { used, maxTry }
-  const { singleExam, isLoading } = useSelector((state) => state.quiz);
+  const [myExamsReady, setMyExamsReady] = useState(false);
+  const { singleExam, isLoading, myExams } = useSelector((state) => state.quiz);
   const { resultByExam } = useSelector((state) => state.result);
   const { user } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
@@ -30,6 +31,9 @@ const ExamInstructions = () => {
   useEffect(() => {
     dispatch(getExam(examId));
     dispatch(getResultsByUserByExam(examId));
+    // Load the viewer's acquired exams so we can gate paid content below.
+    setMyExamsReady(false);
+    dispatch(getExamsByUser()).finally(() => setMyExamsReady(true));
     // Server-truth: is an attempt already in progress? If so, offer Resume.
     dispatch(getAttemptStatus(examId))
       .unwrap()
@@ -40,12 +44,39 @@ const ExamInstructions = () => {
       .catch(() => setResumeActive(false));
   }, [dispatch, examId]);
 
+  // Access gate: a PAID exam may only be opened by staff or someone who already
+  // acquired it. Anyone else is sent to the payment page — the detail/start flow
+  // must never be reachable for unpaid content.
+  const free = !singleExam?.price || Number(singleExam.price) === 0;
+  const isStaff = user?.role === "admin" || user?.role === "teacher";
+  const owns =
+    (Array.isArray(myExams) &&
+      myExams.some((m) => String(m._id) === String(examId))) ||
+    (Array.isArray(singleExam?.users) &&
+      singleExam.users.some((u) => String(u?._id || u) === String(user?._id)));
+  const mustPay = !!singleExam?._id && !free && !isStaff && !owns;
+
+  useEffect(() => {
+    // Wait until acquired-exams have loaded (or ownership is already proven by
+    // singleExam.users) so we never bounce a legitimate owner on a race.
+    if (!singleExam?._id || free || isStaff || owns) return;
+    if (!myExamsReady) return;
+    toast.info("Bu imtahan ödənişlidir. Davam etmək üçün ödəniş edin.");
+    navigate(`/exam/${singleExam._id}/pay`, { replace: true });
+  }, [singleExam, free, isStaff, owns, myExamsReady, navigate]);
+
   useEffect(() => {
     setStartDate(formatDateTime(singleExam?.startDate));
     setEndDateString(formatDateTime(singleExam?.endDate));
   }, [singleExam]);
 
   if (isLoading || !singleExam) {
+    return <Loader />;
+  }
+
+  // Paid + not owned: show the loader while the guard effect redirects to /pay
+  // (also covers the brief window before acquired-exams resolve).
+  if (mustPay) {
     return <Loader />;
   }
 

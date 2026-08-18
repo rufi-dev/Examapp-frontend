@@ -167,8 +167,14 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
           )}
 
           {publicView ? (
-            <Button to={`/exam/details/${exam._id}`} size="md" className="w-full">
-              <FiPlay /> Başla
+            <Button onClick={openCard} size="md" className="w-full">
+              {!free && !owned && !isStaff ? (
+                `Ödəniş et və başla · ${exam.price} ₼`
+              ) : (
+                <>
+                  <FiPlay /> Başla
+                </>
+              )}
             </Button>
           ) : taken ? (
             <div className="flex flex-col gap-2 sm:flex-row">

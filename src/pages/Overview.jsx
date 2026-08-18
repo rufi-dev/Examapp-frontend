@@ -94,7 +94,7 @@ const Overview = () => {
               <FiPlus /> İmtahan yarat
             </Button>
           ) : (
-            <Button to="/classes" size="sm" variant="soft" className="w-full">
+            <Button to="/classes" size="sm" className="w-full">
               <FiBookOpen /> İmtahanlara bax
             </Button>
           )}
