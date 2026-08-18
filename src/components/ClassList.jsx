@@ -329,7 +329,7 @@ const ClassList = () => {
               </button>
 
               {/* ── body: creator, join code, and the actions ─────────── */}
-              <div className="flex flex-1 flex-col p-4">
+              <div className="flex flex-1 flex-col gap-3 p-4">
                 {/* Admin only: who created this class. */}
                 {me?.role === "admin" && _class.ownerName && (
                   <p className="flex items-center gap-1.5 truncate text-[11.5px] text-muted">
@@ -345,7 +345,7 @@ const ClassList = () => {
                     type="button"
                     onClick={() => copyCode(_class)}
                     title="Kodu kopyala"
-                    className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-dashed border-line py-2 text-xs font-semibold text-muted transition-colors hover:border-primary/50 hover:text-primary"
+                    className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-line py-2 text-xs font-semibold text-muted transition-colors hover:border-primary/50 hover:text-primary"
                   >
                     {copied === _class._id ? (
                       <>
@@ -362,7 +362,7 @@ const ClassList = () => {
                   </button>
                 )}
 
-                <div className="mt-auto flex items-center gap-2 pt-4">
+                <div className="mt-auto flex items-center gap-2">
                   {locked ? (
                     <span
                       title="Sinif doludur — müəlliminizlə əlaqə saxlayın"
