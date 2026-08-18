@@ -74,7 +74,7 @@ const Navbar = () => {
       <header
         className={`sticky top-0 z-[900] transition-[background-color,box-shadow,border-color] duration-300 ${
           overHero
-            ? "border-b border-transparent bg-transparent"
+            ? "bg-transparent"
             : scrolled
             ? "border-b border-line bg-surface/95 shadow-soft backdrop-blur-md"
             : "border-b border-transparent bg-surface"
