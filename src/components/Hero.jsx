@@ -40,7 +40,52 @@ const Hero = () => (
       style={{ background: "radial-gradient(60% 45% at 88% 12%, rgba(226,182,87,0.28), transparent 58%)" }}
     />
     {/* graph-paper grid */}
-    <div aria-hidden className="pointer-events-none absolute inset-0 bg-graph-on-dark opacity-[0.06]" />
+    <div aria-hidden className="pointer-events-none absolute inset-0 bg-graph-on-dark opacity-[0.05]" />
+
+    {/* tiled mathematical-glyph texture — the signature "pattern" */}
+    <svg
+      aria-hidden
+      className="pointer-events-none absolute inset-0 h-full w-full text-white opacity-[0.055]"
+    >
+      <defs>
+        <pattern
+          id="hero-math"
+          width="170"
+          height="170"
+          patternUnits="userSpaceOnUse"
+          patternTransform="rotate(-8)"
+        >
+          <text x="10" y="42" fontSize="30" fontFamily="Georgia, serif" fill="currentColor">√a</text>
+          <text x="112" y="30" fontSize="20" fontFamily="Georgia, serif" fill="currentColor">x²</text>
+          <text x="132" y="86" fontSize="26" fontFamily="Georgia, serif" fill="currentColor">π</text>
+          <text x="30" y="104" fontSize="24" fontFamily="Georgia, serif" fill="currentColor">∑</text>
+          <text x="92" y="120" fontSize="22" fontFamily="Georgia, serif" fill="currentColor">∫</text>
+          <text x="140" y="150" fontSize="18" fontFamily="Georgia, serif" fill="currentColor">Δ</text>
+          <text x="14" y="150" fontSize="18" fontFamily="Georgia, serif" fill="currentColor">θ</text>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#hero-math)" />
+    </svg>
+
+    {/* faint plotted "function" curves for a graphing-calculator feel */}
+    <svg
+      aria-hidden
+      className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.12]"
+      viewBox="0 0 1440 820"
+      preserveAspectRatio="xMidYMid slice"
+      fill="none"
+      stroke="white"
+    >
+      <path d="M-20,600 C 280,470 470,700 720,560 S 1160,410 1460,520" strokeWidth="2" />
+      <path
+        d="M-20,690 Q 360,560 720,650 T 1460,610"
+        strokeWidth="1.5"
+        strokeDasharray="1 10"
+        strokeLinecap="round"
+      />
+      <path d="M-20,360 C 360,300 520,440 760,360 S 1180,240 1460,320" strokeWidth="1" opacity="0.7" />
+    </svg>
+
     {/* faint π watermark, bottom-left */}
     <span
       aria-hidden
