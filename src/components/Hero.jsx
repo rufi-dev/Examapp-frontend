@@ -47,19 +47,22 @@ const Hero = () => (
         </ul>
       </div>
 
-      {/* Right — illustration (no frame), just a soft glow + floating cards */}
-      <div className="relative mx-auto w-full max-w-[240px] sm:max-w-[300px] lg:max-w-[380px]">
-        {/* soft glow behind the transparent illustration */}
+      {/* Right — framed portrait: squared soft card + green glow + floating cards */}
+      <div className="relative mx-auto w-full max-w-[300px] sm:max-w-[340px] lg:max-w-[400px]">
+        {/* soft green glow behind the frame */}
         <div
           aria-hidden
-          className="absolute inset-x-6 bottom-8 top-10 rounded-[42%] bg-gradient-to-br from-primary/20 to-cyan/15 blur-3xl"
+          className="absolute -inset-3 z-0 rounded-[2rem] bg-gradient-to-br from-primary/30 via-primary/10 to-primary/5 blur-3xl"
         />
 
-        <img
-          src="/hero.png"
-          alt="BunkerMath ilə riyaziyyata hazırlıq"
-          className="relative z-10 w-full animate-scale-in"
-        />
+        {/* the portrait, in a clean squared frame */}
+        <div className="relative z-10 animate-scale-in overflow-hidden rounded-md border border-line bg-surface shadow-lift">
+          <img
+            src="/teacher.jpg"
+            alt="BunkerMath müəllimi"
+            className="aspect-[4/5] w-full object-cover object-top"
+          />
+        </div>
 
         {/* floating stat cards */}
         <div className="animate-float absolute -left-4 top-[42%] z-20 hidden items-center gap-2.5 rounded-2xl border border-line bg-surface px-3.5 py-2.5 shadow-lift sm:flex">
