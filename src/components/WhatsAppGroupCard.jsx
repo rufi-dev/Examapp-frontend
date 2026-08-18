@@ -25,14 +25,18 @@ const WhatsAppGroupCard = () => {
       .catch(() => {});
   }, []);
 
-  if (!link || user?.whatsappGroupJoined) return null;
+  // No invite link configured → nothing to join, render nothing.
+  if (!link) return null;
+
+  const joined = !!user?.whatsappGroupJoined;
 
   const join = async () => {
     window.open(link, "_blank", "noopener");
+    if (joined) return; // already recorded — just reopen the group
     setJoining(true);
     try {
       await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/whatsapp/mark-joined`);
-      await dispatch(getUser()); // flips the flag → the card hides
+      await dispatch(getUser());
       toast.success("Qrupa qoşuldun ✓");
     } catch {
       toast.error("Alınmadı, yenidən cəhd et.");
@@ -43,7 +47,7 @@ const WhatsAppGroupCard = () => {
 
   return (
     <div
-      className="relative mt-8 overflow-hidden rounded-3xl border p-6 shadow-soft sm:p-7"
+      className="relative mb-8 overflow-hidden rounded-3xl border p-6 shadow-soft sm:p-7"
       style={{ borderColor: `${WA}55`, background: `linear-gradient(90deg, ${WA}14, ${WA}05)` }}
     >
       <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -55,9 +59,21 @@ const WhatsAppGroupCard = () => {
             <FaWhatsapp />
           </span>
           <div>
-            <h2 className="font-display text-lg font-bold text-text">İmtahan bildirişləri qrupu</h2>
+            <h2 className="flex items-center gap-2 font-display text-lg font-bold text-text">
+              İmtahan bildirişləri qrupu
+              {joined && (
+                <span
+                  className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                  style={{ backgroundColor: `${WA}22`, color: "#128C4A" }}
+                >
+                  ✓ Qoşulmusan
+                </span>
+              )}
+            </h2>
             <p className="mt-1 max-w-md text-sm text-muted">
-              Yeni imtahanlardan WhatsApp-da ilk xəbər tut. Qoşulmaq istəyə bağlıdır.
+              {joined
+                ? "İstənilən vaxt qrupu aç və yeni imtahan bildirişlərini izlə."
+                : "Yeni imtahanlardan WhatsApp-da ilk xəbər tut. Qoşulmaq istəyə bağlıdır."}
             </p>
           </div>
         </div>
@@ -72,7 +88,7 @@ const WhatsAppGroupCard = () => {
             <Spinner />
           ) : (
             <>
-              <FaWhatsapp className="text-lg" /> Qrupa qoşul
+              <FaWhatsapp className="text-lg" /> {joined ? "Qrupu aç" : "Qrupa qoşul"}
             </>
           )}
         </button>

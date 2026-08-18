@@ -69,6 +69,10 @@ const Overview = () => {
       title={`Salam, ${firstName} 👋`}
       subtitle="Hesabının icmalı və ən son imtahanlar."
     >
+      {/* Optional WhatsApp exam-notifications group — visible up top, no longer a
+          mandatory popup. Hides itself when no invite link is configured. */}
+      <WhatsAppGroupCard />
+
       {/* Create-exam banner — staff only, pinned to the very top. */}
       {isStaff && (
         <div className="relative mb-8 overflow-hidden rounded-3xl border border-line bg-gradient-to-r from-primary/10 via-accent2/10 to-primary/10 p-6 shadow-soft sm:p-7">
@@ -125,9 +129,6 @@ const Overview = () => {
           </div>
         )}
       </div>
-
-      {/* Optional WhatsApp exam-notifications group — no longer a mandatory popup. */}
-      <WhatsAppGroupCard />
 
       {/* Quick links — staff already have the create banner up top, so they only
           need the "İmtahanlarım" shortcut here; students also get a browse card. */}
