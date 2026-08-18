@@ -106,7 +106,7 @@ const Hero = () => (
       <div aria-hidden className="absolute inset-0 bg-gradient-to-b from-emerald-950/65 via-transparent to-transparent" />
       <div aria-hidden className="absolute inset-x-0 bottom-0 top-1/3 bg-gradient-to-t from-emerald-950 via-emerald-950/85 to-transparent" />
 
-      <div className="relative mt-auto px-5 pb-9 pt-10">
+      <div className="relative mt-auto px-5 pb-6 pt-10">
         <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-200">
           <span className="h-1.5 w-1.5 rounded-full bg-amber-300" />
           Azərbaycanda riyaziyyat hazırlığı
