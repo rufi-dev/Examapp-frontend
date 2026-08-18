@@ -11,6 +11,7 @@ import Spinner from "../components/Spinner";
 import Button from "../components/ui/Button";
 import { FiEye, FiBookOpen, FiArrowRight, FiPlus } from "react-icons/fi";
 import ExamCard from "../components/ExamCard";
+import WhatsAppGroupCard from "../components/WhatsAppGroupCard";
 
 const API = `${import.meta.env.VITE_BACKEND_URL}/api/quiz`;
 
@@ -124,6 +125,9 @@ const Overview = () => {
           </div>
         )}
       </div>
+
+      {/* Optional WhatsApp exam-notifications group — no longer a mandatory popup. */}
+      <WhatsAppGroupCard />
 
       {/* Quick links — staff already have the create banner up top, so they only
           need the "İmtahanlarım" shortcut here; students also get a browse card. */}
