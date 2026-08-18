@@ -48,6 +48,8 @@ const navItems = [
 const adminNav = [
   { to: "/users", label: "İstifadəçilər", icon: FiUsers },
   { to: "/examResults", label: "Nəticələr", icon: FiPieChart },
+  // Manual exam-payment approvals (teachers see only their own exams' requests).
+  { to: "/examPayments", label: "Ödənişlər", icon: FiDollarSign },
   // Telegram + WhatsApp notification integrations live here now (moved out of Profil).
   { to: "/connections", label: "Bağlantılar", icon: FiLink2 },
   // Soft-deleted exams — restore or purge (auto-purged after 30 days).
@@ -66,6 +68,7 @@ const PATH_LABELS = {
   "/profile": "Profil",
   "/users": "İstifadəçilər",
   "/examResults": "Nəticələr",
+  "/examPayments": "Ödənişlər",
   "/connections": "Bağlantılar",
   "/trash": "Zibil qutusu",
   "/aiUsage": "AI xərcləri",

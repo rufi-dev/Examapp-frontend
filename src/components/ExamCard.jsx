@@ -3,7 +3,6 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { FiClock, FiBarChart2, FiEyeOff, FiGift, FiPlay, FiCheckCircle } from "react-icons/fi";
 import { addExamToUser, getExamsByUser } from "../../redux/features/quiz/quizSlice";
-import { payExam } from "../../redux/features/stripe/stripeSlice";
 import useServerNow from "../customHook/useServerNow";
 import Button from "./ui/Button";
 import ExamCoverFallback from "./ExamCoverFallback";
@@ -70,7 +69,8 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
       }
       return;
     }
-    await dispatch(payExam({ exam, userId: user?._id }));
+    // Paid exams go through the manual bank-transfer payment page.
+    navigate(`/exam/${exam._id}/pay`);
   };
 
   return (

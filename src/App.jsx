@@ -69,6 +69,8 @@ const ExamResults = lazy(() => import("./pages/admin/ExamResults"));
 const ExamInstructions = lazy(() => import("./pages/exam/ExamInstructions"));
 const JoinByLink = lazy(() => import("./pages/JoinByLink"));
 const Quiz = lazy(() => import("./pages/exam/Quiz"));
+const ExamPayment = lazy(() => import("./pages/exam/ExamPayment"));
+const ExamPayments = lazy(() => import("./pages/admin/ExamPayments"));
 const Result = lazy(() => import("./pages/exam/Result"));
 const MyResults = lazy(() => import("./pages/exam/MyResults"));
 const MyExams = lazy(() => import("./pages/exam/MyExams"));
@@ -226,6 +228,8 @@ function App() {
               />
               <Route path="/myResults" element={<MyResults />} />
               <Route path="/myExams" element={<MyExams />} />
+              <Route path="/exam/:examId/pay" element={<ExamPayment />} />
+              <Route path="/examPayments" element={<ExamPayments />} />
               <Route path="/user/:id/details" element={<UserDetails />} />
               <Route path="/classAdd" element={<ClassAdd />} />
               <Route path="/class/edit/:classId" element={<ClassEdit />} />
