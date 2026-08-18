@@ -93,6 +93,15 @@ const Overview = () => {
               <FiPlus /> İmtahan əlavə et
             </Button>
           </div>
+          {/* Secondary browse action at the bottom of the box. */}
+          <div className="relative mt-5 border-t border-line/60 pt-4">
+            <Link
+              to="/classes"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary transition-colors hover:underline"
+            >
+              <FiBookOpen /> İmtahanlara bax <FiArrowRight />
+            </Link>
+          </div>
         </div>
       )}
 
