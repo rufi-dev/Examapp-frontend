@@ -59,6 +59,8 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
   const qCount =
     exam.questionCount ?? (Array.isArray(exam.questions) ? exam.questions.length : undefined) ?? "—";
 
+  const isStaff = user?.role === "admin" || user?.role === "teacher";
+
   const buy = async (e) => {
     e.preventDefault();
     if (free) {
@@ -73,9 +75,19 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
     navigate(`/exam/${exam._id}/pay`);
   };
 
+  // Clicking a PAID exam that the viewer doesn't own (and isn't staff) goes
+  // straight to the payment page instead of the detail page.
+  const openCard = () => {
+    if (!free && !owned && !isStaff) {
+      navigate(`/exam/${exam._id}/pay`);
+      return;
+    }
+    navigate(`/exam/details/${exam._id}`);
+  };
+
   return (
     <div
-      onClick={() => navigate(`/exam/details/${exam._id}`)}
+      onClick={openCard}
       className="group flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:shadow-lift"
     >
       {/* Cover banner with status + price overlaid */}
