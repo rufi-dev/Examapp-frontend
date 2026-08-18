@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import Button from "../../components/ui/Button";
 import { Field, inputClass } from "../../components/ui/Field";
 import ToggleSection from "../../components/ui/ToggleSection";
+import CoverImageField from "../../components/ui/CoverImageField";
 import { FiLock, FiGlobe } from "react-icons/fi";
 
 const ClassAdd = () => {
@@ -18,6 +19,7 @@ const ClassAdd = () => {
   // OFF by default = public: anyone can see the class until the teacher turns
   // on code-only access.
   const [requireCode, setRequireCode] = useState(false);
+  const [coverImage, setCoverImage] = useState("");
 
   const addClassForm = async (e) => {
     e.preventDefault();
@@ -25,7 +27,7 @@ const ClassAdd = () => {
       return toast.error("Sinif adını daxil edin");
     }
     const addClassData = await dispatch(
-      addClass({ classData: { name: name.trim(), requireCode } })
+      addClass({ classData: { name: name.trim(), requireCode, coverImage } })
     );
     if (addClassData.type != "quiz/addClass/rejected") {
       navigate("/classes");
@@ -47,6 +49,13 @@ const ClassAdd = () => {
                 placeholder="Məsələn: 11-ci sinif"
               />
             </Field>
+
+            <div className="mt-5">
+              <CoverImageField value={coverImage} onChange={setCoverImage} />
+              <p className="mt-1.5 text-xs text-muted">
+                Sinif kartının üz şəkli — şagirdlərin siniflər siyahısında görünəcək.
+              </p>
+            </div>
           </div>
 
           <ToggleSection

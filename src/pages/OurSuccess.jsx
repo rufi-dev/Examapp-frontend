@@ -420,22 +420,20 @@ const OurSuccess = ({ embedded = false }) => {
                           )}
 
                           {canRemove(achivement) && (
-                            <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-5">
+                            <div className="mt-4 flex items-center gap-2 border-t border-line pt-4">
                               <button
                                 type="button"
                                 onClick={() => openEdit(achivement)}
-                                className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-line px-3.5 text-sm font-semibold text-text transition-colors hover:border-primary/50 hover:text-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/25"
+                                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line px-3 text-[13px] font-semibold text-text transition-colors hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
                               >
-                                <FiEdit2 className="text-base" aria-hidden="true" />
-                                Düzəliş et
+                                <FiEdit2 className="text-[15px]" aria-hidden="true" /> Düzəliş
                               </button>
                               <button
                                 type="button"
                                 onClick={() => achivementDelete(achivement._id)}
-                                className="inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-sm font-semibold text-muted transition-colors hover:bg-danger/8 hover:text-danger focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-danger/15"
+                                className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-[13px] font-semibold text-muted transition-colors hover:bg-danger/8 hover:text-danger"
                               >
-                                <PiTrash className="text-lg" aria-hidden="true" />
-                                Nailiyyəti sil
+                                <PiTrash className="text-base" aria-hidden="true" /> Sil
                               </button>
                             </div>
                           )}

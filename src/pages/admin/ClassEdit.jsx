@@ -9,6 +9,7 @@ import Loader from "../../components/Loader";
 import Button from "../../components/ui/Button";
 import { Field, inputClass } from "../../components/ui/Field";
 import ToggleSection from "../../components/ui/ToggleSection";
+import CoverImageField from "../../components/ui/CoverImageField";
 import ClassRoster from "../../components/ClassRoster";
 import { FiLock, FiGlobe, FiCopy, FiRefreshCw } from "react-icons/fi";
 
@@ -22,6 +23,7 @@ const ClassEdit = () => {
   // absent) are code-only today, so anything other than an explicit `false`
   // shows the toggle ON. Saving then normalises it to an explicit boolean.
   const [requireCode, setRequireCode] = useState(true);
+  const [coverImage, setCoverImage] = useState("");
   const [regenerating, setRegenerating] = useState(false);
   const dispatch = useDispatch();
 
@@ -33,6 +35,7 @@ const ClassEdit = () => {
     if (singleClass) {
       setName(singleClass.name || (singleClass.level != null ? String(singleClass.level) : ""));
       setRequireCode(singleClass.requireCode !== false);
+      setCoverImage(singleClass.coverImage || "");
     }
   }, [singleClass]);
 
@@ -48,7 +51,7 @@ const ClassEdit = () => {
     e.preventDefault();
     if (!name.trim()) return toast.error("Sinif adını daxil edin");
     const res = await dispatch(
-      editClass({ classId, classData: { name: name.trim(), requireCode } })
+      editClass({ classId, classData: { name: name.trim(), requireCode, coverImage } })
     );
     if (res.type != "quiz/editClass/rejected") navigate(-1);
   };
@@ -90,6 +93,13 @@ const ClassEdit = () => {
                 placeholder="Məsələn: 11-ci sinif"
               />
             </Field>
+
+            <div className="mt-5">
+              <CoverImageField value={coverImage} onChange={setCoverImage} />
+              <p className="mt-1.5 text-xs text-muted">
+                Sinif kartının üz şəkli — siniflər siyahısında görünəcək.
+              </p>
+            </div>
           </div>
 
           <ToggleSection
