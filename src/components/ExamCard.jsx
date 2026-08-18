@@ -90,8 +90,8 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
       onClick={openCard}
       className="group flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft ring-1 ring-transparent transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:border-primary/30 hover:shadow-lift hover:ring-primary/10"
     >
-      {/* Cover banner with status + price overlaid */}
-      <div className="relative h-40 w-full shrink-0 overflow-hidden sm:h-44">
+      {/* Cover banner with status + price overlaid — tall so the artwork carries the card */}
+      <div className="relative h-48 w-full shrink-0 overflow-hidden sm:h-52">
         {exam.coverImage ? (
           <img
             src={exam.coverImage}

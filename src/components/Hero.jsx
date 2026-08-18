@@ -103,7 +103,7 @@ const Hero = () => (
           <img
             src="/teacher.jpg"
             alt="Əliyar Nuriyev — riyaziyyat müəllimi"
-            className="aspect-[4/5] w-full object-cover object-[center_18%]"
+            className="aspect-[4/5] w-full object-cover object-[center_22%]"
           />
           <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent p-4 pt-14">
             <p className="font-display text-lg font-bold text-white">Əliyar Nuriyev</p>
