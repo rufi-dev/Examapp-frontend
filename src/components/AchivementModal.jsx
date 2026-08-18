@@ -1,4 +1,5 @@
-import { useState } from "react";
+import PropTypes from "prop-types";
+import { useState, useEffect } from "react";
 import Modal from "react-modal";
 import { useDispatch, useSelector } from "react-redux";
 import Spinner from "./Spinner";
@@ -6,10 +7,17 @@ import Button from "./ui/Button";
 import {
   addAchivement,
   getAchivements,
+  updateAchivement,
 } from "../../redux/features/achivement/achivementSlice";
 import { toast } from "react-toastify";
-import { HiOutlinePhotograph } from "react-icons/hi";
-import { FiX, FiChevronDown, FiUploadCloud } from "react-icons/fi";
+import { FiX } from "react-icons/fi";
+import {
+  PiCheck,
+  PiImageSquare,
+  PiMedal,
+  PiSparkle,
+  PiUploadSimple,
+} from "react-icons/pi";
 
 const cloud_name = import.meta.env.VITE_CLOUD_NAME;
 const upload_preset = import.meta.env.VITE_UPLAD_PRESET;
@@ -18,18 +26,42 @@ const isImage = (f) =>
   f && ["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(f.type);
 
 const inputCls =
-  "w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-text placeholder:text-muted outline-none transition focus:border-primary focus:ring-4 focus:ring-ring/25";
+  "w-full rounded-xl border border-line bg-surface px-4 py-3 text-sm text-text placeholder:text-muted outline-none transition focus:border-primary focus:ring-4 focus:ring-ring/25";
 
-const AchivementModal = ({ modalIsOpen, closeModal }) => {
+const SIZE_OPTIONS = [
+  { value: "small", label: "Yığcam", hint: "Kiçik kart" },
+  { value: "medium", label: "Standart", hint: "Ən uyğun seçim" },
+  { value: "large", label: "Vurğulu", hint: "Böyük kart" },
+];
+
+const AchivementModal = ({ modalIsOpen, closeModal, editing = null }) => {
   const { isLoading } = useSelector((state) => state.achivement);
   const [imagePreview, setImagePreview] = useState(null);
   const [achivementImage, setAchivementImage] = useState(null);
   const [dragActive, setDragActive] = useState(false);
   const dispatch = useDispatch();
+  const isEditing = !!editing;
 
-  const initialState = { title: "", photo: "", about: "", size: "" };
+  const initialState = { title: "", photo: "", about: "", size: "medium" };
   const [achivementForm, setAchivementForm] = useState(initialState);
   const { title, about, size } = achivementForm;
+
+  // Pre-fill the form when the modal opens in edit mode (existing image shown
+  // as the preview; it's a remote URL, not a File, so it isn't re-uploaded
+  // unless the user picks a new one).
+  useEffect(() => {
+    if (modalIsOpen && editing) {
+      setAchivementForm({
+        title: editing.title || "",
+        photo: editing.photo || "",
+        about: editing.about || "",
+        size: editing.size || "medium",
+      });
+      setAchivementImage(null);
+      setImagePreview(editing.photo || null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modalIsOpen, editing]);
 
   const setImage = (file) => {
     if (!isImage(file)) {
@@ -57,9 +89,10 @@ const AchivementModal = ({ modalIsOpen, closeModal }) => {
     closeModal();
   };
 
-  const addAchivementForm = async (e) => {
+  const submitForm = async (e) => {
     e.preventDefault();
-    if (!achivementImage) {
+    // Creating requires an image; editing keeps the existing one unless replaced.
+    if (!isEditing && !achivementImage) {
       toast.error("Zəhmət olmasa şəkil əlavə edin.");
       return;
     }
@@ -67,33 +100,33 @@ const AchivementModal = ({ modalIsOpen, closeModal }) => {
       toast.error("Başlıq boş ola bilməz.");
       return;
     }
-    let imageUrl;
     try {
-      const image = new FormData();
-      image.append("file", achivementImage, achivementImage.name || "achievement.jpg");
-      image.append("cloud_name", cloud_name);
-      image.append("upload_preset", upload_preset);
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${cloud_name}/image/upload`,
-        { method: "post", body: image }
-      );
-      const imgData = await response.json();
-      imageUrl = (imgData.secure_url || imgData.url)?.toString();
-      if (!imageUrl) throw new Error("Şəkil yüklənmədi");
+      let imageUrl = isEditing ? editing.photo || "" : "";
+      if (achivementImage) {
+        const image = new FormData();
+        image.append("file", achivementImage, achivementImage.name || "achievement.jpg");
+        image.append("cloud_name", cloud_name);
+        image.append("upload_preset", upload_preset);
+        const response = await fetch(
+          `https://api.cloudinary.com/v1_1/${cloud_name}/image/upload`,
+          { method: "post", body: image }
+        );
+        const imgData = await response.json();
+        imageUrl = (imgData.secure_url || imgData.url)?.toString();
+        if (!imageUrl) throw new Error("Şəkil yüklənmədi");
+      }
 
-      await dispatch(
-        addAchivement({
-          title: title.trim(),
-          about,
-          photo: imageUrl,
-          size: size || "medium",
-        })
-      );
+      const data = { title: title.trim(), about, photo: imageUrl, size: size || "medium" };
+      if (isEditing) {
+        await dispatch(updateAchivement({ achivementId: editing._id, achivementData: data }));
+      } else {
+        await dispatch(addAchivement(data));
+      }
       await dispatch(getAchivements());
       reset();
       closeModal();
     } catch (error) {
-      toast.error(error?.message || "Nailiyyət əlavə olunmadı");
+      toast.error(error?.message || "Nailiyyət yadda saxlanmadı");
     }
   };
 
@@ -109,12 +142,17 @@ const AchivementModal = ({ modalIsOpen, closeModal }) => {
     setImage(e.dataTransfer.files?.[0]);
   };
 
+  const openFilePicker = () => document.getElementById("imageInput")?.click();
+
   return (
     <Modal
       isOpen={modalIsOpen}
       onRequestClose={close}
       contentLabel="Nailiyyət əlavə et"
       closeTimeoutMS={150}
+      portalClassName="achievement-create-portal"
+      overlayClassName="achievement-create-overlay"
+      className="achievement-create-dialog"
       style={{
         overlay: {
           backgroundColor: "rgb(0 0 0 / 0.55)",
@@ -123,7 +161,7 @@ const AchivementModal = ({ modalIsOpen, closeModal }) => {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          padding: "16px",
+          padding: "12px",
         },
         content: {
           position: "static",
@@ -133,156 +171,240 @@ const AchivementModal = ({ modalIsOpen, closeModal }) => {
           padding: 0,
           overflow: "visible",
           width: "100%",
-          maxWidth: "560px",
+          maxWidth: "900px",
         },
       }}
     >
-      <div className="scrollbar-brand max-h-[90vh] w-full overflow-y-auto overflow-x-hidden rounded-3xl border border-line bg-surface text-text shadow-lift">
-        {/* header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-line bg-surface/95 px-6 py-4 backdrop-blur">
-          <div>
-            <h3 className="font-display text-lg font-bold">Yeni nailiyyət</h3>
-            <p className="text-xs text-muted">Şagird uğurunu qalereyaya əlavə edin.</p>
+      <div className="achievement-create-page h-[100dvh] w-full overflow-y-auto overflow-x-hidden bg-surface text-text md:scrollbar-brand md:h-auto md:max-h-[94vh] md:rounded-3xl md:border md:border-line md:shadow-lift">
+        <div className="sticky top-0 z-20 flex min-h-[72px] items-center justify-between gap-4 border-b border-line bg-surface/95 px-5 py-3 backdrop-blur sm:px-7 sm:py-4">
+          <div className="flex min-w-0 items-center gap-3.5">
+            <span className="relative grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-amber-300/60 bg-amber-50 text-2xl text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-300">
+              <PiMedal />
+              <PiSparkle className="absolute -right-1.5 -top-1.5 text-sm text-primary" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-700 dark:text-amber-300">
+                Uğur vitrini
+              </p>
+              <h3 className="mt-0.5 truncate font-display text-xl font-bold">
+                {isEditing ? "Uğuru düzəlt" : "Yeni uğur hekayəsi"}
+              </h3>
+              <p className="hidden text-xs text-muted sm:block">
+                Şagirdin əməyini görünən və yadda qalan edin.
+              </p>
+            </div>
           </div>
           <button
             type="button"
             onClick={close}
             aria-label="Bağla"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-surface2 hover:text-text"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted transition-colors hover:bg-surface2 hover:text-text focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/30"
           >
             <FiX className="text-lg" />
           </button>
         </div>
 
-        <form onSubmit={addAchivementForm} className="space-y-5 p-6">
-          {/* dropzone / preview */}
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-text">Şəkil</label>
-            {imagePreview ? (
-              <div className="group relative overflow-hidden rounded-2xl border border-line bg-surface2">
-                <img
-                  src={imagePreview}
-                  alt=""
-                  className="mx-auto max-h-72 w-full object-contain"
-                />
-                <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-black/70 to-transparent p-3">
-                  <label
-                    htmlFor="imageInput"
-                    className="cursor-pointer rounded-lg bg-white/15 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur hover:bg-white/25"
-                  >
-                    Dəyişdir
-                  </label>
+        <form onSubmit={submitForm}>
+          <div className="grid lg:grid-cols-[0.9fr_1.1fr]">
+            <section className="border-b border-line bg-surface2/45 px-5 py-6 sm:p-7 lg:border-b-0 lg:border-r">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-bold text-text">Uğur şəkli</p>
+                  <p className="mt-0.5 text-xs text-muted">Aydın və keyfiyyətli foto seçin.</p>
+                </div>
+                {achivementImage && (
+                  <span className="flex items-center gap-1 text-xs font-semibold text-success">
+                    <PiCheck /> Hazırdır
+                  </span>
+                )}
+              </div>
+
+              {imagePreview ? (
+                <div className="group relative min-h-[260px] overflow-hidden rounded-3xl border border-line bg-surface shadow-soft sm:min-h-[300px]">
+                  <img
+                    src={imagePreview}
+                    alt="Seçilmiş uğur şəkli"
+                    className="h-[260px] w-full object-cover sm:h-[300px] lg:h-[390px]"
+                  />
+                  <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-black/80 via-black/35 to-transparent p-4 pt-16">
+                    <button
+                      type="button"
+                      onClick={openFilePicker}
+                      className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-white/15 px-3.5 text-sm font-semibold text-white backdrop-blur transition-colors hover:bg-white/25 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/35"
+                    >
+                      <PiUploadSimple className="text-lg" /> Şəkli dəyiş
+                    </button>
+                    <button
+                      type="button"
+                      onClick={clearImage}
+                      className="grid h-10 w-10 place-items-center rounded-xl bg-black/45 text-white backdrop-blur transition-colors hover:bg-danger"
+                      aria-label="Şəkli sil"
+                    >
+                      <FiX />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onDrop={handleDrop}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    setDragActive(true);
+                  }}
+                  onDragLeave={() => setDragActive(false)}
+                  className={`group flex min-h-[260px] flex-col items-center justify-center rounded-3xl border-2 border-dashed px-6 py-7 text-center transition-all duration-200 sm:min-h-[300px] lg:min-h-[390px] ${
+                    dragActive
+                      ? "border-primary bg-primary/10"
+                      : "border-line bg-surface hover:border-primary/50 hover:bg-primary/6"
+                  }`}
+                >
+                  <span className="relative grid h-20 w-20 place-items-center rounded-[1.75rem] border border-primary/20 bg-primary/10 text-[36px] text-primary transition-transform duration-200 group-hover:-translate-y-1">
+                    {dragActive ? <PiUploadSimple /> : <PiImageSquare />}
+                    <PiSparkle className="absolute -right-2 -top-2 text-lg" />
+                  </span>
+                  <span className="mt-5 text-base font-bold text-text">
+                    Şəkli seçin və ya bura sürüşdürün
+                  </span>
+                  <span className="mt-2 max-w-[28ch] text-sm leading-5 text-muted">
+                    JPG, PNG və WEBP. Üfüqi və aydın fotolar vitrində daha yaxşı görünür.
+                  </span>
                   <button
                     type="button"
-                    onClick={clearImage}
-                    className="grid h-8 w-8 place-items-center rounded-full bg-danger text-white shadow-soft hover:opacity-90"
-                    aria-label="Şəkli sil"
+                    onClick={openFilePicker}
+                    className="mt-5 inline-flex h-10 items-center gap-2 rounded-xl border border-line bg-surface px-4 text-sm font-semibold text-text shadow-soft transition-colors hover:bg-surface2 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/30"
                   >
-                    <FiX />
+                    <PiUploadSimple className="text-lg text-primary" /> Fayl seç
                   </button>
                 </div>
+              )}
+              <input
+                type="file"
+                className="hidden"
+                accept="image/jpeg,image/png,image/webp"
+                id="imageInput"
+                name="image"
+                onChange={(event) => setImage(event.target.files?.[0])}
+              />
+            </section>
+
+            <section className="flex flex-col px-5 py-7 sm:p-7">
+              <div className="space-y-6">
+                <div>
+                  <label className="mb-2 block text-sm font-bold text-text" htmlFor="title">
+                    Başlıq
+                  </label>
+                  <input
+                    value={title}
+                    onChange={handleInputChange}
+                    type="text"
+                    name="title"
+                    id="title"
+                    placeholder="Məsələn: Respublika olimpiadasında uğur"
+                    className={inputCls}
+                  />
+                  <p className="mt-1.5 text-xs text-muted">
+                    Qısa və konkret başlıq hekayəni daha yaddaqalan edir.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-bold text-text" htmlFor="about">
+                    Uğur hekayəsi
+                  </label>
+                  <textarea
+                    value={about}
+                    onChange={handleInputChange}
+                    name="about"
+                    id="about"
+                    rows={5}
+                    placeholder="Şagirdin nə əldə etdiyini və bu nəticənin niyə vacib olduğunu yazın…"
+                    className={`${inputCls} min-h-[132px] resize-y leading-relaxed`}
+                  />
+                </div>
+
+                <fieldset>
+                  <legend className="text-sm font-bold text-text">Vitrində görünüş</legend>
+                  <p className="mt-1 text-xs text-muted">
+                    Kartın qalereyada nə qədər yer tutacağını seçin.
+                  </p>
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    {SIZE_OPTIONS.map((option) => {
+                      const selected = size === option.value;
+                      return (
+                        <label
+                          key={option.value}
+                          className={`relative cursor-pointer rounded-2xl border p-3 text-left transition-colors focus-within:ring-4 focus-within:ring-ring/25 ${
+                            selected
+                              ? "border-primary bg-primary/10"
+                              : "border-line bg-surface hover:bg-surface2"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="size"
+                            value={option.value}
+                            checked={selected}
+                            onChange={handleInputChange}
+                            className="sr-only"
+                          />
+                          <span
+                            aria-hidden="true"
+                            className={`mb-3 block rounded-md bg-primary/20 ${
+                              option.value === "small"
+                                ? "h-4 w-6"
+                                : option.value === "large"
+                                  ? "h-8 w-8"
+                                  : "h-6 w-7"
+                            }`}
+                          />
+                          <span className="block text-xs font-bold text-text sm:text-sm">
+                            {option.label}
+                          </span>
+                          <span className="mt-0.5 hidden text-[11px] text-muted sm:block">
+                            {option.hint}
+                          </span>
+                          {selected && (
+                            <span className="absolute right-2 top-2 grid h-5 w-5 place-items-center rounded-full bg-primary text-xs text-primary-fg">
+                              <PiCheck />
+                            </span>
+                          )}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </fieldset>
               </div>
-            ) : (
-              <label
-                htmlFor="imageInput"
-                onDrop={handleDrop}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDragActive(true);
-                }}
-                onDragLeave={() => setDragActive(false)}
-                className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-6 py-12 text-center transition-colors ${
-                  dragActive
-                    ? "border-primary bg-primary/10"
-                    : "border-line bg-surface2/50 hover:border-primary/60 hover:bg-surface2"
-                }`}
-              >
-                <span className="grid h-12 w-12 place-items-center rounded-xl bg-primary/12 text-2xl text-primary">
-                  {dragActive ? <FiUploadCloud /> : <HiOutlinePhotograph />}
-                </span>
-                <span className="text-sm font-semibold text-text">
-                  Şəkli bura sürüşdürün və ya seçin
-                </span>
-                <span className="text-xs text-muted">JPG, PNG və ya WEBP</span>
-              </label>
-            )}
-            <input
-              type="file"
-              className="hidden"
-              accept="image/*"
-              id="imageInput"
-              name="image"
-              onChange={(e) => setImage(e.target.files?.[0])}
-            />
-          </div>
 
-          {/* title */}
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-text" htmlFor="title">
-              Başlıq
-            </label>
-            <input
-              value={title}
-              onChange={handleInputChange}
-              type="text"
-              name="title"
-              id="title"
-              placeholder="Məsələn: Mətləbxan — 292.5 bal"
-              className={inputCls}
-            />
-          </div>
-
-          {/* about */}
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-text" htmlFor="about">
-              Haqqında
-            </label>
-            <textarea
-              value={about}
-              onChange={handleInputChange}
-              name="about"
-              id="about"
-              rows={5}
-              placeholder="Uğur haqqında qısa məlumat yazın…"
-              className={`${inputCls} resize-y leading-relaxed`}
-            />
-          </div>
-
-          {/* size */}
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-text" htmlFor="size">
-              Ölçü
-            </label>
-            <div className="relative">
-              <select
-                value={size}
-                onChange={handleInputChange}
-                name="size"
-                id="size"
-                className={`${inputCls} cursor-pointer appearance-none pr-10`}
-              >
-                <option value="">Ölçü seçin</option>
-                <option value="large">Böyük</option>
-                <option value="medium">Orta</option>
-                <option value="small">Kiçik</option>
-              </select>
-              <FiChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-muted" />
-            </div>
-          </div>
-
-          {/* actions */}
-          <div className="flex items-center justify-end gap-2 pt-1">
-            <Button type="button" variant="ghost" size="md" onClick={close}>
-              Ləğv et
-            </Button>
-            <Button type="submit" variant="primary" size="md" disabled={isLoading}>
-              {isLoading ? <Spinner size={18} /> : "Nailiyyət əlavə et"}
-            </Button>
+              <div className="mt-8 flex flex-col-reverse gap-2 border-t border-line pb-[calc(1rem+env(safe-area-inset-bottom))] pt-5 sm:flex-row sm:justify-end sm:pb-0">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="md"
+                  onClick={close}
+                  className="w-full sm:w-auto"
+                >
+                  Ləğv et
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="md"
+                  disabled={isLoading}
+                  className="w-full sm:w-auto"
+                >
+                  {isLoading ? <Spinner size={18} /> : isEditing ? "Dəyişiklikləri saxla" : "Hekayəni yayımla"}
+                </Button>
+              </div>
+            </section>
           </div>
         </form>
       </div>
     </Modal>
   );
+};
+AchivementModal.propTypes = {
+  "closeModal": PropTypes.any,
+  "modalIsOpen": PropTypes.any,
 };
 
 export default AchivementModal;

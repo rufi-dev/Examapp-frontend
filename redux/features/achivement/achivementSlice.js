@@ -39,6 +39,21 @@ export const addAchivement = createAsyncThunk(
     }
 )
 
+// Update Achivement
+export const updateAchivement = createAsyncThunk(
+    "achivement/updateAchivement",
+    async (payload, thunkAPI) => {
+        try {
+            return await achivementService.updateAchivement(payload)
+        } catch (error) {
+            const message = (error.response && error.response.data && error.response.data.message)
+                || error.message || error.toString()
+
+            return thunkAPI.rejectWithValue(message)
+        }
+    }
+)
+
 // Delete Achivement
 export const deleteAchivement = createAsyncThunk(
     "achivement/deleteAchivement",
@@ -92,6 +107,23 @@ const authSlice = createSlice({
                 toast.success(action.payload)
             })
             .addCase(addAchivement.rejected, (state, action) => {
+                state.isError = true;
+                state.isLoading = false;
+                state.isSuccess = false;
+                toast.error(action.payload)
+            })
+
+            // Update Achivement
+            .addCase(updateAchivement.pending, (state) => {
+                state.isLoading = true;
+            })
+            .addCase(updateAchivement.fulfilled, (state, action) => {
+                state.isError = false;
+                state.isLoading = false;
+                state.isSuccess = true;
+                toast.success(action.payload)
+            })
+            .addCase(updateAchivement.rejected, (state, action) => {
                 state.isError = true;
                 state.isLoading = false;
                 state.isSuccess = false;

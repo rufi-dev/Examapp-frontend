@@ -234,6 +234,59 @@
   }
 }
 
+/* Achievement dialogs become real full-screen pages on phones. Both modal
+   libraries otherwise keep desktop centering, outer margins and nested scroll. */
+@media (max-width: 767px) {
+  .achievement-create-portal,
+  .achievement-detail-root {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 2147483000 !important;
+  }
+  .achievement-create-portal {
+    pointer-events: none;
+  }
+  .achievement-detail-overlay,
+  .achievement-create-overlay {
+    inset: 0 !important;
+    pointer-events: auto;
+    padding: 0 !important;
+    background: rgb(var(--surface) / 1) !important;
+    backdrop-filter: none !important;
+  }
+  .achievement-detail-overlay {
+    z-index: -1 !important;
+  }
+  .achievement-create-overlay {
+    z-index: 1 !important;
+  }
+  .achievement-detail-modal,
+  .achievement-create-dialog {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    max-width: none !important;
+    height: 100dvh !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: rgb(var(--surface) / 1) !important;
+    box-shadow: none !important;
+  }
+  .achievement-create-page,
+  .achievement-detail-page {
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+  }
+  .achievement-create-page::-webkit-scrollbar,
+  .achievement-detail-page::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @keyframes float {
   0%,
   100% {

@@ -15,6 +15,12 @@ export const addAchivement = async (achivementData) => {
     return response.data.message
 };
 
+// Update Achivement
+export const updateAchivement = async ({ achivementId, achivementData }) => {
+    const response = await axios.put(API_URL + "updateAchivement/" + achivementId, achivementData)
+    return response.data.message
+};
+
 // Delete Achivement
 export const deleteAchivement = async (achivementId) => {
     const response = await axios.delete(API_URL + "deleteAchivement/" + achivementId)
@@ -24,6 +30,7 @@ export const deleteAchivement = async (achivementId) => {
 const authService = {
     getAchivements,
     addAchivement,
+    updateAchivement,
     deleteAchivement
 }
 
