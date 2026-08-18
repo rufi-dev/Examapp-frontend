@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { RxHamburgerMenu } from "react-icons/rx";
 import { GrClose } from "react-icons/gr";
 import { FiLogOut, FiArrowRight, FiSun, FiMoon } from "react-icons/fi";
@@ -27,6 +27,7 @@ const Navbar = () => {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { isDark, toggle: toggleTheme } = useTheme();
+  const { pathname } = useLocation();
   const close = () => setOpen(false);
 
   // Transparent over the hero; solid with a border once scrolled.
@@ -37,33 +38,51 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // The homepage opens on the green hero — the header sits ON it (transparent,
+  // white text) until you scroll, then it becomes the solid white bar.
+  const overHero = pathname === "/" && !scrolled;
+
   const handleLogout = async () => {
     dispatch(RESET());
     await dispatch(logout());
     navigate("/");
   };
 
-  // Active route link → a small cobalt "graph segment" underline.
+  // Active route link → a small "graph segment" underline. Over the green hero
+  // the text is white; on the solid bar it's the usual muted/ink.
   const desktopLink = ({ isActive }) =>
-    `relative text-[15px] font-medium transition-colors after:absolute after:-bottom-1.5 after:left-0 after:h-[2.5px] after:rounded-full after:bg-primary after:transition-all after:duration-300 ${
-      isActive ? "text-text after:w-5" : "text-muted hover:text-text after:w-0 hover:after:w-5"
+    `relative text-[15px] font-medium transition-colors after:absolute after:-bottom-1.5 after:left-0 after:h-[2.5px] after:rounded-full after:transition-all after:duration-300 ${
+      overHero ? "after:bg-amber-300" : "after:bg-primary"
+    } ${
+      overHero
+        ? isActive
+          ? "text-white after:w-5"
+          : "text-white/70 hover:text-white after:w-0 hover:after:w-5"
+        : isActive
+        ? "text-text after:w-5"
+        : "text-muted hover:text-text after:w-0 hover:after:w-5"
     }`;
 
-  const anchorLink =
-    "text-[15px] font-medium text-muted transition-colors hover:text-text";
+  const anchorLink = `text-[15px] font-medium transition-colors ${
+    overHero ? "text-white/70 hover:text-white" : "text-muted hover:text-text"
+  }`;
   const mobileLinkCls =
     "block rounded-xl px-4 py-3.5 text-lg font-semibold text-text transition-colors hover:bg-surface2";
 
   return (
     <>
       <header
-        className={`sticky top-0 z-[900] bg-surface transition-shadow duration-300 ${
-          scrolled ? "border-b border-line shadow-soft" : "border-b border-transparent"
+        className={`sticky top-0 z-[900] transition-[background-color,box-shadow,border-color] duration-300 ${
+          overHero
+            ? "border-b border-transparent bg-transparent"
+            : scrolled
+            ? "border-b border-line bg-surface/95 shadow-soft backdrop-blur-md"
+            : "border-b border-transparent bg-surface"
         }`}
       >
         <nav className="container-app flex h-16 items-center justify-between gap-4">
           <Link to="/" aria-label="BunkerMath — ana səhifə">
-            <BunkerMathLogo />
+            <BunkerMathLogo light={overHero} />
           </Link>
 
           <ul className="hidden items-center gap-8 lg:flex">
@@ -86,24 +105,50 @@ const Navbar = () => {
             {/* Theme toggle is DESKTOP-only here; on mobile it lives in the
                 burger menu (below) to keep the header clean. */}
             <div className="hidden items-center gap-2.5 lg:flex">
-              <ThemeToggle />
+              {!overHero && <ThemeToggle />}
               <ShowOnLogout>
-                <Button to="/login" variant="ghost" size="sm">
-                  Daxil ol
-                </Button>
-                <Button to="/register" variant="primary" size="sm">
-                  Sınağa başla <FiArrowRight />
-                </Button>
+                {overHero ? (
+                  <>
+                    <Button
+                      to="/login"
+                      variant="ghost"
+                      size="sm"
+                      className="text-white hover:bg-white/10"
+                    >
+                      Daxil ol
+                    </Button>
+                    <Button
+                      to="/register"
+                      size="sm"
+                      className="bg-amber-400 text-emerald-950 hover:bg-amber-300"
+                    >
+                      Sınağa başla <FiArrowRight />
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button to="/login" variant="ghost" size="sm">
+                      Daxil ol
+                    </Button>
+                    <Button to="/register" variant="primary" size="sm">
+                      Sınağa başla <FiArrowRight />
+                    </Button>
+                  </>
+                )}
               </ShowOnLogout>
               <ShowOnLogin>
-                <span className="text-sm font-semibold text-text">
+                <span className={`text-sm font-semibold ${overHero ? "text-white" : "text-text"}`}>
                   <UserName />
                 </span>
                 <button
                   onClick={handleLogout}
                   aria-label="Çıxış et"
                   title="Çıxış et"
-                  className="grid h-10 w-10 place-items-center rounded-full border border-line bg-surface text-muted transition-colors hover:bg-surface2 hover:text-danger"
+                  className={`grid h-10 w-10 place-items-center rounded-full border transition-colors ${
+                    overHero
+                      ? "border-white/25 bg-white/10 text-white hover:bg-white/20"
+                      : "border-line bg-surface text-muted hover:bg-surface2 hover:text-danger"
+                  }`}
                 >
                   <FiLogOut className="text-[17px]" />
                 </button>
@@ -113,19 +158,33 @@ const Navbar = () => {
             {/* Mobile: a direct login / dashboard button (no need to open the menu).
                 "Panel" sends a logged-in user straight to their dashboard. */}
             <ShowOnLogout>
-              <Button to="/login" variant="primary" size="sm" className="lg:hidden">
+              <Button
+                to="/login"
+                variant="primary"
+                size="sm"
+                className={`lg:hidden ${overHero ? "bg-amber-400 text-emerald-950 hover:bg-amber-300" : ""}`}
+              >
                 Daxil ol
               </Button>
             </ShowOnLogout>
             <ShowOnLogin>
-              <Button to="/dashboard" variant="primary" size="sm" className="lg:hidden">
+              <Button
+                to="/dashboard"
+                variant="primary"
+                size="sm"
+                className={`lg:hidden ${overHero ? "bg-amber-400 text-emerald-950 hover:bg-amber-300" : ""}`}
+              >
                 Panel
               </Button>
             </ShowOnLogin>
 
             <button
               onClick={() => setOpen(true)}
-              className="grid h-10 w-10 place-items-center rounded-full border border-line bg-surface text-text lg:hidden"
+              className={`grid h-10 w-10 place-items-center rounded-full border transition-colors lg:hidden ${
+                overHero
+                  ? "border-white/25 bg-white/10 text-white"
+                  : "border-line bg-surface text-text"
+              }`}
               aria-label="Menyu"
             >
               <RxHamburgerMenu className="text-[20px]" />

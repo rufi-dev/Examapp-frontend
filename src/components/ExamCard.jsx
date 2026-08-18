@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { FiClock, FiBarChart2, FiEyeOff, FiGift, FiPlay, FiCheckCircle } from "react-icons/fi";
+import { FiClock, FiBarChart2, FiEyeOff, FiGift, FiPlay, FiCheckCircle, FiHelpCircle, FiAward } from "react-icons/fi";
 import { addExamToUser, getExamsByUser } from "../../redux/features/quiz/quizSlice";
 import useServerNow from "../customHook/useServerNow";
 import Button from "./ui/Button";
@@ -88,68 +88,73 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
   return (
     <div
       onClick={openCard}
-      className="group flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:shadow-lift"
+      className="group flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft ring-1 ring-transparent transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:border-primary/30 hover:shadow-lift hover:ring-primary/10"
     >
       {/* Cover banner with status + price overlaid */}
-      <div className="relative h-36 w-full shrink-0 overflow-hidden sm:h-40">
+      <div className="relative h-40 w-full shrink-0 overflow-hidden sm:h-44">
         {exam.coverImage ? (
           <img
             src={exam.coverImage}
             alt=""
-            className="h-full w-full object-cover transition-transform duration-300 ease-out-quint group-hover:scale-[1.03]"
+            className="h-full w-full object-cover transition-transform duration-500 ease-out-quint group-hover:scale-[1.05]"
           />
         ) : (
           <ExamCoverFallback
             seed={exam._id}
-            className="transition-transform duration-300 ease-out-quint group-hover:scale-[1.03]"
+            className="transition-transform duration-500 ease-out-quint group-hover:scale-[1.05]"
           />
         )}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/30 to-transparent" />
+        {/* readability scrims — top for badges, bottom to seat the title */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-black/70" />
         <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-2">
-          <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold shadow-sm ${statusSolid}`}>
-            {upcoming ? <FiClock className="text-[13px]" /> : <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold shadow-sm ring-1 ring-white/20 ${statusSolid}`}>
+            {upcoming ? <FiClock className="text-[12px]" /> : <span className="h-1.5 w-1.5 rounded-full bg-white" />}
             {label}
           </span>
           <div className="flex items-center gap-1.5">
             {exam.hidden && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-warning px-2.5 py-1 text-xs font-bold text-white shadow-sm">
+              <span className="inline-flex items-center gap-1 rounded-full bg-warning/90 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm backdrop-blur-sm">
                 <FiEyeOff /> Gizli
               </span>
             )}
             <span
-              className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold shadow-sm ${
-                free ? "bg-success text-white" : "bg-accent2 text-white"
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold shadow-sm ring-1 ${
+                free
+                  ? "bg-success/90 text-white ring-white/20"
+                  : "bg-amber-400 text-emerald-950 ring-amber-200/50"
               }`}
             >
-              <FiGift className="text-[13px]" /> {free ? "Pulsuz" : `${exam.price} ₼`}
+              {free ? <FiGift className="text-[12px]" /> : null} {free ? "Pulsuz" : `${exam.price} ₼`}
             </span>
           </div>
         </div>
+        {/* Title seated on the cover — editorial, not a plain card header */}
+        <h3 className="absolute inset-x-4 bottom-3 line-clamp-2 font-display text-[15px] font-bold leading-snug text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.5)]">
+          {exam.name}
+        </h3>
       </div>
 
       <div className="flex flex-1 flex-col p-4">
-        {/* Title */}
-        <h3 className="line-clamp-2 font-display text-[15px] font-bold leading-snug text-text">
-          {exam.name}
-        </h3>
-
-        {/* Stats: Sual / Dəq / Bal */}
-        <div className="mt-3 grid grid-cols-3 gap-2 border-t border-line pt-3.5 text-center">
-          <div>
-            <p className="font-display text-xl font-extrabold leading-none text-primary">{qCount}</p>
-            <p className="mt-1 text-[11px] text-muted">Sual</p>
+        {/* Stats: Sual / Dəq / Bal — a single quiet panel with hairline dividers */}
+        <div className="grid grid-cols-3 divide-x divide-line overflow-hidden rounded-xl border border-line bg-surface2/50">
+          <div className="flex flex-col items-center gap-0.5 py-3">
+            <FiHelpCircle className="text-[13px] text-primary/70" />
+            <p className="font-display text-lg font-extrabold leading-none tabular-nums text-text">{qCount}</p>
+            <p className="text-[10px] font-medium uppercase tracking-wide text-muted">Sual</p>
           </div>
-          <div>
-            <p className="font-display text-xl font-extrabold leading-none text-success">
+          <div className="flex flex-col items-center gap-0.5 py-3">
+            <FiClock className="text-[13px] text-success/80" />
+            <p className="font-display text-lg font-extrabold leading-none tabular-nums text-text">
               {Math.round((exam.duration || 0) / 60)}
             </p>
-            <p className="mt-1 text-[11px] text-muted">Dəq</p>
+            <p className="text-[10px] font-medium uppercase tracking-wide text-muted">Dəq</p>
           </div>
-          <div>
-            <p className="font-display text-xl font-extrabold leading-none text-accent2">
+          <div className="flex flex-col items-center gap-0.5 py-3">
+            <FiAward className="text-[13px] text-accent2" />
+            <p className="font-display text-lg font-extrabold leading-none tabular-nums text-text">
               {exam.totalMarks ?? "—"}
             </p>
-            <p className="mt-1 text-[11px] text-muted">Bal</p>
+            <p className="text-[10px] font-medium uppercase tracking-wide text-muted">Bal</p>
           </div>
         </div>
 

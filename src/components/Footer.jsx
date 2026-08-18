@@ -19,7 +19,10 @@ const Footer = () => {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="section-navy relative overflow-hidden">
+    <footer
+      className="relative overflow-hidden text-white"
+      style={{ background: "linear-gradient(160deg,#0f3826 0%,#0a2416 100%)" }}
+    >
       <div aria-hidden className="pointer-events-none absolute inset-0 bg-graph-on-dark [mask-image:linear-gradient(to_bottom,transparent,black_55%)]" />
       <div className="container-app relative pb-14 pt-8">
         <div className="grid grid-cols-2 gap-x-8 gap-y-10 lg:grid-cols-[1.7fr_1fr_1fr] lg:gap-12">
@@ -110,7 +113,7 @@ const Footer = () => {
         {/* contact card */}
         <div className="mt-12 grid gap-4 rounded-2xl border border-white/10 bg-white/5 p-6 sm:grid-cols-3">
           <a href={`https://wa.me/${WHATSAPP}`} target="_blank" rel="noreferrer" className="flex items-center gap-3.5 transition-opacity hover:opacity-80">
-            <span className="grid h-11 w-11 place-items-center rounded-xl bg-success/20 text-success">
+            <span className="grid h-11 w-11 place-items-center rounded-xl bg-amber-300/15 text-amber-300">
               <BsWhatsapp className="text-[19px]" />
             </span>
             <span>
@@ -119,7 +122,7 @@ const Footer = () => {
             </span>
           </a>
           <a href="tel:+994773999966" className="flex items-center gap-3.5 transition-opacity hover:opacity-80">
-            <span className="grid h-11 w-11 place-items-center rounded-xl bg-white/10 text-cyan">
+            <span className="grid h-11 w-11 place-items-center rounded-xl bg-white/10 text-amber-200">
               <FiPhone className="text-[19px]" />
             </span>
             <span>
@@ -128,7 +131,7 @@ const Footer = () => {
             </span>
           </a>
           <a href={`mailto:${CONTACT_EMAIL}`} className="flex items-center gap-3.5 transition-opacity hover:opacity-80">
-            <span className="grid h-11 w-11 place-items-center rounded-xl bg-white/10 text-cyan">
+            <span className="grid h-11 w-11 place-items-center rounded-xl bg-white/10 text-amber-200">
               <FiMail className="text-[19px]" />
             </span>
             <span>

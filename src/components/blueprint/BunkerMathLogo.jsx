@@ -7,6 +7,7 @@ const BunkerMathLogo = ({
   className = "",
   showText = true,
   textClassName = "",
+  light = false, // white wordmark for use over dark/coloured backgrounds
   variant, // legacy, ignored
   ...rest
 }) => (
@@ -20,9 +21,11 @@ const BunkerMathLogo = ({
     />
     {showText && (
       <span
-        className={`font-display text-xl font-bold leading-none tracking-tight text-text ${textClassName}`}
+        className={`font-display text-xl font-bold leading-none tracking-tight ${
+          light ? "text-white" : "text-text"
+        } ${textClassName}`}
       >
-        Bunker<span className="text-primary">Math</span>
+        Bunker<span className={light ? "text-amber-300" : "text-primary"}>Math</span>
       </span>
     )}
   </span>

@@ -23,7 +23,9 @@ const contact = [
 ];
 
 const Hero = () => (
-  <section className="relative overflow-hidden text-white">
+  // -mt-16 pulls the green up UNDER the sticky (transparent) header so the
+  // navbar reads as part of the hero; the top padding pushes content clear.
+  <section className="relative -mt-16 overflow-hidden text-white">
     {/* Drenched forest-green stage — the brand colour carries the fold. */}
     <div
       aria-hidden
@@ -41,12 +43,12 @@ const Hero = () => (
     {/* faint π watermark, bottom-left */}
     <span
       aria-hidden
-      className="pointer-events-none absolute -bottom-16 -left-8 select-none font-display text-[260px] font-black leading-none text-white/[0.04]"
+      className="pointer-events-none absolute -bottom-10 -left-6 select-none font-display text-[180px] font-black leading-none text-white/[0.04] sm:-bottom-16 sm:-left-8 sm:text-[260px]"
     >
       π
     </span>
 
-    <div className="container-app relative grid items-center gap-10 py-14 lg:grid-cols-[1.12fr_0.88fr] lg:gap-14 lg:py-24">
+    <div className="container-app relative grid items-center gap-9 pb-14 pt-24 sm:gap-10 lg:grid-cols-[1.12fr_0.88fr] lg:gap-14 lg:pb-24 lg:pt-40">
       {/* ── Left: the pitch ── */}
       <div className="animate-fade-rise">
         <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-amber-300/10 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-200">
@@ -54,40 +56,42 @@ const Hero = () => (
           Azərbaycanda riyaziyyat hazırlığı
         </span>
 
-        <h1 className="mt-5 font-display text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.9rem]">
+        <h1 className="mt-5 font-display text-[2.05rem] font-extrabold leading-[1.08] tracking-tight sm:text-5xl sm:leading-[1.05] lg:text-[3.9rem]">
           Riyaziyyatı sadəcə öyrənmə.{" "}
           <span className="text-amber-300">İmtahanda həll et.</span>
         </h1>
 
-        <p className="mt-5 max-w-xl text-lg leading-relaxed text-emerald-50/85">
+        <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-emerald-50/85 sm:mt-5 sm:text-lg">
           Buraxılış, qəbul və blok imtahanları — hamısı bir platformada. Real formatda
           sınaqlar, mərhələli həllər və nəticələrinə uyğun şəxsi hazırlıq.
         </p>
 
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-          <Link
-            to="/register"
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-amber-400 px-7 text-base font-bold text-emerald-950 shadow-lift transition-all duration-200 ease-out-quint hover:-translate-y-0.5 hover:bg-amber-300"
-          >
-            Pulsuz başla <FiArrowRight className="text-[18px]" />
-          </Link>
-          <a
-            href="#sinaqlar"
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-white/25 px-7 text-base font-semibold text-white transition-colors hover:bg-white/10"
-          >
-            Sınaqlara bax
-          </a>
+        <div className="mt-7 flex flex-col gap-3 sm:mt-8">
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Link
+              to="/register"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-amber-400 px-7 text-base font-bold text-emerald-950 shadow-lift transition-all duration-200 ease-out-quint hover:-translate-y-0.5 hover:bg-amber-300"
+            >
+              Pulsuz başla <FiArrowRight className="text-[18px]" />
+            </Link>
+            <a
+              href="#sinaqlar"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-white/25 px-7 text-base font-semibold text-white transition-colors hover:bg-white/10"
+            >
+              Sınaqlara bax
+            </a>
+          </div>
           <Link
             to="/ourSuccess"
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl px-5 text-base font-semibold text-emerald-100/90 transition-colors hover:text-white"
+            className="inline-flex h-11 items-center justify-center gap-2 self-center rounded-xl text-[15px] font-semibold text-emerald-100/90 transition-colors hover:text-white sm:h-12 sm:self-start sm:px-1"
           >
             <FiTrendingUp className="text-[18px]" /> Uğurlarımız
           </Link>
         </div>
 
-        <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-3">
+        <ul className="mt-7 flex flex-wrap gap-x-5 gap-y-2.5 sm:mt-8 sm:gap-x-6 sm:gap-y-3">
           {proof.map((p) => (
-            <li key={p} className="flex items-center gap-2 text-sm font-medium text-emerald-50">
+            <li key={p} className="flex items-center gap-2 text-[13px] font-medium text-emerald-50 sm:text-sm">
               <FiCheckCircle className="shrink-0 text-amber-300" /> {p}
             </li>
           ))}
