@@ -137,8 +137,8 @@ const Navbar = () => {
                 )}
               </ShowOnLogout>
               <ShowOnLogin>
-                <span className={`text-sm font-semibold ${overHero ? "text-white" : "text-text"}`}>
-                  <UserName />
+                <span className="text-sm font-semibold">
+                  <UserName light={overHero} />
                 </span>
                 <button
                   onClick={handleLogout}

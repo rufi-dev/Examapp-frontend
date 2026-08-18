@@ -456,11 +456,17 @@ const Profile = () => {
   );
 };
 
-export const UserName = () => {
+export const UserName = ({ light = false }) => {
   const user = useSelector(selectUser);
   const username = user?.name || "...";
   const activeLink = ({ isActive }) =>
-    `flex items-center transition-colors ${isActive ? "text-primary" : "text-text hover:text-primary"}`;
+    `flex items-center transition-colors ${
+      light
+        ? "text-white hover:text-amber-200"
+        : isActive
+        ? "text-primary"
+        : "text-text hover:text-primary"
+    }`;
 
   return (
     <NavLink to={"/dashboard"} className={activeLink}>

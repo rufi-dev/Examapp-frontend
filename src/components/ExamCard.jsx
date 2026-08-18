@@ -104,10 +104,10 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
             className="transition-transform duration-500 ease-out-quint group-hover:scale-[1.05]"
           />
         )}
-        {/* readability scrims — top for badges, bottom to seat the title */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-black/70" />
+        {/* light top scrim so the badges stay legible over any cover */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/45 to-transparent" />
         <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-2">
-          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold shadow-sm ring-1 ring-white/20 ${statusSolid}`}>
+          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold shadow-sm ring-1 ring-white/25 ${statusSolid}`}>
             {upcoming ? <FiClock className="text-[12px]" /> : <span className="h-1.5 w-1.5 rounded-full bg-white" />}
             {label}
           </span>
@@ -120,7 +120,7 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
             <span
               className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold shadow-sm ring-1 ${
                 free
-                  ? "bg-success/90 text-white ring-white/20"
+                  ? "bg-success text-white ring-white/25"
                   : "bg-amber-400 text-emerald-950 ring-amber-200/50"
               }`}
             >
@@ -128,33 +128,34 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
             </span>
           </div>
         </div>
-        {/* Title seated on the cover — editorial, not a plain card header */}
-        <h3 className="absolute inset-x-4 bottom-3 line-clamp-2 font-display text-[15px] font-bold leading-snug text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.5)]">
-          {exam.name}
-        </h3>
       </div>
 
-      <div className="flex flex-1 flex-col p-4">
+      <div className="flex flex-1 flex-col p-4 sm:p-5">
+        {/* Title — clean surface below the cover, room for two lines */}
+        <h3 className="line-clamp-2 min-h-[2.9rem] font-display text-[17px] font-bold leading-snug text-text transition-colors group-hover:text-primary">
+          {exam.name}
+        </h3>
+
         {/* Stats: Sual / Dəq / Bal — a single quiet panel with hairline dividers */}
-        <div className="grid grid-cols-3 divide-x divide-line overflow-hidden rounded-xl border border-line bg-surface2/50">
-          <div className="flex flex-col items-center gap-0.5 py-3">
-            <FiHelpCircle className="text-[13px] text-primary/70" />
-            <p className="font-display text-lg font-extrabold leading-none tabular-nums text-text">{qCount}</p>
-            <p className="text-[10px] font-medium uppercase tracking-wide text-muted">Sual</p>
+        <div className="mt-3.5 grid grid-cols-3 divide-x divide-line overflow-hidden rounded-xl border border-line bg-surface2/50">
+          <div className="flex flex-col items-center gap-1 py-3.5">
+            <FiHelpCircle className="text-sm text-primary/70" />
+            <p className="font-display text-xl font-extrabold leading-none tabular-nums text-text">{qCount}</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">Sual</p>
           </div>
-          <div className="flex flex-col items-center gap-0.5 py-3">
-            <FiClock className="text-[13px] text-success/80" />
-            <p className="font-display text-lg font-extrabold leading-none tabular-nums text-text">
+          <div className="flex flex-col items-center gap-1 py-3.5">
+            <FiClock className="text-sm text-success/80" />
+            <p className="font-display text-xl font-extrabold leading-none tabular-nums text-text">
               {Math.round((exam.duration || 0) / 60)}
             </p>
-            <p className="text-[10px] font-medium uppercase tracking-wide text-muted">Dəq</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">Dəq</p>
           </div>
-          <div className="flex flex-col items-center gap-0.5 py-3">
-            <FiAward className="text-[13px] text-accent2" />
-            <p className="font-display text-lg font-extrabold leading-none tabular-nums text-text">
+          <div className="flex flex-col items-center gap-1 py-3.5">
+            <FiAward className="text-sm text-accent2" />
+            <p className="font-display text-xl font-extrabold leading-none tabular-nums text-text">
               {exam.totalMarks ?? "—"}
             </p>
-            <p className="text-[10px] font-medium uppercase tracking-wide text-muted">Bal</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">Bal</p>
           </div>
         </div>
 

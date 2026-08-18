@@ -24,8 +24,9 @@ const contact = [
 
 const Hero = () => (
   // -mt-16 pulls the green up UNDER the sticky (transparent) header so the
-  // navbar reads as part of the hero; the top padding pushes content clear.
-  <section className="relative -mt-16 overflow-hidden text-white">
+  // navbar reads as part of the hero. On laptop the section fills the viewport
+  // (min-h-screen + centred) so there's no white gap above or below the fold.
+  <section className="relative -mt-16 overflow-hidden text-white lg:flex lg:min-h-screen lg:items-center">
     {/* Drenched forest-green stage — the brand colour carries the fold. */}
     <div
       aria-hidden
@@ -48,7 +49,7 @@ const Hero = () => (
       π
     </span>
 
-    <div className="container-app relative grid items-center gap-9 pb-14 pt-24 sm:gap-10 lg:grid-cols-[1.12fr_0.88fr] lg:gap-14 lg:pb-24 lg:pt-40">
+    <div className="container-app relative grid items-center gap-9 pb-14 pt-24 sm:gap-10 lg:w-full lg:grid-cols-[1.12fr_0.88fr] lg:gap-14 lg:py-24">
       {/* ── Left: the pitch ── */}
       <div className="animate-fade-rise">
         <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-amber-300/10 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-200">
@@ -66,24 +67,22 @@ const Hero = () => (
           sınaqlar, mərhələli həllər və nəticələrinə uyğun şəxsi hazırlıq.
         </p>
 
-        <div className="mt-7 flex flex-col gap-3 sm:mt-8">
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Link
-              to="/register"
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-amber-400 px-7 text-base font-bold text-emerald-950 shadow-lift transition-all duration-200 ease-out-quint hover:-translate-y-0.5 hover:bg-amber-300"
-            >
-              Pulsuz başla <FiArrowRight className="text-[18px]" />
-            </Link>
-            <a
-              href="#sinaqlar"
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-white/25 px-7 text-base font-semibold text-white transition-colors hover:bg-white/10"
-            >
-              Sınaqlara bax
-            </a>
-          </div>
+        <div className="mt-7 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:flex-wrap sm:items-center">
+          <Link
+            to="/register"
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-amber-400 px-7 text-base font-bold text-emerald-950 shadow-lift transition-all duration-200 ease-out-quint hover:-translate-y-0.5 hover:bg-amber-300"
+          >
+            Pulsuz başla <FiArrowRight className="text-[18px]" />
+          </Link>
+          <a
+            href="#sinaqlar"
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-white/25 px-7 text-base font-semibold text-white transition-colors hover:bg-white/10"
+          >
+            Sınaqlara bax
+          </a>
           <Link
             to="/ourSuccess"
-            className="inline-flex h-11 items-center justify-center gap-2 self-center rounded-xl text-[15px] font-semibold text-emerald-100/90 transition-colors hover:text-white sm:h-12 sm:self-start sm:px-1"
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl px-4 text-[15px] font-semibold text-emerald-100/90 transition-colors hover:bg-white/10 hover:text-white"
           >
             <FiTrendingUp className="text-[18px]" /> Uğurlarımız
           </Link>
