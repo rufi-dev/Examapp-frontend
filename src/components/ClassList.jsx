@@ -243,7 +243,7 @@ const ClassList = () => {
                     ? toast.info("Sinif doludur — müəlliminizlə əlaqə saxlayın.")
                     : navigate(`/exam/${_class._id}`)
                 }
-                className={`relative block h-32 w-full overflow-hidden bg-gradient-to-br text-left ${boardOf(
+                className={`relative block h-44 w-full overflow-hidden bg-gradient-to-br text-left sm:h-48 ${boardOf(
                   _class._id
                 )} ${locked ? "cursor-not-allowed" : ""}`}
               >
@@ -280,10 +280,6 @@ const ClassList = () => {
                   </>
                 )}
 
-                <span className="absolute left-4 top-4 grid h-9 w-9 place-items-center rounded-xl bg-white/20 text-white ring-1 ring-white/20 backdrop-blur-sm transition-transform duration-200 ease-out-quint group-hover:scale-110">
-                  <LuGraduationCap className="text-[19px]" />
-                </span>
-
                 {pending > 0 && (
                   <span className="absolute right-3 top-3.5 inline-flex items-center gap-1 rounded-full bg-warning px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
                     <FiClock className="text-[12px]" /> {pending} gözləyir
@@ -298,7 +294,11 @@ const ClassList = () => {
                   </>
                 )}
 
-                <h3 className="absolute inset-x-4 bottom-7 line-clamp-2 font-display text-[19px] font-extrabold leading-tight text-white drop-shadow-sm">
+                <h3
+                  className={`absolute inset-x-4 line-clamp-2 font-display text-[19px] font-extrabold leading-tight text-white drop-shadow-[0_1px_6px_rgba(0,0,0,0.55)] ${
+                    _class.coverImage ? "bottom-4" : "bottom-7"
+                  }`}
+                >
                   {label}
                 </h3>
 

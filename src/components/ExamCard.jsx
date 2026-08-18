@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { FiClock, FiBarChart2, FiEyeOff, FiGift, FiPlay, FiCheckCircle, FiHelpCircle, FiAward } from "react-icons/fi";
+import { FiClock, FiBarChart2, FiEyeOff, FiGift, FiPlay, FiCheckCircle } from "react-icons/fi";
 import { addExamToUser, getExamsByUser } from "../../redux/features/quiz/quizSlice";
 import useServerNow from "../customHook/useServerNow";
 import Button from "./ui/Button";
@@ -90,8 +90,9 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
       onClick={openCard}
       className="group flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft ring-1 ring-transparent transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:border-primary/30 hover:shadow-lift hover:ring-primary/10"
     >
-      {/* Cover banner with status + price overlaid — tall so the artwork carries the card */}
-      <div className="relative h-48 w-full shrink-0 overflow-hidden sm:h-52">
+      {/* Cover banner with status + price overlaid — a wide 16:10 frame so the
+          artwork scales with the card and stays the dominant element. */}
+      <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden">
         {exam.coverImage ? (
           <img
             src={exam.coverImage}
@@ -136,26 +137,23 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
           {exam.name}
         </h3>
 
-        {/* Stats: Sual / Dəq / Bal — a single quiet panel with hairline dividers */}
-        <div className="mt-3.5 grid grid-cols-3 divide-x divide-line overflow-hidden rounded-xl border border-line bg-surface2/50">
-          <div className="flex flex-col items-center gap-1 py-3.5">
-            <FiHelpCircle className="text-sm text-primary/70" />
-            <p className="font-display text-xl font-extrabold leading-none tabular-nums text-text">{qCount}</p>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">Sual</p>
+        {/* Stats: Sual / Dəq / Bal — a clean numeric row, hairline dividers, no icons */}
+        <div className="mt-3 grid grid-cols-3 divide-x divide-line overflow-hidden rounded-xl border border-line bg-surface2/40">
+          <div className="px-2 py-2.5 text-center">
+            <p className="font-display text-lg font-extrabold leading-none tabular-nums text-text">{qCount}</p>
+            <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-muted">Sual</p>
           </div>
-          <div className="flex flex-col items-center gap-1 py-3.5">
-            <FiClock className="text-sm text-success/80" />
-            <p className="font-display text-xl font-extrabold leading-none tabular-nums text-text">
+          <div className="px-2 py-2.5 text-center">
+            <p className="font-display text-lg font-extrabold leading-none tabular-nums text-text">
               {Math.round((exam.duration || 0) / 60)}
             </p>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">Dəq</p>
+            <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-muted">Dəq</p>
           </div>
-          <div className="flex flex-col items-center gap-1 py-3.5">
-            <FiAward className="text-sm text-accent2" />
-            <p className="font-display text-xl font-extrabold leading-none tabular-nums text-text">
+          <div className="px-2 py-2.5 text-center">
+            <p className="font-display text-lg font-extrabold leading-none tabular-nums text-text">
               {exam.totalMarks ?? "—"}
             </p>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">Bal</p>
+            <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-muted">Bal</p>
           </div>
         </div>
 
