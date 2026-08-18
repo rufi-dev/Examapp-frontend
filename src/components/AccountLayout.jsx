@@ -89,9 +89,18 @@ const sectionParents = (path) => {
 };
 
 const sideLink = ({ isActive }) =>
-  `flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-colors ${
-    isActive ? "bg-primary/12 text-primary" : "text-muted hover:bg-surface2 hover:text-text"
+  `group/nav relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200 ease-out-quint ${
+    isActive
+      ? "bg-surface2 font-semibold text-text"
+      : "font-medium text-muted hover:bg-surface2/60 hover:text-text"
   }`;
+
+// Small role chip shown under the user's name in the sidebar footer.
+const ROLE = {
+  admin: { label: "Admin", cls: "bg-danger/10 text-danger" },
+  teacher: { label: "Müəllim", cls: "bg-primary/10 text-primary" },
+  student: { label: "Şagird", cls: "bg-success/10 text-success" },
+};
 
 export default function AccountLayout({ title, subtitle, actions, children }) {
   const dispatch = useDispatch();
@@ -124,8 +133,23 @@ export default function AccountLayout({ title, subtitle, actions, children }) {
 
   const SideItem = ({ to, label, icon: Icon, end }) => (
     <NavLink to={to} end={end} onClick={close} className={sideLink}>
-      <Icon className="text-[18px]" />
-      {label}
+      {({ isActive }) => (
+        <>
+          {isActive && (
+            <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-primary" />
+          )}
+          <span
+            className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-all duration-200 ease-out-quint ${
+              isActive
+                ? "bg-gradient-to-br from-primary to-primary-hover text-white shadow-soft"
+                : "bg-surface2 text-muted group-hover/nav:scale-110"
+            }`}
+          >
+            <Icon className="text-[16px]" />
+          </span>
+          <span className="truncate">{label}</span>
+        </>
+      )}
     </NavLink>
   );
 
@@ -184,11 +208,20 @@ export default function AccountLayout({ title, subtitle, actions, children }) {
             alt=""
             className="h-9 w-9 shrink-0 rounded-full border border-line object-cover"
           />
-          <span className="min-w-0">
-            <span className="block truncate text-sm font-semibold leading-tight text-text">
-              {user?.name || "..."}
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center gap-2">
+              <span className="truncate text-sm font-semibold leading-tight text-text">
+                {user?.name || "..."}
+              </span>
+              {ROLE[user?.role] && (
+                <span
+                  className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold ${ROLE[user.role].cls}`}
+                >
+                  {ROLE[user.role].label}
+                </span>
+              )}
             </span>
-            <span className="block truncate text-xs leading-tight text-muted">
+            <span className="mt-0.5 block truncate text-xs leading-tight text-muted">
               {user?.email || ""}
             </span>
           </span>

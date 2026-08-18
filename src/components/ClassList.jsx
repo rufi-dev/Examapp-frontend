@@ -39,6 +39,11 @@ const hash = (s) => {
 };
 const boardOf = (id) => BOARDS[hash(id) % BOARDS.length];
 
+// A big faint math glyph on each board — different per class — so a wall of
+// cards reads as a mathematics platform at a glance.
+const GLYPHS = ["π", "√", "∑", "∫", "Δ", "∞", "θ", "%", "±", "×"];
+const glyphOf = (id) => GLYPHS[hash(String(id) + "g") % GLYPHS.length];
+
 // Render classes a batch at a time. An admin's list can be hundreds of classes
 // (every teacher's), and painting them all in one go blocks the main thread (the
 // "freeze"). We render this many, then more as the user scrolls near the end.
@@ -259,13 +264,19 @@ const ClassList = () => {
                   <>
                     <span className="pointer-events-none absolute -right-6 -top-10 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
                     <span className="pointer-events-none absolute inset-x-6 top-9 h-8 rounded-full bg-white/[0.06] blur-md" />
+                    {/* graph-paper grid — the mathematics workspace texture */}
                     <span
-                      className="pointer-events-none absolute inset-0 opacity-[0.07]"
+                      className="pointer-events-none absolute inset-0 opacity-[0.08]"
                       style={{
                         backgroundImage:
-                          "repeating-linear-gradient(0deg, transparent 0 17px, rgba(255,255,255,.9) 17px 18px)",
+                          "linear-gradient(rgba(255,255,255,.9) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.9) 1px, transparent 1px)",
+                        backgroundSize: "22px 22px",
                       }}
                     />
+                    {/* a big faint math glyph, unique per class */}
+                    <span className="pointer-events-none absolute -bottom-5 right-3 select-none font-display text-[104px] font-black leading-none text-white/[0.09]">
+                      {glyphOf(_class._id)}
+                    </span>
                   </>
                 )}
 
@@ -303,18 +314,28 @@ const ClassList = () => {
 
               {/* ── body: what is actually inside the class ────────────── */}
               <div className="flex flex-1 flex-col p-4">
-                <div className="grid grid-cols-2 gap-2 text-center">
-                  <div className="rounded-xl bg-surface2/70 py-2.5">
-                    <p className="font-display text-xl font-extrabold leading-none text-primary">
-                      {_class.students ?? 0}
-                    </p>
-                    <p className="mt-1 text-[11px] text-muted">Şagird</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex items-center gap-2.5 rounded-xl border border-line bg-surface2/60 px-3 py-2.5">
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/12 text-primary">
+                      <FiUsers className="text-[15px]" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block font-display text-lg font-extrabold leading-none text-text">
+                        {_class.students ?? 0}
+                      </span>
+                      <span className="text-[11px] text-muted">Şagird</span>
+                    </span>
                   </div>
-                  <div className="rounded-xl bg-surface2/70 py-2.5">
-                    <p className="font-display text-xl font-extrabold leading-none text-accent2">
-                      {_class.exams ?? 0}
-                    </p>
-                    <p className="mt-1 text-[11px] text-muted">İmtahan</p>
+                  <div className="flex items-center gap-2.5 rounded-xl border border-line bg-surface2/60 px-3 py-2.5">
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-accent2/12 text-accent2">
+                      <FiFileText className="text-[15px]" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block font-display text-lg font-extrabold leading-none text-text">
+                        {_class.exams ?? 0}
+                      </span>
+                      <span className="text-[11px] text-muted">İmtahan</span>
+                    </span>
                   </div>
                 </div>
 
