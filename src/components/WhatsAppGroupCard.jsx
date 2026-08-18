@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { FaWhatsapp } from "react-icons/fa";
+import { FiCheck } from "react-icons/fi";
 import { getUser, selectUser } from "../../redux/features/auth/authSlice";
 import Spinner from "./Spinner";
 
@@ -59,17 +60,17 @@ const WhatsAppGroupCard = () => {
             <FaWhatsapp />
           </span>
           <div>
-            <h2 className="flex items-center gap-2 font-display text-lg font-bold text-text">
-              İmtahan bildirişləri qrupu
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+              <h2 className="font-display text-lg font-bold text-text">İmtahan bildirişləri qrupu</h2>
               {joined && (
                 <span
-                  className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                  style={{ backgroundColor: `${WA}22`, color: "#128C4A" }}
+                  className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold"
+                  style={{ backgroundColor: `${WA}22`, color: "#0E8A43" }}
                 >
-                  ✓ Qoşulmusan
+                  <FiCheck className="text-[13px]" /> Qoşulmusan
                 </span>
               )}
-            </h2>
+            </div>
             <p className="mt-1 max-w-md text-sm text-muted">
               {joined
                 ? "İstənilən vaxt qrupu aç və yeni imtahan bildirişlərini izlə."
