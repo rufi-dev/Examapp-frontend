@@ -94,7 +94,56 @@ const Hero = () => (
       π
     </span>
 
-    <div className="container-app relative grid items-center gap-5 pb-8 pt-20 sm:gap-10 sm:pb-14 sm:pt-24 lg:w-full lg:grid-cols-[1.12fr_0.88fr] lg:gap-14 lg:py-24">
+    {/* ══ MOBILE hero: the teacher photo IS the stage; the pitch is overlaid on
+        its lower half. Full-bleed, sits under the transparent header. ══ */}
+    <div className="relative flex min-h-[86vh] flex-col overflow-hidden lg:hidden">
+      <img
+        src="/teacher.jpg"
+        alt="Əliyar Nuriyev — riyaziyyat müəllimi"
+        className="absolute inset-0 h-full w-full object-cover object-[center_15%]"
+      />
+      {/* top scrim keeps the header readable; bottom scrim seats the text */}
+      <div aria-hidden className="absolute inset-0 bg-gradient-to-b from-emerald-950/65 via-transparent to-transparent" />
+      <div aria-hidden className="absolute inset-x-0 bottom-0 top-1/3 bg-gradient-to-t from-emerald-950 via-emerald-950/85 to-transparent" />
+
+      <div className="relative mt-auto px-5 pb-9 pt-10">
+        <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-200">
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-300" />
+          Azərbaycanda riyaziyyat hazırlığı
+        </span>
+        <h1 className="mt-3.5 font-display text-[2rem] font-extrabold leading-[1.08] tracking-tight drop-shadow">
+          Riyaziyyatı sadəcə öyrənmə.{" "}
+          <span className="text-amber-300">İmtahanda həll et.</span>
+        </h1>
+        <p className="mt-3 text-[14.5px] leading-relaxed text-emerald-50/90">
+          Buraxılış, qəbul və blok imtahanları — hamısı bir platformada.
+        </p>
+        <div className="mt-5 flex flex-col gap-2.5">
+          <Link
+            to="/register"
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-amber-400 px-7 text-base font-bold text-emerald-950 shadow-lift transition-colors hover:bg-amber-300"
+          >
+            Pulsuz başla <FiArrowRight className="text-[18px]" />
+          </Link>
+          <a
+            href="#sinaqlar"
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/5 px-7 text-base font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/15"
+          >
+            Sınaqlara bax
+          </a>
+        </div>
+        <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
+          {proof.map((p) => (
+            <li key={p} className="flex items-center gap-1.5 text-[12.5px] font-medium text-emerald-50">
+              <FiCheckCircle className="shrink-0 text-amber-300" /> {p}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+
+    {/* ══ DESKTOP hero: the two-column pitch + framed portrait ══ */}
+    <div className="container-app relative hidden items-center gap-14 py-24 lg:grid lg:w-full lg:grid-cols-[1.12fr_0.88fr]">
       {/* ── Left: the pitch ── */}
       <div className="animate-fade-rise">
         <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-amber-300/10 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-200">
