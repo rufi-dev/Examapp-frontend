@@ -72,17 +72,16 @@ const Overview = () => {
       {/* Compact action row — left: Bütün imtahanlar (+ create), right: WhatsApp
           group — kept small so the exam list stays the focus. */}
       <div className="mb-8 grid gap-4 sm:grid-cols-2">
-        {/* LEFT — Bütün imtahanlar */}
-        <div className="flex h-full flex-col justify-between gap-3 rounded-2xl border border-line bg-gradient-to-br from-primary/10 to-primary/5 p-4">
-          <Link to="/classes" className="group flex items-center gap-2.5">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
-              <FiBookOpen className="text-lg" />
+        {/* LEFT — create + a clear "Bütün imtahanlar" link under the button */}
+        <div className="flex h-full flex-col gap-3 rounded-2xl border border-line bg-gradient-to-br from-primary/10 to-primary/5 p-4">
+          <div className="flex items-center gap-2.5">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-fg">
+              {isStaff ? <FiPlus className="text-lg" /> : <FiBookOpen className="text-lg" />}
             </span>
-            <h2 className="font-display text-[15px] font-bold text-text transition-colors group-hover:text-primary">
-              Bütün imtahanlar
+            <h2 className="font-display text-[15px] font-bold text-text">
+              {isStaff ? "Yeni imtahan yarat" : "İmtahanlar"}
             </h2>
-            <FiArrowRight className="ml-auto text-muted transition-colors group-hover:text-primary" />
-          </Link>
+          </div>
           {isStaff ? (
             <Button to="/classes" size="sm" className="w-full">
               <FiPlus /> İmtahan yarat
@@ -92,6 +91,12 @@ const Overview = () => {
               <FiBookOpen /> İmtahanlara bax
             </Button>
           )}
+          <Link
+            to="/classes"
+            className="inline-flex items-center gap-1 self-start text-sm font-semibold text-primary underline decoration-2 underline-offset-4 transition hover:opacity-80"
+          >
+            Bütün imtahanlar <FiArrowRight className="text-[13px]" />
+          </Link>
         </div>
 
         {/* RIGHT — Votsap sınaq qrupu */}
