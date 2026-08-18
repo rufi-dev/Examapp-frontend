@@ -9,7 +9,7 @@ import { getResultsByUser } from "../../redux/features/quiz/resultSlice";
 import AccountLayout from "../components/AccountLayout";
 import Spinner from "../components/Spinner";
 import Button from "../components/ui/Button";
-import { FiEye, FiBookOpen, FiArrowRight, FiPlus, FiAward } from "react-icons/fi";
+import { FiEye, FiBookOpen, FiArrowRight, FiPlus } from "react-icons/fi";
 import ExamCard from "../components/ExamCard";
 import WhatsAppGroupCard from "../components/WhatsAppGroupCard";
 
@@ -69,40 +69,33 @@ const Overview = () => {
       title={`Salam, ${firstName} 👋`}
       subtitle="Hesabının icmalı və ən son imtahanlar."
     >
-      {/* Compact action row — WhatsApp group + create/my-exams — kept small so the
-          exam list stays the focus and sits high on the page. */}
+      {/* Compact action row — left: Bütün imtahanlar (+ create), right: WhatsApp
+          group — kept small so the exam list stays the focus. */}
       <div className="mb-8 grid gap-4 sm:grid-cols-2">
-        <WhatsAppGroupCard />
-        {isStaff ? (
-          <div className="flex h-full flex-col justify-between gap-3 rounded-2xl border border-line bg-gradient-to-br from-primary/10 to-primary/5 p-4">
-            <div className="flex items-center gap-2.5">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-fg">
-                <FiPlus className="text-lg" />
-              </span>
-              <h2 className="font-display text-[15px] font-bold text-text">Yeni imtahan yarat</h2>
-            </div>
-            <div className="flex gap-2">
-              <Button to="/classes" size="sm" className="flex-1">
-                <FiPlus /> Əlavə et
-              </Button>
-              <Button to="/classes" size="sm" variant="secondary" className="flex-1">
-                <FiBookOpen /> Bax
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex h-full flex-col justify-between gap-3 rounded-2xl border border-line bg-surface p-4">
-            <div className="flex items-center gap-2.5">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
-                <FiAward className="text-lg" />
-              </span>
-              <h2 className="font-display text-[15px] font-bold text-text">İmtahanlarım</h2>
-            </div>
-            <Button to="/myExams" size="sm" variant="soft" className="w-full">
-              <FiArrowRight /> Aç
+        {/* LEFT — Bütün imtahanlar */}
+        <div className="flex h-full flex-col justify-between gap-3 rounded-2xl border border-line bg-gradient-to-br from-primary/10 to-primary/5 p-4">
+          <Link to="/classes" className="group flex items-center gap-2.5">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
+              <FiBookOpen className="text-lg" />
+            </span>
+            <h2 className="font-display text-[15px] font-bold text-text transition-colors group-hover:text-primary">
+              Bütün imtahanlar
+            </h2>
+            <FiArrowRight className="ml-auto text-muted transition-colors group-hover:text-primary" />
+          </Link>
+          {isStaff ? (
+            <Button to="/classes" size="sm" className="w-full">
+              <FiPlus /> İmtahan yarat
             </Button>
-          </div>
-        )}
+          ) : (
+            <Button to="/classes" size="sm" variant="soft" className="w-full">
+              <FiBookOpen /> İmtahanlara bax
+            </Button>
+          )}
+        </div>
+
+        {/* RIGHT — Votsap sınaq qrupu */}
+        <WhatsAppGroupCard />
       </div>
 
       {/* Exams — the focus of the page. */}
