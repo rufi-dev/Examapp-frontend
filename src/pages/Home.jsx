@@ -50,13 +50,13 @@ const Home = () => {
           layout doesn't collapse and the dark section below doesn't jump up on
           every refresh. Hidden only once we KNOW there are no public exams. */}
       {(loadingExams || publicExams.length > 0) && (
-        <section id="sinaqlar" className="container-app scroll-mt-24 py-20 sm:py-24">
+        <section id="sinaqlar" className="container-app scroll-mt-24 pb-16 pt-10 sm:py-24">
           <SectionTitle
             eyebrow="Açıq sınaqlar"
             title="Son əlavə olunan sınaqlar"
             subtitle="Müəllimlərin açıq paylaşdığı ən yeni imtahanlar — seç və həll etməyə başla."
           />
-          <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-7 grid gap-5 sm:mt-12 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {loadingExams
               ? Array.from({ length: 3 }).map((_, k) => (
                   <div

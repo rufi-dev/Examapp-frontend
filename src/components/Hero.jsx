@@ -94,7 +94,7 @@ const Hero = () => (
       π
     </span>
 
-    <div className="container-app relative grid items-center gap-9 pb-14 pt-24 sm:gap-10 lg:w-full lg:grid-cols-[1.12fr_0.88fr] lg:gap-14 lg:py-24">
+    <div className="container-app relative grid items-center gap-5 pb-8 pt-20 sm:gap-10 sm:pb-14 sm:pt-24 lg:w-full lg:grid-cols-[1.12fr_0.88fr] lg:gap-14 lg:py-24">
       {/* ── Left: the pitch ── */}
       <div className="animate-fade-rise">
         <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-amber-300/10 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-200">
@@ -142,8 +142,9 @@ const Hero = () => (
         </ul>
       </div>
 
-      {/* ── Right: the teacher ── */}
-      <div className="animate-fade-rise mx-auto w-full max-w-sm lg:max-w-none [animation-delay:120ms]">
+      {/* ── Right: the teacher ── (smaller on phones so the exams sit closer to
+          the fold; full size from sm up) */}
+      <div className="animate-fade-rise mx-auto w-full max-w-[15rem] sm:max-w-sm lg:max-w-none [animation-delay:120ms]">
         <figure className="relative overflow-hidden rounded-3xl border-2 border-white/15 shadow-lift">
           <img
             src="/teacher.jpg"
