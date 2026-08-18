@@ -61,7 +61,7 @@ const WhatsAppGroupCard = () => {
           </span>
           <div>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-              <h2 className="font-display text-lg font-bold text-text">İmtahan bildirişləri qrupu</h2>
+              <h2 className="font-display text-lg font-bold text-text">Whatsapp sınaq qrupu</h2>
               {joined && (
                 <span
                   className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold"
@@ -89,7 +89,7 @@ const WhatsAppGroupCard = () => {
             <Spinner />
           ) : (
             <>
-              <FaWhatsapp className="text-lg" /> {joined ? "Qrupu aç" : "Qrupa qoşul"}
+              <FaWhatsapp className="text-lg" /> Qrupa qoşul
             </>
           )}
         </button>
