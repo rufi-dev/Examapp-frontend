@@ -60,9 +60,6 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
     exam.questionCount ?? (Array.isArray(exam.questions) ? exam.questions.length : undefined) ?? "—";
 
   const isStaff = user?.role === "admin" || user?.role === "teacher";
-  // Owner/admin of THIS exam — only they get the management footer.
-  const canManage =
-    user?.role === "admin" || (exam?.owner && String(exam.owner) === String(user?._id));
 
   const buy = async (e) => {
     e.preventDefault();
@@ -93,8 +90,9 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
       onClick={openCard}
       className="group flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft ring-1 ring-transparent transition-all duration-200 ease-out-quint hover:-translate-y-1 hover:border-primary/30 hover:shadow-lift hover:ring-primary/10"
     >
-      {/* Cover — kept fully visible (no overlay panel) so the artwork reads clearly. */}
-      <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden">
+      {/* Cover — a tall frame that carries the card. The title + stats sit ON the
+          artwork in a frosted-glass panel; only the action button lives below. */}
+      <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden">
         {exam.coverImage ? (
           <img
             src={exam.coverImage}
@@ -107,8 +105,9 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
             className="transition-transform duration-500 ease-out-quint group-hover:scale-[1.05]"
           />
         )}
-        {/* light top scrim so the badges stay legible over any cover */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/40 to-transparent" />
+        {/* scrims — top for the badges, bottom to seat the glass panel */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/45 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/70 via-black/25 to-transparent" />
         <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-2">
           <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold shadow-sm ring-1 ring-white/25 ${statusSolid}`}>
             {upcoming ? <FiClock className="text-[12px]" /> : <span className="h-1.5 w-1.5 rounded-full bg-white" />}
@@ -131,35 +130,44 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
             </span>
           </div>
         </div>
-      </div>
 
-      {/* Info block — solid surface, dark readable text. Title, stats and the
-          action sit together as one unit directly under the cover. */}
-      <div className="flex flex-1 flex-col p-4">
-        <h3 className="line-clamp-2 min-h-[2.75rem] font-display text-[16px] font-bold leading-snug text-text transition-colors group-hover:text-primary">
-          {exam.name}
-        </h3>
-
-        <div className="mt-3 grid grid-cols-3 divide-x divide-line overflow-hidden rounded-xl border border-line bg-surface2/50">
-          <div className="px-1 py-2.5 text-center">
-            <p className="font-display text-lg font-extrabold leading-none tabular-nums text-text">{qCount}</p>
-            <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-muted">Sual</p>
-          </div>
-          <div className="px-1 py-2.5 text-center">
-            <p className="font-display text-lg font-extrabold leading-none tabular-nums text-text">
-              {Math.round((exam.duration || 0) / 60)}
-            </p>
-            <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-muted">Dəq</p>
-          </div>
-          <div className="px-1 py-2.5 text-center">
-            <p className="font-display text-lg font-extrabold leading-none tabular-nums text-text">
-              {exam.totalMarks ?? "—"}
-            </p>
-            <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-muted">Bal</p>
+        {/* Frosted-glass panel: exam name + stats, sitting inside the image. Dark
+            tint so the white text/numbers stay readable over any bright cover. */}
+        <div className="absolute inset-x-2.5 bottom-2.5">
+          <div className="rounded-xl border border-white/15 bg-black/45 p-3 shadow-lg backdrop-blur-md">
+            <h3 className="line-clamp-1 font-display text-[15px] font-bold leading-snug text-white drop-shadow">
+              {exam.name}
+            </h3>
+            <div className="mt-2 grid grid-cols-3 divide-x divide-white/20">
+              <div className="px-1 text-center">
+                <p className="font-display text-base font-extrabold leading-none tabular-nums text-white">{qCount}</p>
+                <p className="mt-1 text-[9px] font-semibold uppercase tracking-wide text-white/75">Sual</p>
+              </div>
+              <div className="px-1 text-center">
+                <p className="font-display text-base font-extrabold leading-none tabular-nums text-white">
+                  {Math.round((exam.duration || 0) / 60)}
+                </p>
+                <p className="mt-1 text-[9px] font-semibold uppercase tracking-wide text-white/75">Dəq</p>
+              </div>
+              <div className="px-1 text-center">
+                <p className="font-display text-base font-extrabold leading-none tabular-nums text-white">
+                  {exam.totalMarks ?? "—"}
+                </p>
+                <p className="mt-1 text-[9px] font-semibold uppercase tracking-wide text-white/75">Bal</p>
+              </div>
+            </div>
           </div>
         </div>
+      </div>
 
-        <div className="mt-3" onClick={(e) => e.stopPropagation()}>
+      <div className="flex flex-1 flex-col p-3.5">
+        {/* Footer: owner tools + action button(s). Stop card navigation so these
+            controls do their own thing. */}
+        <div className="mt-auto" onClick={(e) => e.stopPropagation()}>
+          {!publicView && (
+            <ExamAdminActions exam={exam} onChanged={onChanged} className="mb-3 border-t border-line pt-3" />
+          )}
+
           {publicView ? (
             <Button onClick={openCard} size="md" className="w-full">
               {!free && !owned && !isStaff ? (
@@ -171,7 +179,7 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
               )}
             </Button>
           ) : taken ? (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Button to={`/exam/${exam._id}/result`} size="md" className="w-full bg-success text-white hover:brightness-105">
                 <FiBarChart2 /> Nəticəni gör
               </Button>
@@ -203,13 +211,6 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
             </Button>
           )}
         </div>
-
-        {/* Owner/admin tools only — students never see this row. */}
-        {!publicView && canManage && (
-          <div className="mt-3 border-t border-line pt-3" onClick={(e) => e.stopPropagation()}>
-            <ExamAdminActions exam={exam} onChanged={onChanged} />
-          </div>
-        )}
       </div>
     </div>
   );
