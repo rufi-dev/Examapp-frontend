@@ -50,7 +50,7 @@ const Home = () => {
           layout doesn't collapse and the dark section below doesn't jump up on
           every refresh. Hidden only once we KNOW there are no public exams. */}
       {(loadingExams || publicExams.length > 0) && (
-        <section id="sinaqlar" className="container-app scroll-mt-24 pb-16 pt-5 sm:py-24">
+        <section id="sinaqlar" className="container-app scroll-mt-24 py-6 sm:py-16">
           <SectionTitle eyebrow="Açıq sınaqlar" title="Son əlavə olunan sınaqlar" />
           <div className="mt-7 grid gap-5 sm:mt-12 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {loadingExams
@@ -82,7 +82,7 @@ const Home = () => {
           recording exists at /demo.mp4 (drop the file into Frontend/public/, and
           optionally a /demo-poster.jpg thumbnail). */}
       {hasDemo && (
-        <section id="demo" className="container-app scroll-mt-24 py-20 sm:py-24">
+        <section id="demo" className="container-app scroll-mt-24 py-6 sm:py-16">
           <div className="grid items-center gap-12 lg:grid-cols-2">
             <div className="text-center lg:text-left">
               <p className="text-xs font-bold uppercase tracking-wider text-primary">Necə işləyir?</p>
@@ -133,7 +133,7 @@ const Home = () => {
       {/* FINAL CTA */}
       <section className="relative overflow-hidden bg-bg">
         <div aria-hidden className="pointer-events-none absolute inset-0 bg-graph [mask-image:radial-gradient(ellipse_at_center,black,transparent_72%)]" />
-        <div className="container-app relative pb-12 pt-20 text-center sm:pb-16 sm:pt-28">
+        <div className="container-app relative py-6 text-center sm:py-16">
           <h2 className="mx-auto max-w-2xl font-display text-3xl font-extrabold tracking-tight text-text sm:text-5xl">
             Növbəti imtahana daha hazırlıqlı gir.
           </h2>
