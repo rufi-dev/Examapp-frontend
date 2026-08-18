@@ -9,6 +9,10 @@ import Spinner from "./Spinner";
 
 const INVITE_API = `${import.meta.env.VITE_BACKEND_URL}/api/whatsapp/invite`;
 const WA = "#25D366";
+// Fallback so the card always shows even if the backend hasn't returned a link
+// yet (e.g. a local dev backend with no group configured). The server value,
+// when present, overrides this.
+const FALLBACK_LINK = "https://chat.whatsapp.com/GjCsuwxq5Xe9y2mWvjh3YM";
 
 // Optional "join the exam-notifications WhatsApp group" card for the dashboard.
 // Replaces the old mandatory join pop-up: no longer blocks anyone. Hides itself
@@ -16,18 +20,18 @@ const WA = "#25D366";
 const WhatsAppGroupCard = () => {
   const dispatch = useDispatch();
   const user = useSelector(selectUser);
-  const [link, setLink] = useState("");
+  const [link, setLink] = useState(FALLBACK_LINK);
   const [joining, setJoining] = useState(false);
 
   useEffect(() => {
     axios
       .get(INVITE_API)
-      .then((r) => setLink(r?.data && typeof r.data.link === "string" ? r.data.link : ""))
+      .then((r) => {
+        const l = r?.data && typeof r.data.link === "string" ? r.data.link : "";
+        if (l) setLink(l); // server value overrides the fallback
+      })
       .catch(() => {});
   }, []);
-
-  // No invite link configured → nothing to join, render nothing.
-  if (!link) return null;
 
   const joined = !!user?.whatsappGroupJoined;
 

@@ -9,7 +9,6 @@ const WHATSAPP = "994773999966";
 const navCol = [
   { label: "Ana səhifə", to: "/" },
   { label: "Sınaqlar", href: "#sinaqlar" },
-  { label: "İmtahan mühiti", href: "#exam-preview" },
   { label: "Haqqımızda", to: "/about" },
   { label: "Əlaqə", to: "/contact" },
 ];
@@ -23,9 +22,9 @@ const Footer = () => {
     <footer className="section-navy relative overflow-hidden">
       <div aria-hidden className="pointer-events-none absolute inset-0 bg-graph-on-dark [mask-image:linear-gradient(to_bottom,transparent,black_55%)]" />
       <div className="container-app relative pb-14 pt-8">
-        <div className="grid gap-12 lg:grid-cols-[1.7fr_1fr_1fr]">
+        <div className="grid grid-cols-2 gap-x-8 gap-y-10 lg:grid-cols-[1.7fr_1fr_1fr] lg:gap-12">
           {/* brand */}
-          <div className="max-w-sm">
+          <div className="col-span-2 max-w-sm lg:col-span-1">
             <BunkerMathLogo size={52} textClassName="text-white" />
             <p className="mt-4 text-sm leading-relaxed text-white/70">
               Riyaziyyat imtahanına daha ağıllı və planlı hazırlaş. Real imtahan formatında

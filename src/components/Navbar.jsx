@@ -17,7 +17,6 @@ import { MathGridBackground } from "./blueprint/MathVisuals";
 const links = [
   { to: "/", label: "Ana səhifə", end: true },
   { hash: "#sinaqlar", label: "Sınaqlar" },
-  { hash: "#exam-preview", label: "İmtahan mühiti" },
   { to: "/about", label: "Haqqımızda" },
   { to: "/contact", label: "Əlaqə" },
 ];
