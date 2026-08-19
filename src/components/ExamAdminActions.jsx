@@ -70,7 +70,7 @@ const ExamAdminActions = ({ exam, onChanged, className = "" }) => {
 
   return (
     <>
-      <div className={`flex items-center justify-end gap-1.5 ${className}`}>
+      <div className={`flex items-center justify-between gap-1 ${className}`}>
         <ExamAction onClick={toggleHidden} label={exam.hidden ? "Göstər" : "Gizlət"}>
           {exam.hidden ? <FiEye className="text-[17px]" /> : <FiEyeOff className="text-[17px]" />}
         </ExamAction>

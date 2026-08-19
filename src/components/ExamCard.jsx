@@ -165,7 +165,7 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
             controls do their own thing. */}
         <div className="mt-auto" onClick={(e) => e.stopPropagation()}>
           {!publicView && (
-            <ExamAdminActions exam={exam} onChanged={onChanged} className="mb-3 border-t border-line pt-3" />
+            <ExamAdminActions exam={exam} onChanged={onChanged} className="mb-3" />
           )}
 
           {publicView ? (
