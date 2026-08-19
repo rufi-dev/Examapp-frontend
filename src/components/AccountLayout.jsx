@@ -159,7 +159,7 @@ export default function AccountLayout({ title, subtitle, actions, children }) {
   // Full-height sidebar content: brand → nav → user/logout
   const SidebarInner = () => (
     <div className="flex h-full flex-col">
-      <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-line px-5">
+      <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-line bg-gradient-to-r from-primary/[0.07] to-transparent px-5">
         <Link to="/" onClick={close} className="flex items-center">
           <BunkerMathLogo size={46} />
         </Link>
@@ -240,7 +240,14 @@ export default function AccountLayout({ title, subtitle, actions, children }) {
   );
 
   return (
-    <div className="min-h-screen bg-bg">
+    <div className="relative min-h-screen bg-bg">
+      {/* Signature graph-paper texture — the same "mathematical blueprint" motif
+          as the public site, so the dashboard shares its vibe. Sits behind all
+          content (opaque panels cover it, so it only whispers through the page). */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-10 bg-graph [mask-image:radial-gradient(130%_95%_at_100%_0%,black,transparent_72%)]"
+      />
       {/* Desktop: fixed full-height sidebar pinned to the left */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-line bg-surface lg:block">
         <SidebarInner />

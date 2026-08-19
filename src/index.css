@@ -4,47 +4,48 @@
 
 @layer base {
   :root {
-    /* OKLCH tokens as bare "L C H" triplets — Calm Indigo, light theme */
-    --bg: 244 246 249;
-    --surface: 253 253 255;
-    --surface-2: 235 237 242;
-    --border: 221 223 229;
-    --text: 34 38 49;
-    --text-muted: 103 108 120;
+    /* Dashboard light theme — tuned to share the public "blueprint" green vibe
+       (neutrals faintly tinted toward the brand, teal accent, warm ink). */
+    --bg: 244 247 244;
+    --surface: 254 255 254;
+    --surface-2: 233 240 234;
+    --border: 219 228 221;
+    --text: 25 41 44;
+    --text-muted: 90 104 100;
     --primary: 30 122 43;
     --primary-hover: 24 100 36;
-    --primary-fg: 251 252 255;
-    --accent-2: 150 125 232;
-    --success: 61 184 124;
-    --warning: 233 180 82;
-    --danger: 215 51 55;
+    --primary-fg: 251 254 252;
+    --accent-2: 48 182 188;
+    --success: 22 136 70;
+    --warning: 217 128 12;
+    --danger: 201 48 45;
     --ring: 30 122 43;
-    --shadow: 16 21 36;
+    --shadow: 18 40 28;
     /* Defaults so `advanced`/`navy` classes resolve outside .blueprint too. */
-    --advanced: 150 125 232;
-    --navy: 38 49 81;
+    --advanced: 115 66 211;
+    --navy: 20 46 106;
     --font-display: "Bricolage Grotesque", Fraunces, system-ui, sans-serif;
     color-scheme: light;
   }
 
   .dark {
-    --bg: 17 19 23;
-    --surface: 27 30 36;
-    --surface-2: 39 42 50;
-    --border: 50 53 62;
-    --text: 237 238 243;
-    --text-muted: 155 158 167;
+    --bg: 15 22 18;
+    --surface: 22 31 26;
+    --surface-2: 33 44 37;
+    --border: 46 58 50;
+    --text: 236 241 237;
+    --text-muted: 154 166 158;
     --primary: 52 185 74;
     --primary-hover: 74 210 96;
-    --primary-fg: 10 13 22;
-    --accent-2: 161 141 238;
-    --success: 71 197 140;
-    --warning: 238 187 88;
+    --primary-fg: 8 16 11;
+    --accent-2: 62 191 198;
+    --success: 74 197 140;
+    --warning: 246 161 79;
     --danger: 240 87 78;
     --ring: 52 185 74;
     --shadow: 0 0 1;
-    --advanced: 161 141 238;
-    --navy: 30 40 66;
+    --advanced: 147 113 238;
+    --navy: 17 26 38;
     color-scheme: dark;
   }
 
