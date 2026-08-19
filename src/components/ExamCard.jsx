@@ -183,7 +183,7 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
               <Button to={`/exam/${exam._id}/result`} size="lg" className="w-full bg-success text-white hover:brightness-105">
                 <FiBarChart2 /> Nəticəni gör
               </Button>
-              <Button to={`/exam/details/${exam._id}`} variant="outline" size="lg" className="w-full">
+              <Button to={`/exam/details/${exam._id}`} variant="soft" size="lg" className="w-full">
                 İmtahana bax
               </Button>
             </div>

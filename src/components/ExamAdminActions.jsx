@@ -1,19 +1,27 @@
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
-import { MdOutlineModeEditOutline } from "react-icons/md";
-import { AiFillDelete, AiOutlinePlus } from "react-icons/ai";
-import { FiBarChart2, FiEye, FiEyeOff, FiRadio } from "react-icons/fi";
+import {
+  FiBarChart2,
+  FiEye,
+  FiEyeOff,
+  FiRadio,
+  FiFilePlus,
+  FiEdit3,
+  FiTrash2,
+} from "react-icons/fi";
 import { deleteExam, setExamHidden } from "../../redux/features/quiz/quizSlice";
 import ConfirmDialog from "./ui/ConfirmDialog";
 
-// Owner/admin action button with a hover tooltip so each icon's purpose is clear.
+// Owner/admin action button — a soft tinted chip that lifts + colours on hover,
+// with a tooltip naming the action. `tone` picks the hover accent.
+const TONE = {
+  primary: "hover:bg-primary/12 hover:text-primary hover:ring-primary/25",
+  accent: "hover:bg-accent2/12 hover:text-accent2 hover:ring-accent2/25",
+  danger: "hover:bg-danger/12 hover:text-danger hover:ring-danger/25",
+};
 const ExamAction = ({ to, onClick, label, tone = "primary", children }) => {
-  const toneCls =
-    tone === "danger"
-      ? "hover:border-danger/40 hover:bg-danger/10 hover:text-danger"
-      : "hover:border-primary/40 hover:bg-primary/10 hover:text-primary";
-  const cls = `grid h-10 w-10 place-items-center rounded-xl border border-line bg-surface text-muted transition-colors ${toneCls}`;
+  const cls = `grid h-10 w-10 place-items-center rounded-xl bg-surface2 text-muted ring-1 ring-line/70 shadow-sm transition-all duration-200 ease-out-quint hover:-translate-y-0.5 hover:shadow-soft ${TONE[tone] || TONE.primary}`;
   return (
     <div className="group/act relative">
       {to ? (
@@ -70,11 +78,11 @@ const ExamAdminActions = ({ exam, onChanged, className = "" }) => {
 
   return (
     <>
-      <div className={`flex items-center justify-between gap-1 ${className}`}>
+      <div className={`flex items-center justify-between gap-1.5 ${className}`}>
         <ExamAction onClick={toggleHidden} label={exam.hidden ? "Göstər" : "Gizlət"}>
           {exam.hidden ? <FiEye className="text-[17px]" /> : <FiEyeOff className="text-[17px]" />}
         </ExamAction>
-        <ExamAction to={`/exam/${exam._id}/live`} label="Canlı izlə">
+        <ExamAction to={`/exam/${exam._id}/live`} label="Canlı izlə" tone="accent">
           <FiRadio className="text-[17px]" />
         </ExamAction>
         <ExamAction to={`/exam/${exam._id}/resultsByExam`} label="Nəticələr">
@@ -84,13 +92,13 @@ const ExamAdminActions = ({ exam, onChanged, className = "" }) => {
           to={exam.mode === "structured" ? `/exam/${exam._id}/build` : `/exam/${exam._id}/addQuestion`}
           label="Sual əlavə et"
         >
-          <AiOutlinePlus className="text-[17px]" />
+          <FiFilePlus className="text-[17px]" />
         </ExamAction>
         <ExamAction to={`/exam/edit/${exam._id}`} label="Redaktə et">
-          <MdOutlineModeEditOutline className="text-[17px]" />
+          <FiEdit3 className="text-[17px]" />
         </ExamAction>
         <ExamAction onClick={() => setConfirm(true)} label="Sil" tone="danger">
-          <AiFillDelete className="text-[17px]" />
+          <FiTrash2 className="text-[17px]" />
         </ExamAction>
       </div>
 
