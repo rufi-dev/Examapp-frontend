@@ -7,10 +7,9 @@ import ExamCard from "../components/ExamCard";
 
 // Centred editorial section header: a plain eyebrow, a large display title, and
 // a fading hairline rule under it — the landing's premium section-lead treatment.
-const SectionHeader = ({ eyebrow, title }) => (
+const SectionHeader = ({ title }) => (
   <div className="mx-auto max-w-2xl text-center">
-    <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{eyebrow}</p>
-    <h2 className="mt-3 font-display text-3xl font-extrabold tracking-tight text-text sm:text-[2.6rem] sm:leading-[1.08]">
+    <h2 className="font-display text-3xl font-extrabold tracking-tight text-text sm:text-[2.6rem] sm:leading-[1.08]">
       {title}
     </h2>
     <div className="mx-auto mt-5 h-px w-24 bg-gradient-to-r from-transparent via-primary/45 to-transparent" />
@@ -72,7 +71,7 @@ const Home = () => {
             className="pointer-events-none absolute -top-28 left-1/2 h-72 w-[46rem] max-w-[95%] -translate-x-1/2 rounded-full bg-primary/[0.07] blur-3xl"
           />
           <div className="container-app relative">
-            <SectionHeader eyebrow="Açıq sınaqlar" title="Son əlavə olunan sınaqlar" />
+            <SectionHeader title="Son əlavə olunan sınaqlar" />
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {loadingExams
               ? Array.from({ length: 3 }).map((_, k) => (
@@ -114,8 +113,7 @@ const Home = () => {
           />
           <div className="container-app relative grid items-center gap-12 lg:grid-cols-2">
             <div className="text-center lg:text-left">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Necə işləyir?</p>
-              <h2 className="mt-3 font-display text-3xl font-extrabold tracking-tight text-text sm:text-[2.5rem] sm:leading-[1.1]">
+              <h2 className="font-display text-3xl font-extrabold tracking-tight text-text sm:text-[2.5rem] sm:leading-[1.1]">
                 Telefonunda bir neçə toxunuşla sınağa başla.
               </h2>
               <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-muted lg:mx-0">
@@ -172,7 +170,7 @@ const Home = () => {
           className="pointer-events-none absolute inset-0 opacity-60"
           style={{ background: "radial-gradient(50% 45% at 85% 10%, rgba(226,182,87,0.22), transparent 62%)" }}
         />
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-graph-on-dark opacity-[0.05]" />
+        <div aria-hidden className="pointer-events-none absolute inset-0 bg-graph-on-dark opacity-70" />
         <div className="container-app relative py-16 text-center sm:py-24">
           <h2 className="mx-auto max-w-2xl font-display text-3xl font-extrabold tracking-tight sm:text-5xl">
             Növbəti imtahana daha hazırlıqlı gir.
