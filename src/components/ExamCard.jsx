@@ -169,7 +169,7 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
           )}
 
           {publicView ? (
-            <Button onClick={openCard} size="md" className="w-full">
+            <Button onClick={openCard} size="lg" className="w-full">
               {!free && !owned && !isStaff ? (
                 `Ödəniş et və başla · ${exam.price} ₼`
               ) : (
@@ -180,27 +180,27 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
             </Button>
           ) : taken ? (
             <div className="flex flex-col gap-2 sm:flex-row">
-              <Button to={`/exam/${exam._id}/result`} size="md" className="w-full bg-success text-white hover:brightness-105">
+              <Button to={`/exam/${exam._id}/result`} size="lg" className="w-full bg-success text-white hover:brightness-105">
                 <FiBarChart2 /> Nəticəni gör
               </Button>
-              <Button to={`/exam/details/${exam._id}`} variant="outline" size="md" className="w-full">
+              <Button to={`/exam/details/${exam._id}`} variant="outline" size="lg" className="w-full">
                 İmtahana bax
               </Button>
             </div>
           ) : upcoming ? (
-            <Button disabled size="md" className="w-full">
+            <Button disabled size="lg" className="w-full">
               <FiClock /> Tezliklə · {fmtDate(exam.startDate)}
             </Button>
           ) : ended ? (
-            <Button disabled size="md" className="w-full">
+            <Button disabled size="lg" className="w-full">
               İmtahan bitib
             </Button>
           ) : owned ? (
-            <Button to={`/exam/details/${exam._id}`} size="md" className="w-full">
+            <Button to={`/exam/details/${exam._id}`} size="lg" className="w-full">
               <FiPlay /> İmtahana başla
             </Button>
           ) : (
-            <Button onClick={buy} size="md" className="w-full">
+            <Button onClick={buy} size="lg" className="w-full">
               {free ? (
                 <>
                   <FiCheckCircle /> Pulsuz əldə et

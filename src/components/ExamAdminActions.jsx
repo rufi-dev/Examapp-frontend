@@ -13,7 +13,7 @@ const ExamAction = ({ to, onClick, label, tone = "primary", children }) => {
     tone === "danger"
       ? "hover:border-danger/40 hover:bg-danger/10 hover:text-danger"
       : "hover:border-primary/40 hover:bg-primary/10 hover:text-primary";
-  const cls = `grid h-9 w-9 place-items-center rounded-xl border border-line bg-surface text-muted transition-colors ${toneCls}`;
+  const cls = `grid h-10 w-10 place-items-center rounded-xl border border-line bg-surface text-muted transition-colors ${toneCls}`;
   return (
     <div className="group/act relative">
       {to ? (
