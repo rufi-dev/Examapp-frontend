@@ -179,7 +179,7 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
               )}
             </Button>
           ) : taken ? (
-            <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="flex flex-col gap-2">
               <Button to={`/exam/${exam._id}/result`} size="lg" className="w-full bg-success text-white hover:brightness-105">
                 <FiBarChart2 /> Nəticəni gör
               </Button>
