@@ -3,8 +3,22 @@ import axios from "axios";
 import { Link } from "react-router-dom";
 import { FiArrowRight, FiCheckCircle } from "react-icons/fi";
 import Hero from "../components/Hero";
-import SectionTitle from "../components/ui/SectionTitle";
 import ExamCard from "../components/ExamCard";
+
+// Centred editorial section header: a pill eyebrow with the π mark, a large
+// display title, and a fading hairline rule under it — the landing's premium
+// section-lead treatment.
+const SectionHeader = ({ eyebrow, title }) => (
+  <div className="mx-auto max-w-2xl text-center">
+    <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-primary">
+      <span className="font-display text-sm leading-none">π</span> {eyebrow}
+    </span>
+    <h2 className="mt-4 font-display text-3xl font-extrabold tracking-tight text-text sm:text-[2.6rem] sm:leading-[1.08]">
+      {title}
+    </h2>
+    <div className="mx-auto mt-5 h-px w-24 bg-gradient-to-r from-transparent via-primary/45 to-transparent" />
+  </div>
+);
 
 const Home = () => {
   // Newest exams from OPEN (public) classes — real content, no auth needed.
@@ -50,9 +64,19 @@ const Home = () => {
           layout doesn't collapse and the dark section below doesn't jump up on
           every refresh. Hidden only once we KNOW there are no public exams. */}
       {(loadingExams || publicExams.length > 0) && (
-        <section id="sinaqlar" className="container-app scroll-mt-24 py-6 sm:py-16">
-          <SectionTitle eyebrow="Açıq sınaqlar" title="Son əlavə olunan sınaqlar" />
-          <div className="mt-7 grid gap-5 sm:mt-12 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <section id="sinaqlar" className="relative scroll-mt-24 overflow-hidden py-14 sm:py-20">
+          {/* Decorative stage: faint graph paper + a soft green aura up top. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 bg-graph opacity-70 [mask-image:radial-gradient(85%_55%_at_50%_0%,black,transparent_78%)]"
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -top-28 left-1/2 h-72 w-[46rem] max-w-[95%] -translate-x-1/2 rounded-full bg-primary/[0.07] blur-3xl"
+          />
+          <div className="container-app relative">
+            <SectionHeader eyebrow="Açıq sınaqlar" title="Son əlavə olunan sınaqlar" />
+          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {loadingExams
               ? Array.from({ length: 3 }).map((_, k) => (
                   <div
@@ -74,6 +98,7 @@ const Home = () => {
               : publicExams.slice(0, 6).map((e) => (
                   <ExamCard key={e._id} exam={e} publicView />
                 ))}
+            </div>
           </div>
         </section>
       )}
@@ -82,11 +107,20 @@ const Home = () => {
           recording exists at /demo.mp4 (drop the file into Frontend/public/, and
           optionally a /demo-poster.jpg thumbnail). */}
       {hasDemo && (
-        <section id="demo" className="container-app scroll-mt-24 py-6 sm:py-16">
-          <div className="grid items-center gap-12 lg:grid-cols-2">
+        <section
+          id="demo"
+          className="relative scroll-mt-24 overflow-hidden border-y border-line bg-surface2/40 py-14 sm:py-20"
+        >
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 bg-graph opacity-50 [mask-image:radial-gradient(90%_80%_at_100%_50%,black,transparent_80%)]"
+          />
+          <div className="container-app relative grid items-center gap-12 lg:grid-cols-2">
             <div className="text-center lg:text-left">
-              <p className="text-xs font-bold uppercase tracking-wider text-primary">Necə işləyir?</p>
-              <h2 className="mt-3 font-display text-3xl font-extrabold tracking-tight text-text sm:text-4xl">
+              <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-primary">
+                <span className="font-display text-sm leading-none">π</span> Necə işləyir?
+              </span>
+              <h2 className="mt-4 font-display text-3xl font-extrabold tracking-tight text-text sm:text-[2.5rem] sm:leading-[1.1]">
                 Telefonunda bir neçə toxunuşla sınağa başla.
               </h2>
               <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-muted lg:mx-0">
@@ -130,34 +164,53 @@ const Home = () => {
         </section>
       )}
 
-      {/* FINAL CTA */}
-      <section className="relative overflow-hidden bg-bg">
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-graph [mask-image:radial-gradient(ellipse_at_center,black,transparent_72%)]" />
-        <div className="container-app relative py-6 text-center sm:py-16">
-          <h2 className="mx-auto max-w-2xl font-display text-3xl font-extrabold tracking-tight text-text sm:text-5xl">
+      {/* FINAL CTA — a drenched forest-green band that bookends the hero. */}
+      <section className="relative overflow-hidden text-white">
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{ background: "linear-gradient(148deg,#0b2a1a 0%,#1a5636 52%,#0d3223 100%)" }}
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-70"
+          style={{ background: "radial-gradient(55% 45% at 85% 12%, rgba(226,182,87,0.25), transparent 60%)" }}
+        />
+        <div aria-hidden className="pointer-events-none absolute inset-0 bg-graph-on-dark opacity-[0.06]" />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -bottom-16 -left-6 select-none font-display text-[200px] font-black leading-none text-white/[0.04] sm:text-[260px]"
+        >
+          ∑
+        </span>
+        <div className="container-app relative py-16 text-center sm:py-24">
+          <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-amber-300/10 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-200">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-300" /> Hazır ol
+          </span>
+          <h2 className="mx-auto mt-5 max-w-2xl font-display text-3xl font-extrabold tracking-tight sm:text-5xl">
             Növbəti imtahana daha hazırlıqlı gir.
           </h2>
-          <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-muted">
+          <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-emerald-50/85">
             Bu gün sınağa başla və riyaziyyat nəticəni sistemli şəkildə yüksəlt.
           </p>
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
               to="/register"
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-7 text-base font-semibold text-primary-fg shadow-glow transition-transform hover:-translate-y-0.5"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-amber-400 px-7 text-base font-bold text-emerald-950 shadow-lift transition-all duration-200 ease-out-quint hover:-translate-y-0.5 hover:bg-amber-300"
             >
               İlk sınağa başla <FiArrowRight />
             </Link>
             <a
               href="#sinaqlar"
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-line bg-surface px-7 text-base font-semibold text-text transition-colors hover:border-primary/50"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-white/25 px-7 text-base font-semibold text-white transition-colors hover:bg-white/10"
             >
               Sınaqlara bax
             </a>
           </div>
-          <ul className="mx-auto mt-9 flex max-w-md flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted">
-            <li className="flex items-center gap-2"><FiCheckCircle className="text-primary" /> Pulsuz başla</li>
-            <li className="flex items-center gap-2"><FiCheckCircle className="text-primary" /> Real imtahan formatı</li>
-            <li className="flex items-center gap-2"><FiCheckCircle className="text-primary" /> Nəticə analizi</li>
+          <ul className="mx-auto mt-9 flex max-w-md flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-emerald-50">
+            <li className="flex items-center gap-2"><FiCheckCircle className="text-amber-300" /> Pulsuz başla</li>
+            <li className="flex items-center gap-2"><FiCheckCircle className="text-amber-300" /> Real imtahan formatı</li>
+            <li className="flex items-center gap-2"><FiCheckCircle className="text-amber-300" /> Nəticə analizi</li>
           </ul>
         </div>
       </section>
