@@ -21,7 +21,7 @@ const Footer = () => {
   return (
     <footer
       className="relative overflow-hidden text-white"
-      style={{ background: "linear-gradient(160deg,#0f3826 0%,#0a2416 100%)" }}
+      style={{ background: "linear-gradient(180deg,#0f3826 0%,#0a2416 100%)" }}
     >
       <div aria-hidden className="pointer-events-none absolute inset-0 bg-graph-on-dark [mask-image:linear-gradient(to_bottom,transparent,black_55%)]" />
       <div className="container-app relative pb-14 pt-8">

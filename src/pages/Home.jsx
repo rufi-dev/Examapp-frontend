@@ -5,15 +5,12 @@ import { FiArrowRight, FiCheckCircle } from "react-icons/fi";
 import Hero from "../components/Hero";
 import ExamCard from "../components/ExamCard";
 
-// Centred editorial section header: a pill eyebrow with the π mark, a large
-// display title, and a fading hairline rule under it — the landing's premium
-// section-lead treatment.
+// Centred editorial section header: a plain eyebrow, a large display title, and
+// a fading hairline rule under it — the landing's premium section-lead treatment.
 const SectionHeader = ({ eyebrow, title }) => (
   <div className="mx-auto max-w-2xl text-center">
-    <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-primary">
-      <span className="font-display text-sm leading-none">π</span> {eyebrow}
-    </span>
-    <h2 className="mt-4 font-display text-3xl font-extrabold tracking-tight text-text sm:text-[2.6rem] sm:leading-[1.08]">
+    <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{eyebrow}</p>
+    <h2 className="mt-3 font-display text-3xl font-extrabold tracking-tight text-text sm:text-[2.6rem] sm:leading-[1.08]">
       {title}
     </h2>
     <div className="mx-auto mt-5 h-px w-24 bg-gradient-to-r from-transparent via-primary/45 to-transparent" />
@@ -117,10 +114,8 @@ const Home = () => {
           />
           <div className="container-app relative grid items-center gap-12 lg:grid-cols-2">
             <div className="text-center lg:text-left">
-              <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-primary">
-                <span className="font-display text-sm leading-none">π</span> Necə işləyir?
-              </span>
-              <h2 className="mt-4 font-display text-3xl font-extrabold tracking-tight text-text sm:text-[2.5rem] sm:leading-[1.1]">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Necə işləyir?</p>
+              <h2 className="mt-3 font-display text-3xl font-extrabold tracking-tight text-text sm:text-[2.5rem] sm:leading-[1.1]">
                 Telefonunda bir neçə toxunuşla sınağa başla.
               </h2>
               <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-muted lg:mx-0">
@@ -164,30 +159,22 @@ const Home = () => {
         </section>
       )}
 
-      {/* FINAL CTA — a drenched forest-green band that bookends the hero. */}
+      {/* FINAL CTA — a drenched forest-green band; its gradient ends on the
+          footer's green so the two flow together with no seam. */}
       <section className="relative overflow-hidden text-white">
         <div
           aria-hidden
           className="absolute inset-0"
-          style={{ background: "linear-gradient(148deg,#0b2a1a 0%,#1a5636 52%,#0d3223 100%)" }}
+          style={{ background: "linear-gradient(180deg,#0c2c1c 0%,#124029 52%,#0f3826 100%)" }}
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-70"
-          style={{ background: "radial-gradient(55% 45% at 85% 12%, rgba(226,182,87,0.25), transparent 60%)" }}
+          className="pointer-events-none absolute inset-0 opacity-60"
+          style={{ background: "radial-gradient(50% 45% at 85% 10%, rgba(226,182,87,0.22), transparent 62%)" }}
         />
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-graph-on-dark opacity-[0.06]" />
-        <span
-          aria-hidden
-          className="pointer-events-none absolute -bottom-16 -left-6 select-none font-display text-[200px] font-black leading-none text-white/[0.04] sm:text-[260px]"
-        >
-          ∑
-        </span>
+        <div aria-hidden className="pointer-events-none absolute inset-0 bg-graph-on-dark opacity-[0.05]" />
         <div className="container-app relative py-16 text-center sm:py-24">
-          <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-amber-300/10 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-200">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-300" /> Hazır ol
-          </span>
-          <h2 className="mx-auto mt-5 max-w-2xl font-display text-3xl font-extrabold tracking-tight sm:text-5xl">
+          <h2 className="mx-auto max-w-2xl font-display text-3xl font-extrabold tracking-tight sm:text-5xl">
             Növbəti imtahana daha hazırlıqlı gir.
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-emerald-50/85">
