@@ -1,4 +1,4 @@
-import { FiArrowRight, FiCheckCircle, FiPhone, FiMail, FiTrendingUp } from "react-icons/fi";
+import { FiArrowRight, FiCheckCircle, FiPhone, FiMail } from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
 import { Link } from "react-router-dom";
 
@@ -118,18 +118,12 @@ const Hero = () => (
         <p className="mt-3 text-[14.5px] leading-relaxed text-emerald-50/90">
           Buraxılış, qəbul və blok imtahanları — hamısı bir platformada.
         </p>
-        <div className="mt-5 flex flex-col gap-2.5">
-          <Link
-            to="/register"
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-amber-400 px-7 text-base font-bold text-emerald-950 shadow-lift transition-colors hover:bg-amber-300"
-          >
-            Pulsuz başla <FiArrowRight className="text-[18px]" />
-          </Link>
+        <div className="mt-5">
           <a
             href="#sinaqlar"
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/5 px-7 text-base font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/15"
+            className="inline-flex h-14 w-full items-center justify-center gap-2.5 rounded-xl bg-amber-400 px-8 text-lg font-bold text-emerald-950 shadow-lift transition-colors hover:bg-amber-300"
           >
-            Sınaqlara bax
+            Bütün imtahanlar <FiArrowRight className="text-[20px]" />
           </a>
         </div>
         <ul className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-2">
@@ -161,25 +155,13 @@ const Hero = () => (
           sınaqlar, mərhələli həllər və nəticələrinə uyğun şəxsi hazırlıq.
         </p>
 
-        <div className="mt-7 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:flex-wrap sm:items-center">
-          <Link
-            to="/register"
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-amber-400 px-7 text-base font-bold text-emerald-950 shadow-lift transition-all duration-200 ease-out-quint hover:-translate-y-0.5 hover:bg-amber-300"
-          >
-            Pulsuz başla <FiArrowRight className="text-[18px]" />
-          </Link>
+        <div className="mt-7 sm:mt-9">
           <a
             href="#sinaqlar"
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-white/25 px-7 text-base font-semibold text-white transition-colors hover:bg-white/10"
+            className="inline-flex h-14 items-center justify-center gap-2.5 rounded-xl bg-amber-400 px-9 text-lg font-bold text-emerald-950 shadow-lift transition-all duration-200 ease-out-quint hover:-translate-y-0.5 hover:bg-amber-300"
           >
-            Sınaqlara bax
+            Bütün imtahanlar <FiArrowRight className="text-[20px]" />
           </a>
-          <Link
-            to="/ourSuccess"
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl px-4 text-[15px] font-semibold text-emerald-100/90 transition-colors hover:bg-white/10 hover:text-white"
-          >
-            <FiTrendingUp className="text-[18px]" /> Uğurlarımız
-          </Link>
         </div>
 
         <ul className="mt-7 flex flex-wrap gap-x-5 gap-y-2.5 sm:mt-8 sm:gap-x-6 sm:gap-y-3">
