@@ -101,6 +101,8 @@ const Hero = () => (
         src="/teacher.jpg"
         alt="Əliyar Nuriyev — riyaziyyat müəllimi"
         className="absolute inset-0 h-full w-full object-cover object-[center_15%]"
+        fetchpriority="high"
+        decoding="async"
       />
       {/* top scrim keeps the header readable; bottom scrim seats the text */}
       <div aria-hidden className="absolute inset-0 bg-gradient-to-b from-emerald-950/65 via-transparent to-transparent" />
@@ -181,6 +183,8 @@ const Hero = () => (
             src="/teacher.jpg"
             alt="Əliyar Nuriyev — riyaziyyat müəllimi"
             className="aspect-[4/5] w-full object-cover object-[center_22%]"
+            fetchpriority="high"
+            decoding="async"
           />
           <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent p-4 pt-14">
             <p className="font-display text-lg font-bold text-white">Əliyar Nuriyev</p>

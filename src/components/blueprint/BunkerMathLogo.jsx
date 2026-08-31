@@ -18,6 +18,8 @@ const BunkerMathLogo = ({
       style={{ height: size }}
       className="w-auto select-none object-contain"
       draggable={false}
+      fetchpriority="high"
+      decoding="async"
     />
     {showText && (
       <span
