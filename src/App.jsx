@@ -77,6 +77,7 @@ const MyExams = lazy(() => import("./pages/exam/MyExams"));
 const Review = lazy(() => import("./pages/exam/Review"));
 const ResultsByExam = lazy(() => import("./pages/exam/ResultsByExam"));
 const LiveExam = lazy(() => import("./pages/exam/LiveExam"));
+const LiveExamsHub = lazy(() => import("./pages/exam/LiveExamsHub"));
 
 const Wrapper = ({ children }) => {
   const [cookies] = useCookies(["cookie_consent"]);
@@ -243,6 +244,8 @@ function App() {
               <Route path="/exam/:examId/result" element={<Result />} />
               <Route path="/exam/:examId/resultsByExam" element={<ResultsByExam />} />
               <Route path="/exam/:examId/live" element={<LiveExam />} />
+              {/* "Canlı imtahan" overview — exams with students taking them right now. */}
+              <Route path="/canli-imtahan" element={<LiveExamsHub />} />
 
               {/* Full-width focus pages (PDF builder / review / exam runner) */}
               <Route path="/exam/:examId/addQuestion" element={<QuestionAdd />} />

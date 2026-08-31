@@ -22,6 +22,7 @@ import {
   FiVideo,
   FiTrash2,
   FiActivity,
+  FiRadio,
 } from "react-icons/fi";
 import { LuGraduationCap } from "react-icons/lu";
 import BunkerMathLogo from "./blueprint/BunkerMathLogo";
@@ -47,6 +48,8 @@ const navItems = [
 // nav doesn't repeat it — it only keeps user management here.
 const adminNav = [
   { to: "/users", label: "İstifadəçilər", icon: FiUsers },
+  // Canlı imtahan overview — exams with students taking them right now.
+  { to: "/canli-imtahan", label: "Canlı imtahan", icon: FiRadio },
   { to: "/examResults", label: "Nəticələr", icon: FiPieChart },
   // Manual exam-payment approvals (teachers see only their own exams' requests).
   { to: "/examPayments", label: "Ödənişlər", icon: FiDollarSign },
