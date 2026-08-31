@@ -95,6 +95,21 @@ const Home = () => {
                   <ExamCard key={e._id} exam={e} publicView />
                 ))}
             </div>
+
+            {/* "See more" — signals that this is only a slice; the rest lives in
+                the panel (guests are routed to sign-in on the way). */}
+            {!loadingExams && publicExams.length > 0 && (
+              <div className="mt-12 flex flex-col items-center gap-3 text-center">
+                <p className="text-sm text-muted">Bu, sınaqların yalnız bir hissəsidir.</p>
+                <Link
+                  to="/dashboard"
+                  className="group/more inline-flex h-12 items-center gap-2 rounded-xl border-2 border-primary/30 bg-primary/5 px-8 text-base font-bold text-primary transition-all duration-200 ease-out-quint hover:-translate-y-0.5 hover:border-primary hover:bg-primary hover:text-primary-fg"
+                >
+                  Bütün imtahanları gör
+                  <FiArrowRight className="transition-transform duration-200 ease-out-quint group-hover/more:translate-x-1" />
+                </Link>
+              </div>
+            )}
           </div>
         </section>
       )}
