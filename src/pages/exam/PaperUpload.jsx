@@ -23,10 +23,19 @@ import Spinner from "../../components/Spinner";
 import CameraCapture from "../../components/CameraCapture";
 import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser";
 import { formatDateTime } from "../../helper/datetime";
-import { fetchMyPaper, saveMyPaperDraft, readMyPaper, submitMyPaper, apiError } from "../../helper/paperApi";
+import {
+  fetchMyPaper,
+  saveMyPaperDraft,
+  readMyPaper,
+  readMyPaperAi,
+  submitMyPaper,
+  apiError,
+} from "../../helper/paperApi";
 import {
   AnswerEditor,
+  ReadSummary,
   ReadingPanel,
+  SourceTag,
   SheetCapture,
   SheetViewer,
   Stepper,
@@ -42,7 +51,8 @@ import {
 /*
  * Student self-upload of a paper exam answer sheet.
  *
- * 1. photograph the card (or pick photos), 2. the AI reads it, 3. the student
+ * 1. photograph the card (or pick photos), 2. the platform reads it (answers it
+ * can't read are then checked by AI, announced first), 3. the student
  * checks every answer against their card and fixes misreads, 4. confirms and
  * submits. Submission is final: the page locks and the teacher sees the sheet,
  * with any answers changed from the AI read highlighted. The student never sees
@@ -82,14 +92,15 @@ const StudentRow = ({ index, q, value, ai, touched, onChange }) => {
             <span className="rounded-md bg-surface2 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted">
               {TYPE_LABEL[q.type] || q.type}
             </span>
+            <SourceTag source={ai?.source} />
             {flagged && (
               <span className="inline-flex items-center gap-1 rounded-md bg-warning/15 px-1.5 py-0.5 text-[10px] font-bold text-warning">
-                <FiAlertTriangle /> AI əmin deyil — vərəqinlə müqayisə et{ai.note ? ` · ${ai.note}` : ""}
+                <FiAlertTriangle /> Dəqiq oxunmadı — vərəqinlə müqayisə et{ai.note ? ` · ${ai.note}` : ""}
               </span>
             )}
             {changed && (
               <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
-                <FiEdit3 /> Dəyişdirdin · AI oxumuşdu: {answerLabel(q, ai.answer)}
+                <FiEdit3 /> Dəyişdirdin · oxunmuşdu: {answerLabel(q, ai.answer)}
               </span>
             )}
             {blank && <span className="text-[10px] font-semibold text-muted">boş</span>}
@@ -113,7 +124,11 @@ const PaperUpload = () => {
   const [touched, setTouched] = useState(() => new Set());
   const [sheetInfo, setSheetInfo] = useState(null);
   const [nameCheck, setNameCheck] = useState(null); // match | mismatch | unknown
-  const [readsLeft, setReadsLeft] = useState(0);
+  const [readsLeft, setReadsLeft] = useState(0); // AI checks left
+  const [platformReadsLeft, setPlatformReadsLeft] = useState(0);
+  const [readStage, setReadStage] = useState({ stage: "platform", pending: [] });
+  const [readInfo, setReadInfo] = useState(null); // how the sheet was read (ReadSummary)
+  const [retryingAi, setRetryingAi] = useState(false);
   const [readStartedAt, setReadStartedAt] = useState(0);
   const [camOpen, setCamOpen] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
@@ -136,6 +151,7 @@ const PaperUpload = () => {
         if (!alive) return;
         setData(d);
         setReadsLeft(d.readsLeft ?? 0);
+        setPlatformReadsLeft(d.platformReadsLeft ?? 0);
         if (d.submitted) {
           setPhase("done");
         } else if (d.draft) {
@@ -145,6 +161,9 @@ const PaperUpload = () => {
             setAi(Array.isArray(d.draft.aiAnswers) ? d.draft.aiAnswers : null);
             setSheetInfo(d.draft.student || null);
             setNameCheck(d.nameCheck || null);
+            if (d.draft.unresolved?.length) {
+              setReadInfo({ platform: {}, aiUsed: [], pendingAi: d.draft.unresolved, aiError: "AI yoxlaması tamamlanmayıb." });
+            }
             setPhase("review");
           }
         }
@@ -188,42 +207,111 @@ const PaperUpload = () => {
     return () => window.removeEventListener("beforeunload", onLeave);
   }, [uploading]);
 
+  // Machine-read rows → the "what was read" reference for each question.
+  const machineOf = (list) =>
+    layout.map((q, i) => ({
+      answer: list?.[i]?.answer ?? blankAnswer(q),
+      confidence: list?.[i]?.confidence || "low",
+      note: list?.[i]?.note || "",
+      source: list?.[i]?.source || null,
+    }));
+
+  // 1) the platform reads the sheet; 2) only if some answers couldn't be read,
+  // the student is told and those answers are checked by AI.
   const runRead = async () => {
     if (!donePhotos.length) return toast.error("Əvvəlcə vərəqinin şəklini əlavə et");
-    if (readsLeft <= 0) return toast.info("AI ilə oxuma limiti bitib — cavablarını əl ilə doldur.");
+    if (platformReadsLeft <= 0) return toast.info("Vərəqi oxutma limiti bitib — cavablarını əl ilə doldur.");
     setPhase("reading");
+    setReadStage({ stage: "platform", pending: [] });
     setReadStartedAt(Date.now());
+    let res;
     try {
-      const res = await readMyPaper(
+      res = await readMyPaper(
         examId,
         donePhotos.map((p) => p.url)
       );
-      const list = Array.isArray(res.answers) ? res.answers : [];
-      setAnswers(layout.map((q, i) => fromStored(q, list[i]?.answer)));
-      setAi(
-        layout.map((q, i) => ({
-          answer: list[i]?.answer ?? blankAnswer(q),
-          confidence: list[i]?.confidence || "low",
-          note: list[i]?.note || "",
-        }))
-      );
-      setTouched(new Set());
-      setSheetInfo(res.student || null);
-      setNameCheck(res.nameCheck || null);
-      setReadsLeft(res.readsLeft ?? Math.max(0, readsLeft - 1));
-      setFilter("all");
+    } catch (e) {
+      if (e?.response?.status === 429) setPlatformReadsLeft(0);
+      toast.error(apiError(e, "Vərəq oxunmadı"));
+      setPhase("capture");
+      return;
+    }
+    let machine = machineOf(res.answers);
+    let values = machine.map((m, i) => fromStored(layout[i], m.answer));
+    let student = res.student || null;
+    let check = res.nameCheck || null;
+    let aiLeft = res.readsLeft ?? readsLeft;
+    const pending = Array.isArray(res.unresolved) ? res.unresolved : [];
+    const info = { platform: res.platform || {}, aiUsed: [], pendingAi: [], aiError: "" };
+    setPlatformReadsLeft(res.platformReadsLeft ?? Math.max(0, platformReadsLeft - 1));
+    if (pending.length) {
+      if (aiLeft > 0) {
+        setReadStage({ stage: "ai", pending });
+        setReadStartedAt(Date.now());
+        try {
+          const extra = await readMyPaperAi(examId);
+          machine = machineOf(extra.machine);
+          values = layout.map((q, i) => fromStored(q, extra.answers?.[i]));
+          student = extra.student || student;
+          check = extra.nameCheck || check;
+          aiLeft = extra.readsLeft ?? Math.max(0, aiLeft - 1);
+          info.aiUsed = pending;
+        } catch (e) {
+          if (e?.response?.status === 429) aiLeft = 0;
+          info.pendingAi = pending;
+          info.aiError = apiError(e, "AI yoxlaması alınmadı.");
+        }
+      } else {
+        info.pendingAi = pending;
+        info.aiError = "AI yoxlama limiti bitib.";
+      }
+    }
+    setAnswers(values);
+    setAi(machine);
+    setTouched(new Set());
+    setSheetInfo(student);
+    setNameCheck(check);
+    setReadsLeft(aiLeft);
+    setReadInfo(info);
+    setFilter("all");
+    setConfirmed(false);
+    setDirty(true);
+    setPhase("review");
+  };
+
+  // Retry the AI check from the review screen (keeps the student's own edits).
+  const retryAi = async () => {
+    setRetryingAi(true);
+    try {
+      await saveMyPaperDraft(examId, {
+        photos: donePhotos.map((p) => p.url),
+        answers: answers.map((a) => ({ answer: a })),
+      });
+      const extra = await readMyPaperAi(examId);
+      setAnswers(layout.map((q, i) => fromStored(q, extra.answers?.[i])));
+      setAi(machineOf(extra.machine));
+      if (extra.student) setSheetInfo(extra.student);
+      if (extra.nameCheck) setNameCheck(extra.nameCheck);
+      setReadsLeft(extra.readsLeft ?? 0);
+      setReadInfo((prev) => ({
+        ...(prev || {}),
+        aiUsed: [...(prev?.aiUsed || []), ...(extra.aiQuestions || [])],
+        pendingAi: [],
+        aiError: "",
+      }));
       setConfirmed(false);
       setDirty(true);
-      setPhase("review");
     } catch (e) {
       if (e?.response?.status === 429) setReadsLeft(0);
-      toast.error(apiError(e, "AI vərəqi oxuya bilmədi"));
-      setPhase("capture");
+      toast.error(apiError(e, "AI yoxlaması alınmadı"));
+    } finally {
+      setRetryingAi(false);
     }
   };
 
   const manualEntry = () => {
     setAnswers(layout.map(blankAnswer));
+    setReadInfo(null);
     setAi(null);
     setTouched(new Set());
     setSheetInfo(null);
@@ -426,23 +514,25 @@ const PaperUpload = () => {
                   onRetry={sheet.retry}
                   onDropFiles={(files) => files.forEach(sheet.add)}
                   title="Cavab vərəqinin şəklini çək"
-                  hint="İmtahanı yazdığın vərəqi çək. AI cavablarını oxuyacaq, sonra hər birini vərəqinlə müqayisə edib təqdim edəcəksən."
-                  note={`AI ilə oxuma: ${readsLeft} dəfə qalıb`}
+                  hint="İmtahanı yazdığın vərəqi çək. Platforma cavablarını oxuyacaq, sonra hər birini vərəqinlə müqayisə edib təqdim edəcəksən."
+                  note={`Oxutma: ${platformReadsLeft} dəfə qalıb`}
                 >
                   <div className="mt-6 flex flex-col-reverse items-stretch justify-between gap-3 border-t border-line pt-5 sm:flex-row sm:items-center">
-                    <p className="text-xs text-muted">AI ilə oxuma: {readsLeft} dəfə qalıb</p>
+                    <p className="text-xs text-muted">
+                      Platforma oxuyur; oxuya bilmədiyini AI yoxlayır · AI: {readsLeft} dəfə qalıb
+                    </p>
                     <div className="flex flex-col gap-2 sm:flex-row">
                       <Button variant="secondary" onClick={manualEntry} disabled={uploading}>
                         <FiEdit3 /> Əl ilə doldur
                       </Button>
-                      <Button size="lg" onClick={runRead} disabled={uploading || !donePhotos.length || readsLeft <= 0}>
+                      <Button size="lg" onClick={runRead} disabled={uploading || !donePhotos.length || platformReadsLeft <= 0}>
                         {uploading ? (
                           <>
                             <Spinner size={16} /> Yüklənir…
                           </>
                         ) : (
                           <>
-                            <FiZap /> AI ilə oxu
+                            <FiZap /> Vərəqi oxu
                           </>
                         )}
                       </Button>
@@ -452,15 +542,22 @@ const PaperUpload = () => {
               </>
             )}
 
-            {phase === "reading" && <ReadingPanel startedAt={readStartedAt} photos={donePhotos} />}
+            {phase === "reading" && (
+              <ReadingPanel
+                startedAt={readStartedAt}
+                photos={donePhotos}
+                stage={readStage.stage}
+                pending={readStage.pending}
+              />
+            )}
 
             {phase === "review" && (
               <div className="space-y-5">
                 <div className="rounded-2xl bg-primary/[0.07] p-4 sm:p-5">
                   <p className="font-display text-lg font-bold text-text">Cavablarını yoxla</p>
                   <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">
-                    Hər sualda seçilən cavabın <b className="text-text">vərəqindəki ilə eyni</b> olduğunu yoxla. AI səhv
-                    oxuyubsa, düzəlt. Təqdim etdikdən sonra dəyişmək mümkün olmayacaq; müəllimin şəkli və dəyişdirdiyin
+                    Hər sualda seçilən cavabın <b className="text-text">vərəqindəki ilə eyni</b> olduğunu yoxla. Səhv
+                    oxunubsa, düzəlt. Təqdim etdikdən sonra dəyişmək mümkün olmayacaq; müəllimin şəkli və dəyişdirdiyin
                     cavabları görəcək.
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
@@ -475,7 +572,7 @@ const PaperUpload = () => {
                           filter === "flagged" ? "bg-warning text-white" : "bg-warning/15 text-warning hover:bg-warning/25"
                         }`}
                       >
-                        AI əmin deyil: {stats.flagged}
+                        Yoxlanmalı: {stats.flagged}
                       </button>
                     )}
                     {stats.changed > 0 && (
@@ -483,6 +580,13 @@ const PaperUpload = () => {
                     )}
                   </div>
                 </div>
+
+                <ReadSummary
+                  info={readInfo}
+                  total={layout.length}
+                  onRetryAi={readInfo?.pendingAi?.length && readsLeft > 0 ? retryAi : undefined}
+                  retrying={retryingAi}
+                />
 
                 {nameCheck === "mismatch" && (
                   <div className="flex items-start gap-3 rounded-2xl border border-warning/40 bg-warning/[0.08] p-4 text-sm">

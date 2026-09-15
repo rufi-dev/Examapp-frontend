@@ -10,9 +10,17 @@ export const fetchPaperSheet = async (examId) => {
   return data;
 };
 
-// AI read of the uploaded sheet photos → { answers, student, match, suggestions, cost }.
+// Platform read of the sheet photos (no AI)
+// → { answers, unresolved, student, nameResolved, platform, match, suggestions }.
 export const readPaperSheet = async (examId, images) => {
   const { data } = await axios.post(`${API}/${examId}/paper/read`, { images });
+  return data;
+};
+
+// AI fallback for only the questions the platform couldn't read (+ the name)
+// → { answers: [{ index, answer, confidence, note, source }], student, match, suggestions }.
+export const readPaperSheetAi = async (examId, images, questions, name) => {
+  const { data } = await axios.post(`${API}/${examId}/paper/read/ai`, { images, questions, name });
   return data;
 };
 
@@ -46,9 +54,15 @@ export const saveMyPaperDraft = async (examId, payload) => {
   return data;
 };
 
-// → { answers, student, nameCheck, readsLeft }
+// Platform read (no AI) → { answers, unresolved, platform, student, nameCheck, readsLeft, platformReadsLeft }
 export const readMyPaper = async (examId, images) => {
   const { data } = await axios.post(`${API}/${examId}/paper/me/read`, { images });
+  return data;
+};
+
+// AI check of the draft's unresolved answers → { answers, machine, aiQuestions, student, nameCheck, readsLeft }
+export const readMyPaperAi = async (examId) => {
+  const { data } = await axios.post(`${API}/${examId}/paper/me/read/ai`);
   return data;
 };
 

@@ -27,6 +27,7 @@ import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser"
 import {
   fetchPaperSheet,
   readPaperSheet,
+  readPaperSheetAi,
   previewPaperScore,
   savePaperResult,
   deletePaperResult,
@@ -35,7 +36,9 @@ import {
 import {
   AnswerEditor,
   Avatar,
+  ReadSummary,
   ReadingPanel,
+  SourceTag,
   SheetCapture,
   SheetViewer,
   Stepper,
@@ -90,6 +93,7 @@ const SheetRow = ({ index, q, value, ai, edited, studentAi, onChange }) => {
             <span className="rounded-md bg-surface2 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted">
               {TYPE_LABEL[q.type] || q.type}
             </span>
+            <SourceTag source={ai?.source} />
             {flagged && (
               <span className="inline-flex items-center gap-1 rounded-md bg-warning/15 px-1.5 py-0.5 text-[10px] font-bold text-warning">
                 <FiAlertTriangle /> Yoxla{ai.note ? ` · ${ai.note}` : ""}
@@ -97,7 +101,7 @@ const SheetRow = ({ index, q, value, ai, edited, studentAi, onChange }) => {
             )}
             {studentChanged && (
               <span className="inline-flex items-center gap-1 rounded-md bg-warning/15 px-1.5 py-0.5 text-[10px] font-bold text-warning">
-                <FiEdit3 /> Şagird dəyişib · AI oxumuşdu: {answerLabel(q, studentAi)}
+                <FiEdit3 /> Şagird dəyişib · oxunmuşdu: {answerLabel(q, studentAi)}
               </span>
             )}
             {edited && (
@@ -145,6 +149,9 @@ const PaperGrading = () => {
   const [suggestions, setSuggestions] = useState([]);
   const [camOpen, setCamOpen] = useState(false);
   const [readStartedAt, setReadStartedAt] = useState(0);
+  const [readStage, setReadStage] = useState({ stage: "platform", pending: [], nameOnly: false });
+  const [readInfo, setReadInfo] = useState(null); // how the sheet was read (ReadSummary)
+  const [retryingAi, setRetryingAi] = useState(false);
   const [preview, setPreview] = useState(null);
   const [previewBusy, setPreviewBusy] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -220,6 +227,7 @@ const PaperGrading = () => {
     setOrigin(null);
     setSheetInfo(null);
     setSuggestions([]);
+    setReadInfo(null);
     setPreview(null);
     setSheetFilter("all");
     setDirty(false);
@@ -236,6 +244,7 @@ const PaperGrading = () => {
       setOrigin(r.submittedBy === "student" ? r : null);
       setSheetInfo(r.sheetStudent || null);
       setSuggestions([]);
+      setReadInfo(null);
       setSheetFilter(r.submittedBy === "student" && r.studentEdited?.length ? "changed" : "all");
       setDirty(false);
       setPhase("review");
@@ -271,45 +280,108 @@ const PaperGrading = () => {
     else resetSheet();
   };
 
+  // 1) the platform reads the sheet (bubbles + handwriting, no AI); 2) only the
+  // answers it couldn't read — and the name, if no student is chosen — go to AI,
+  // announced on screen first.
   const runRead = async () => {
     if (!donePhotos.length) return toast.error("Əvvəlcə vərəqin şəklini əlavə edin");
+    const images = donePhotos.map((p) => p.url);
     setPhase("reading");
+    setReadStage({ stage: "platform", pending: [], nameOnly: false });
     setReadStartedAt(Date.now());
+    let res;
     try {
-      const res = await readPaperSheet(
-        examId,
-        donePhotos.map((p) => p.url)
-      );
-      const list = Array.isArray(res.answers) ? res.answers : [];
-      setAnswers(key.map((q, i) => fromStored(q, list[i]?.answer)));
-      setAi(
-        key.map((q, i) => ({
-          answer: list[i]?.answer ?? blankAnswer(q),
-          confidence: list[i]?.confidence || "low",
-          note: list[i]?.note || "",
-        }))
-      );
-      setEdited(new Set());
-      setOrigin(null);
-      setSheetInfo(res.student || null);
-      setSuggestions(Array.isArray(res.suggestions) ? res.suggestions : []);
-      setSheetFilter("all");
-      setDirty(true);
-      if (!studentId && res.match?._id) {
-        setStudentId(String(res.match._id));
-        toast.success(`Vərəqdəki ada görə seçildi: ${res.match.name}`);
-      } else if (studentId && res.match?._id && String(res.match._id) !== String(studentId)) {
-        toast.warn(`Vərəqdə "${sheetNameText(res.student)}" yazılıb — seçilmiş şagirdlə uyğun gəlmir.`);
-      }
-      setPhase("review");
+      res = await readPaperSheet(examId, images);
     } catch (e) {
-      toast.error(apiError(e, "AI vərəqi oxuya bilmədi"));
+      toast.error(apiError(e, "Vərəq oxunmadı"));
       setPhase("capture");
+      return;
+    }
+    const list = key.map((q, i) => ({
+      answer: res.answers?.[i]?.answer ?? blankAnswer(q),
+      confidence: res.answers?.[i]?.confidence || "low",
+      note: res.answers?.[i]?.note || "",
+      source: res.answers?.[i]?.source || null,
+    }));
+    let student = res.student || null;
+    let match = res.match || null;
+    let suggestionList = Array.isArray(res.suggestions) ? res.suggestions : [];
+    const pending = Array.isArray(res.unresolved) ? res.unresolved : [];
+    const needName = !res.nameResolved && !studentId;
+    const info = { platform: res.platform || {}, aiUsed: [], pendingAi: [], aiError: "", nameByAi: false };
+    if (pending.length || needName) {
+      setReadStage({ stage: "ai", pending, nameOnly: !pending.length });
+      setReadStartedAt(Date.now());
+      try {
+        const extra = await readPaperSheetAi(examId, images, pending, needName);
+        (extra.answers || []).forEach((a) => {
+          if (a.index >= 0 && a.index < list.length) {
+            list[a.index] = { answer: a.answer, confidence: a.confidence || "low", note: a.note || "", source: "ai" };
+          }
+        });
+        info.aiUsed = pending;
+        if (needName && extra.student) {
+          student = extra.student;
+          match = extra.match || null;
+          suggestionList = Array.isArray(extra.suggestions) ? extra.suggestions : [];
+          info.nameByAi = true;
+        }
+      } catch (e) {
+        info.pendingAi = pending;
+        info.aiError = apiError(e, "AI yoxlaması alınmadı.");
+      }
+    }
+    setAnswers(key.map((q, i) => fromStored(q, list[i].answer)));
+    setAi(list);
+    setEdited(new Set());
+    setOrigin(null);
+    setSheetInfo(student);
+    setSuggestions(suggestionList);
+    setReadInfo(info);
+    setSheetFilter("all");
+    setDirty(true);
+    if (!studentId && match?._id) {
+      setStudentId(String(match._id));
+      toast.success(`Vərəqdəki ada görə seçildi: ${match.name}`);
+    } else if (studentId && match?._id && String(match._id) !== String(studentId)) {
+      toast.warn(`Vərəqdə "${sheetNameText(student)}" yazılıb — seçilmiş şagirdlə uyğun gəlmir.`);
+    }
+    setPhase("review");
+  };
+
+  // Retry the AI check for answers left unread (keeps the teacher's edits).
+  const retryAi = async () => {
+    const pending = readInfo?.pendingAi || [];
+    if (!pending.length) return;
+    setRetryingAi(true);
+    try {
+      const extra = await readPaperSheetAi(
+        examId,
+        donePhotos.map((p) => p.url),
+        pending,
+        false
+      );
+      const byIndex = new Map((extra.answers || []).map((a) => [a.index, a]));
+      setAi((prev) =>
+        (prev || []).map((row, i) =>
+          byIndex.has(i)
+            ? { answer: byIndex.get(i).answer, confidence: byIndex.get(i).confidence || "low", note: byIndex.get(i).note || "", source: "ai" }
+            : row
+        )
+      );
+      setAnswers((prev) => prev.map((v, i) => (byIndex.has(i) && !edited.has(i) ? fromStored(key[i], byIndex.get(i).answer) : v)));
+      setReadInfo((prev) => ({ ...(prev || {}), aiUsed: [...(prev?.aiUsed || []), ...pending], pendingAi: [], aiError: "" }));
+      setDirty(true);
+    } catch (e) {
+      toast.error(apiError(e, "AI yoxlaması alınmadı"));
+    } finally {
+      setRetryingAi(false);
     }
   };
 
   const manualEntry = () => {
     setAnswers(key.map(blankAnswer));
+    setReadInfo(null);
     setAi(null);
     setEdited(new Set());
     setSheetFilter("all");
@@ -361,7 +433,7 @@ const PaperGrading = () => {
         studentId,
         answers: answers.map((a) => ({ answer: a })),
         photos: donePhotos.map((p) => p.url),
-        aiAnswers: ai ? ai.map((x) => ({ answer: x.answer, confidence: x.confidence })) : undefined,
+        aiAnswers: ai ? ai.map((x) => ({ answer: x.answer, confidence: x.confidence, source: x.source })) : undefined,
         sheetStudent: sheetInfo || undefined,
       });
       const saved = res.result;
@@ -689,7 +761,7 @@ const PaperGrading = () => {
                             </>
                           ) : (
                             <>
-                              <FiZap /> AI ilə oxu
+                              <FiZap /> Vərəqi oxu
                             </>
                           )}
                         </Button>
@@ -698,7 +770,15 @@ const PaperGrading = () => {
                   </SheetCapture>
                 )}
 
-                {phase === "reading" && <ReadingPanel startedAt={readStartedAt} photos={donePhotos} />}
+                {phase === "reading" && (
+                  <ReadingPanel
+                    startedAt={readStartedAt}
+                    photos={donePhotos}
+                    stage={readStage.stage}
+                    pending={readStage.pending}
+                    nameOnly={readStage.nameOnly}
+                  />
+                )}
 
                 {phase === "review" && (
                   <div className="space-y-5">
@@ -714,12 +794,19 @@ const PaperGrading = () => {
                           </p>
                           <p className="text-xs text-muted">
                             {origin.studentEdited?.length
-                              ? `${origin.studentEdited.length} cavab AI-ın vərəqdən oxuduğundan fərqli təqdim edilib — şəkillə müqayisə edin.`
-                              : "Şagird AI-ın oxuduğu cavabları dəyişməyib."}
+                              ? `${origin.studentEdited.length} cavab vərəqdən oxunandan fərqli təqdim edilib — şəkillə müqayisə edin.`
+                              : "Şagird vərəqdən oxunan cavabları dəyişməyib."}
                           </p>
                         </div>
                       </div>
                     )}
+
+                    <ReadSummary
+                      info={readInfo}
+                      total={key.length}
+                      onRetryAi={readInfo?.pendingAi?.length ? retryAi : undefined}
+                      retrying={retryingAi}
+                    />
 
                     {(sheetInfo?.firstName || sheetInfo?.lastName) && (
                       <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">

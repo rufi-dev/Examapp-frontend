@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
-import { FiCamera, FiImage, FiX, FiCheck, FiAlertTriangle } from "react-icons/fi";
+import { FiCamera, FiImage, FiX, FiCheck, FiAlertTriangle, FiCpu, FiCheckCircle } from "react-icons/fi";
 import Button from "../ui/Button";
 import Spinner from "../Spinner";
 import ZoomableImage from "../ZoomableImage";
@@ -143,16 +143,34 @@ export const Stepper = ({ steps, current }) => {
   );
 };
 
-// What is actually happening while the AI reads. One request returns one answer,
-// so the step timing is a paced estimate; the elapsed counter is real.
-const READ_STEPS = ["Şəkillər hazırlanır", "Vərəqdəki işarələr oxunur", "Cavablar suallarla uyğunlaşdırılır"];
-export const ReadingPanel = ({ startedAt, photos }) => {
+const qList = (idx) => idx.map((i) => i + 1).join(", ");
+
+// Tag on an answer the AI fallback read (everything else was read by the platform).
+export const SourceTag = ({ source }) =>
+  source === "ai" ? (
+    <span
+      className="inline-flex items-center gap-1 rounded-md bg-accent2/12 px-1.5 py-0.5 text-[10px] font-bold text-accent2"
+      title="Platforma dəqiq oxuya bilmədi — AI ilə yoxlanılıb"
+    >
+      <FiCpu /> AI
+    </span>
+  ) : null;
+
+// What is happening while a sheet is read: the platform first (seconds), then —
+// only for the answers it couldn't read — the AI check, announced before it runs.
+// Step timing is a paced estimate; the elapsed counter is real.
+const PLATFORM_STEPS = ["Şəkil hazırlanır", "Qapalı suallar: işarələr ölçülür", "Açıq suallar və ad oxunur"];
+const AI_STEPS = ["Platforma oxudu", "AI çətin cavabları yoxlayır", "Cavablar birləşdirilir"];
+export const ReadingPanel = ({ startedAt, photos, stage = "platform", pending = [], nameOnly = false }) => {
   const [secs, setSecs] = useState(0);
   useEffect(() => {
+    setSecs(0);
     const t = setInterval(() => setSecs(Math.round((Date.now() - startedAt) / 1000)), 1000);
     return () => clearInterval(t);
   }, [startedAt]);
-  const step = secs < 4 ? 0 : secs < 20 ? 1 : 2;
+  const ai = stage === "ai";
+  const steps = ai ? AI_STEPS : PLATFORM_STEPS;
+  const step = ai ? (secs < 25 ? 1 : 2) : secs < 2 ? 0 : secs < 5 ? 1 : 2;
   return (
     <div className="mx-auto max-w-md py-8">
       <div className="mb-6 flex justify-center -space-x-6">
@@ -166,17 +184,32 @@ export const ReadingPanel = ({ startedAt, photos }) => {
           />
         ))}
       </div>
+      {ai && (
+        <div className="mb-5 flex items-start gap-3 rounded-2xl border border-warning/40 bg-warning/[0.08] p-3.5 text-sm">
+          <FiCpu className="mt-0.5 shrink-0 text-warning" />
+          <p className="leading-relaxed text-text">
+            {nameOnly ? (
+              "Platforma vərəqdəki adı dəqiq oxuya bilmədi."
+            ) : (
+              <>
+                Platforma <b>{pending.length}</b> cavabı dəqiq oxuya bilmədi (sual {qList(pending)}).
+              </>
+            )}{" "}
+            {nameOnly ? "Ad" : "Onlar"} indi <b>AI ilə yoxlanılır</b>.
+          </p>
+        </div>
+      )}
       <div className="mb-5 h-1.5 overflow-hidden rounded-full bg-surface2">
-        <div className="h-full w-full animate-pulse rounded-full bg-primary/70" />
+        <div className={`h-full w-full animate-pulse rounded-full ${ai ? "bg-accent2/70" : "bg-primary/70"}`} />
       </div>
       <div className="mb-4 flex items-baseline justify-between gap-3">
-        <p className="font-display text-lg font-bold text-text">AI vərəqi oxuyur…</p>
+        <p className="font-display text-lg font-bold text-text">{ai ? "AI yoxlayır…" : "Platforma vərəqi oxuyur…"}</p>
         <span className="rounded-lg bg-surface2 px-2 py-0.5 font-mono text-xs font-bold tabular-nums text-muted">
           {String(Math.floor(secs / 60)).padStart(2, "0")}:{String(secs % 60).padStart(2, "0")}
         </span>
       </div>
       <ol className="space-y-2.5">
-        {READ_STEPS.map((label, i) => (
+        {steps.map((label, i) => (
           <li key={label} className="flex items-center gap-2.5 text-sm">
             <span
               className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px] font-bold ${
@@ -189,7 +222,71 @@ export const ReadingPanel = ({ startedAt, photos }) => {
           </li>
         ))}
       </ol>
-      <p className="mt-6 text-center text-xs text-muted">Adətən 20–60 saniyə çəkir. Səhifəni bağlamayın.</p>
+      <p className="mt-6 text-center text-xs text-muted">
+        {ai ? "Adətən 20–60 saniyə çəkir. Səhifəni bağlamayın." : "Bir neçə saniyə çəkir."}
+      </p>
+    </div>
+  );
+};
+
+// After a read: how the sheet was read — by the platform alone, with AI for some
+// answers, or with answers still unread (AI failed / limit reached).
+// info: { platform: { bubbles, text }, aiUsed: [i], pendingAi: [i], aiError, nameByAi }
+export const ReadSummary = ({ info, total, onRetryAi, retrying }) => {
+  if (!info) return null;
+  const { platform = {}, aiUsed = [], pendingAi = [], aiError = "", nameByAi = false } = info;
+  const fromPlatform = Math.max(0, total - aiUsed.length - pendingAi.length);
+  const hint =
+    platform.bubbles === "failed"
+      ? "Qapalı suallarda işarələr tapılmadı — vərəqin hamısı kadrda və düz olsun."
+      : platform.text === "off" || platform.text === "failed"
+        ? "Açıq suallar üçün mətn tanıma hazırda əlçatan deyil."
+        : "";
+  let look;
+  if (pendingAi.length) {
+    look = {
+      box: "border-warning/40 bg-warning/[0.08]",
+      badge: "bg-warning/15 text-warning",
+      Icon: FiAlertTriangle,
+      title: `${pendingAi.length} cavab oxunmadı (sual ${qList(pendingAi)})`,
+      body: `${aiError ? `${aiError} ` : ""}Bu cavabları vərəqlə müqayisə edib əl ilə doldurun.`,
+    };
+  } else if (aiUsed.length || nameByAi) {
+    look = {
+      box: "border-accent2/35 bg-accent2/[0.06]",
+      badge: "bg-accent2/15 text-accent2",
+      Icon: FiCpu,
+      title: `Platforma ${fromPlatform}/${total} cavabı oxudu${aiUsed.length ? ` · ${aiUsed.length} cavab AI ilə yoxlandı` : ""}`,
+      body: [aiUsed.length ? `AI ilə yoxlanan suallar: ${qList(aiUsed)}.` : "", nameByAi ? "Vərəqdəki ad AI ilə oxundu." : ""]
+        .filter(Boolean)
+        .join(" "),
+    };
+  } else {
+    look = {
+      box: "border-success/30 bg-success/[0.06]",
+      badge: "bg-success/15 text-success",
+      Icon: FiCheckCircle,
+      title: "Platforma tərəfindən oxundu · AI istifadə olunmayıb",
+      body: "Bütün cavablar platformanın öz tanıma sistemi ilə oxundu.",
+    };
+  }
+  const { Icon } = look;
+  return (
+    <div className={`flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center ${look.box}`}>
+      <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${look.badge}`}>
+        <Icon />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-bold text-text">{look.title}</p>
+        {(look.body || hint) && (
+          <p className="mt-0.5 text-xs leading-relaxed text-muted">{[look.body, hint].filter(Boolean).join(" ")}</p>
+        )}
+      </div>
+      {pendingAi.length > 0 && onRetryAi && (
+        <Button variant="secondary" size="sm" onClick={onRetryAi} disabled={retrying}>
+          {retrying ? <Spinner size={14} /> : <FiCpu />} AI ilə yoxla
+        </Button>
+      )}
     </div>
   );
 };
