@@ -24,7 +24,7 @@ import { toUtcIso } from "../../helper/datetime";
 import { PRESETS, presetOptions } from "../../helper/examPresets";
 import CoverImageField from "../../components/ui/CoverImageField";
 import DateTimePicker from "../../components/ui/DateTimePicker";
-import { FiClock } from "react-icons/fi";
+import { FiClock, FiDownload } from "react-icons/fi";
 
 const fileInputClass =
   "block w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-text file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:font-semibold file:text-primary-fg hover:file:bg-primary-hover";
@@ -382,9 +382,17 @@ const ExamAdd = () => {
                     <li>Yaratdıqdan sonra hər sualın düzgün cavabını daxil edirsiniz.</li>
                     <li>Şagirdlər imtahanı sinifdə cavab vərəqində yazır.</li>
                     <li>
-                      Vərəqin şəklini siz və ya şagirdin özü çəkir; AI cavabları oxuyur, yoxlanıb yadda saxlanılır.
+                      Vərəqin şəklini siz və ya şagirdin özü çəkir; platforma cavabları oxuyur, yoxlanıb yadda saxlanılır.
                     </li>
                   </ol>
+                  <a
+                    href="/cavab-karti.pdf"
+                    download="Cavab_Karti_A4.pdf"
+                    className="mt-3 inline-flex items-center gap-1.5 font-semibold text-primary hover:underline"
+                  >
+                    <FiDownload /> Cavab kartını yüklə (A4, çap üçün)
+                  </a>
+                  <p className="mt-1 text-xs text-muted">Bu kartla platforma vərəqləri ən dəqiq oxuyur.</p>
                 </div>
               ) : (
                 <p className="rounded-xl border border-dashed border-line bg-surface px-4 py-3 text-sm text-muted">

@@ -17,6 +17,7 @@ import {
   FiZap,
   FiKey,
   FiUploadCloud,
+  FiDownload,
 } from "react-icons/fi";
 import AccountLayout from "../../components/AccountLayout";
 import Button from "../../components/ui/Button";
@@ -549,6 +550,14 @@ const PaperGrading = () => {
       subtitle={`${data.exam.name}${data.exam.className ? ` · ${data.exam.className}` : ""}`}
       actions={
         <div className="flex flex-wrap gap-2">
+          <a
+            href="/cavab-karti.pdf"
+            download="Cavab_Karti_A4.pdf"
+            title="Platformanın ən dəqiq oxuduğu cavab kartı (A4)"
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-line bg-surface px-3 text-sm font-semibold text-text transition-colors hover:bg-surface2"
+          >
+            <FiDownload /> Cavab kartı
+          </a>
           <Button to={`/exam/${examId}/addQuestion`} variant="secondary" size="sm">
             <FiKey /> Cavab açarı
           </Button>
