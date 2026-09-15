@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
-import { FiCamera, FiImage, FiX, FiCheck, FiAlertTriangle, FiCpu, FiCheckCircle } from "react-icons/fi";
+import { FiCamera, FiImage, FiX, FiCheck, FiAlertTriangle, FiCpu, FiCheckCircle, FiSearch } from "react-icons/fi";
 import Button from "../ui/Button";
 import Spinner from "../Spinner";
 import ZoomableImage from "../ZoomableImage";
@@ -118,6 +118,102 @@ export const Avatar = ({ s, size = "h-9 w-9" }) =>
       {initials(s?.name)}
     </span>
   );
+
+// Searchable student picker (name or e-mail), keyboard friendly. Shows at most
+// 50 matches; `gradedIds` marks students who already have a result.
+const PICKER_LIMIT = 50;
+export const StudentPicker = ({ students, onPick, gradedIds, placeholder = "Şagird axtar…" }) => {
+  const [q, setQ] = useState("");
+  const [open, setOpen] = useState(false);
+  const [hi, setHi] = useState(0);
+  const boxRef = useRef(null);
+  useEffect(() => {
+    const close = (e) => {
+      if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
+  const list = useMemo(() => {
+    const norm = (s) => String(s || "").toLocaleLowerCase("az");
+    const t = norm(q.trim());
+    const hits = t ? students.filter((s) => norm(s.name).includes(t) || norm(s.email).includes(t)) : students;
+    return hits.slice(0, PICKER_LIMIT);
+  }, [q, students]);
+  const pick = (s) => {
+    onPick(s);
+    setQ("");
+    setOpen(false);
+  };
+  return (
+    <div ref={boxRef} className="relative w-full sm:w-80">
+      <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+      <input
+        value={q}
+        onChange={(e) => {
+          setQ(e.target.value);
+          setOpen(true);
+          setHi(0);
+        }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setOpen(true);
+            setHi((h) => Math.min(h + 1, list.length - 1));
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setHi((h) => Math.max(h - 1, 0));
+          } else if (e.key === "Enter" && open && list[hi]) {
+            e.preventDefault();
+            pick(list[hi]);
+          } else if (e.key === "Escape") {
+            setOpen(false);
+          }
+        }}
+        type="search"
+        role="combobox"
+        aria-expanded={open}
+        placeholder={placeholder}
+        className="h-11 w-full rounded-xl border border-line bg-surface pl-9 pr-3 text-sm text-text outline-none transition placeholder:text-muted/70 focus:border-primary focus:ring-4 focus:ring-ring/25"
+      />
+      {open && (
+        <ul
+          role="listbox"
+          className="absolute right-0 z-30 mt-1.5 max-h-72 w-full overflow-y-auto rounded-2xl border border-line bg-surface p-1.5 shadow-lift"
+        >
+          {list.map((s, i) => (
+            <li key={s._id}>
+              <button
+                type="button"
+                role="option"
+                aria-selected={i === hi}
+                onMouseEnter={() => setHi(i)}
+                onClick={() => pick(s)}
+                className={`flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors ${
+                  i === hi ? "bg-primary/10" : "hover:bg-surface2"
+                }`}
+              >
+                <Avatar s={s} size="h-7 w-7" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-text">{s.name || "—"}</span>
+                  {s.email && <span className="block truncate text-[11px] text-muted">{s.email}</span>}
+                </span>
+                {gradedIds?.has(String(s._id)) && <FiCheck className="shrink-0 text-success" title="Yoxlanılıb" />}
+              </button>
+            </li>
+          ))}
+          {!list.length && <li className="px-3 py-6 text-center text-sm text-muted">Şagird tapılmadı</li>}
+          {!q.trim() && students.length > PICKER_LIMIT && (
+            <li className="px-3 py-2 text-center text-[11px] text-muted">
+              {students.length} şagird — tapmaq üçün adı yazın
+            </li>
+          )}
+        </ul>
+      )}
+    </div>
+  );
+};
 
 export const Stepper = ({ steps, current }) => {
   const idx = steps.findIndex((s) => s.id === current);

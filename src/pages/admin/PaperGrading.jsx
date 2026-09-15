@@ -40,6 +40,7 @@ import {
   ReadSummary,
   ReadingPanel,
   SourceTag,
+  StudentPicker,
   SheetCapture,
   SheetViewer,
   Stepper,
@@ -570,16 +571,29 @@ const PaperGrading = () => {
       <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-2xl border border-line bg-surface p-4 shadow-soft">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">Yoxlanılıb</p>
-          <p className="mt-1 font-display text-2xl font-extrabold tabular-nums text-text">
-            {gradedInClass}
-            <span className="text-base font-bold text-muted"> / {inClass.length}</span>
-          </p>
-          <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-surface2">
-            <div
-              className="h-full rounded-full bg-success transition-[width] duration-500"
-              style={{ width: `${inClass.length ? Math.round((gradedInClass / inClass.length) * 100) : 0}%` }}
-            />
-          </div>
+          {data.exam.openClass ? (
+            // Open class: every student account is listed, so a "/ total" would mislead.
+            <>
+              <p className="mt-1 font-display text-2xl font-extrabold tabular-nums text-text">
+                {results.length}
+                <span className="text-base font-bold text-muted"> vərəq</span>
+              </p>
+              <p className="mt-1 text-[11px] text-muted">Açıq sinif — bütün şagirdlərdən seçmək olar</p>
+            </>
+          ) : (
+            <>
+              <p className="mt-1 font-display text-2xl font-extrabold tabular-nums text-text">
+                {gradedInClass}
+                <span className="text-base font-bold text-muted"> / {inClass.length}</span>
+              </p>
+              <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-surface2">
+                <div
+                  className="h-full rounded-full bg-success transition-[width] duration-500"
+                  style={{ width: `${inClass.length ? Math.round((gradedInClass / inClass.length) * 100) : 0}%` }}
+                />
+              </div>
+            </>
+          )}
         </div>
         <button
           type="button"
@@ -840,24 +854,14 @@ const PaperGrading = () => {
                               </p>
                             </div>
                           </div>
-                          <select
-                            value=""
-                            onChange={(e) => {
-                              const s = roster.find((x) => String(x._id) === e.target.value);
-                              if (s) selectStudent(s);
+                          <StudentPicker
+                            students={inClass}
+                            gradedIds={resultByStudent}
+                            onPick={(s) => {
+                              const r = roster.find((x) => String(x._id) === String(s._id));
+                              if (r) selectStudent(r);
                             }}
-                            className="h-11 rounded-xl border border-line bg-surface px-3 text-sm font-semibold text-text outline-none focus:border-primary sm:w-64"
-                          >
-                            <option value="" disabled>
-                              Şagird seçin…
-                            </option>
-                            {inClass.map((s) => (
-                              <option key={s._id} value={s._id}>
-                                {s.name}
-                                {resultByStudent.has(String(s._id)) ? " ✓" : ""}
-                              </option>
-                            ))}
-                          </select>
+                          />
                         </div>
                         {suggestions.length > 0 && (
                           <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-warning/25 pt-3">
