@@ -38,7 +38,8 @@ export const isBlank = (q, a) =>
     ? !isMap(a) || !Object.values(a).some((row) => Array.isArray(row) && row.length)
     : String(a ?? "").trim() === "";
 
-const compact = (v) => String(v ?? "").trim().toLowerCase().replace(/\s+/g, "");
+// Spacing and decimal comma don't matter ("5, 2" = "5.2") — same rule as the server.
+const compact = (v) => String(v ?? "").trim().toLowerCase().replace(/\s+/g, "").replace(/,/g, ".");
 
 // Teacher-only mirror of the server's per-question check, for the ✓/✗ marks while
 // editing (needs the key). The score itself always comes from the server.
@@ -248,8 +249,10 @@ export const ReadSummary = ({ info, total, onRetryAi, retrying }) => {
       box: "border-warning/40 bg-warning/[0.08]",
       badge: "bg-warning/15 text-warning",
       Icon: FiAlertTriangle,
-      title: `${pendingAi.length} cavab oxunmadı (sual ${qList(pendingAi)})`,
-      body: `${aiError ? `${aiError} ` : ""}Bu cavabları vərəqlə müqayisə edib əl ilə doldurun.`,
+      title: `Platforma ${pendingAi.length} cavabı dəqiq oxuya bilmədi (sual ${qList(pendingAi)})`,
+      body: `${aiError ? `${aiError} ` : ""}Bu cavabları vərəqlə müqayisə edib əl ilə doldurun${
+        onRetryAi ? " və ya istəsəniz AI ilə yoxlatın" : ""
+      }.`,
     };
   } else if (aiUsed.length || nameByAi) {
     look = {
@@ -284,7 +287,7 @@ export const ReadSummary = ({ info, total, onRetryAi, retrying }) => {
       </div>
       {pendingAi.length > 0 && onRetryAi && (
         <Button variant="secondary" size="sm" onClick={onRetryAi} disabled={retrying}>
-          {retrying ? <Spinner size={14} /> : <FiCpu />} AI ilə yoxla
+          {retrying ? <Spinner size={14} /> : <FiCpu />} {retrying ? "AI yoxlayır…" : `AI ilə yoxla (${pendingAi.length})`}
         </Button>
       )}
     </div>

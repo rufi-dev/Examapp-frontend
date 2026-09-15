@@ -162,7 +162,7 @@ const PaperUpload = () => {
             setSheetInfo(d.draft.student || null);
             setNameCheck(d.nameCheck || null);
             if (d.draft.unresolved?.length) {
-              setReadInfo({ platform: {}, aiUsed: [], pendingAi: d.draft.unresolved, aiError: "AI yoxlaması tamamlanmayıb." });
+              setReadInfo({ platform: {}, aiUsed: [], pendingAi: d.draft.unresolved, aiError: "" });
             }
             setPhase("review");
           }
@@ -216,8 +216,8 @@ const PaperUpload = () => {
       source: list?.[i]?.source || null,
     }));
 
-  // 1) the platform reads the sheet; 2) only if some answers couldn't be read,
-  // the student is told and those answers are checked by AI.
+  // The platform reads the sheet (no AI). Answers it couldn't read are listed;
+  // the AI check runs only when the student presses the button.
   const runRead = async () => {
     if (!donePhotos.length) return toast.error("Əvvəlcə vərəqinin şəklini əlavə et");
     if (platformReadsLeft <= 0) return toast.info("Vərəqi oxutma limiti bitib — cavablarını əl ilə doldur.");
@@ -236,35 +236,19 @@ const PaperUpload = () => {
       setPhase("capture");
       return;
     }
-    let machine = machineOf(res.answers);
-    let values = machine.map((m, i) => fromStored(layout[i], m.answer));
-    let student = res.student || null;
-    let check = res.nameCheck || null;
-    let aiLeft = res.readsLeft ?? readsLeft;
+    const machine = machineOf(res.answers);
+    const values = machine.map((m, i) => fromStored(layout[i], m.answer));
+    const student = res.student || null;
+    const check = res.nameCheck || null;
+    const aiLeft = res.readsLeft ?? readsLeft;
     const pending = Array.isArray(res.unresolved) ? res.unresolved : [];
     const info = { platform: res.platform || {}, aiUsed: [], pendingAi: [], aiError: "" };
     setPlatformReadsLeft(res.platformReadsLeft ?? Math.max(0, platformReadsLeft - 1));
+    // The AI check never runs on its own: unread answers are listed, and the
+    // student may ask for it with the "AI ilə yoxla" button.
     if (pending.length) {
-      if (aiLeft > 0) {
-        setReadStage({ stage: "ai", pending });
-        setReadStartedAt(Date.now());
-        try {
-          const extra = await readMyPaperAi(examId);
-          machine = machineOf(extra.machine);
-          values = layout.map((q, i) => fromStored(q, extra.answers?.[i]));
-          student = extra.student || student;
-          check = extra.nameCheck || check;
-          aiLeft = extra.readsLeft ?? Math.max(0, aiLeft - 1);
-          info.aiUsed = pending;
-        } catch (e) {
-          if (e?.response?.status === 429) aiLeft = 0;
-          info.pendingAi = pending;
-          info.aiError = apiError(e, "AI yoxlaması alınmadı.");
-        }
-      } else {
-        info.pendingAi = pending;
-        info.aiError = "AI yoxlama limiti bitib.";
-      }
+      info.pendingAi = pending;
+      if (aiLeft <= 0) info.aiError = "AI yoxlama limiti bitib.";
     }
     setAnswers(values);
     setAi(machine);

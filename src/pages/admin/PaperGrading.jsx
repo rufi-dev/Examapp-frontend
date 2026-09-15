@@ -281,9 +281,8 @@ const PaperGrading = () => {
     else resetSheet();
   };
 
-  // 1) the platform reads the sheet (bubbles + handwriting, no AI); 2) only the
-  // answers it couldn't read — and the name, if no student is chosen — go to AI,
-  // announced on screen first.
+  // The platform reads the sheet (bubbles + handwriting, no AI). Answers it
+  // couldn't read are listed; AI checks them only when the teacher presses the button.
   const runRead = async () => {
     if (!donePhotos.length) return toast.error("Əvvəlcə vərəqin şəklini əlavə edin");
     const images = donePhotos.map((p) => p.url);
@@ -304,34 +303,18 @@ const PaperGrading = () => {
       note: res.answers?.[i]?.note || "",
       source: res.answers?.[i]?.source || null,
     }));
-    let student = res.student || null;
-    let match = res.match || null;
-    let suggestionList = Array.isArray(res.suggestions) ? res.suggestions : [];
+    const student = res.student || null;
+    const match = res.match || null;
+    const suggestionList = Array.isArray(res.suggestions) ? res.suggestions : [];
     const pending = Array.isArray(res.unresolved) ? res.unresolved : [];
-    const needName = !res.nameResolved && !studentId;
-    const info = { platform: res.platform || {}, aiUsed: [], pendingAi: [], aiError: "", nameByAi: false };
-    if (pending.length || needName) {
-      setReadStage({ stage: "ai", pending, nameOnly: !pending.length });
-      setReadStartedAt(Date.now());
-      try {
-        const extra = await readPaperSheetAi(examId, images, pending, needName);
-        (extra.answers || []).forEach((a) => {
-          if (a.index >= 0 && a.index < list.length) {
-            list[a.index] = { answer: a.answer, confidence: a.confidence || "low", note: a.note || "", source: "ai" };
-          }
-        });
-        info.aiUsed = pending;
-        if (needName && extra.student) {
-          student = extra.student;
-          match = extra.match || null;
-          suggestionList = Array.isArray(extra.suggestions) ? extra.suggestions : [];
-          info.nameByAi = true;
-        }
-      } catch (e) {
-        info.pendingAi = pending;
-        info.aiError = apiError(e, "AI yoxlaması alınmadı.");
-      }
-    }
+    const info = {
+      platform: res.platform || {},
+      aiUsed: [],
+      pendingAi: pending, // AI never runs on its own — the "AI ilə yoxla" button does it
+      aiError: "",
+      nameByAi: false,
+      needName: !res.nameResolved,
+    };
     setAnswers(key.map((q, i) => fromStored(q, list[i].answer)));
     setAi(list);
     setEdited(new Set());
@@ -356,12 +339,22 @@ const PaperGrading = () => {
     if (!pending.length) return;
     setRetryingAi(true);
     try {
+      // The name comes along only when no student is chosen yet.
+      const wantName = !!readInfo?.needName && !studentId;
       const extra = await readPaperSheetAi(
         examId,
         donePhotos.map((p) => p.url),
         pending,
-        false
+        wantName
       );
+      if (wantName && extra.student) {
+        setSheetInfo(extra.student);
+        setSuggestions(Array.isArray(extra.suggestions) ? extra.suggestions : []);
+        if (extra.match?._id) {
+          setStudentId(String(extra.match._id));
+          toast.success(`Vərəqdəki ada görə seçildi: ${extra.match.name}`);
+        }
+      }
       const byIndex = new Map((extra.answers || []).map((a) => [a.index, a]));
       setAi((prev) =>
         (prev || []).map((row, i) =>
@@ -371,7 +364,13 @@ const PaperGrading = () => {
         )
       );
       setAnswers((prev) => prev.map((v, i) => (byIndex.has(i) && !edited.has(i) ? fromStored(key[i], byIndex.get(i).answer) : v)));
-      setReadInfo((prev) => ({ ...(prev || {}), aiUsed: [...(prev?.aiUsed || []), ...pending], pendingAi: [], aiError: "" }));
+      setReadInfo((prev) => ({
+        ...(prev || {}),
+        aiUsed: [...(prev?.aiUsed || []), ...pending],
+        pendingAi: [],
+        aiError: "",
+        nameByAi: wantName && !!extra.student,
+      }));
       setDirty(true);
     } catch (e) {
       toast.error(apiError(e, "AI yoxlaması alınmadı"));
