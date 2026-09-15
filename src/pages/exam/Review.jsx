@@ -9,6 +9,7 @@ import PdfOpener from "../../components/PdfOpener";
 import QuestionType from "../../components/QuestionType";
 import ResultCard from "../../components/ResultCard";
 import YoutubeVideoEmbed from "../../components/YoutubeVideoEmbed";
+import ZoomableImage from "../../components/ZoomableImage";
 
 const Review = () => {
   const dispatch = useDispatch();
@@ -49,8 +50,8 @@ const Review = () => {
     const fetchData = async () => {
       if (review && review.examId && review.examId._id) {
         await dispatch(getExamTagandClass(review.examId._id));
-        // Structured exams have no PDF — skip the fetch (and its 404).
-        if (review.examId.mode !== "structured") {
+        // Structured and paper exams have no PDF — skip the fetch (and its 404).
+        if (review.examId.mode !== "structured" && review.examId.mode !== "paper") {
           const getPdfAction = await dispatch(getPdfByExam({ examId: review.examId._id }));
           setPdfData(getPdfAction.payload?.path || null);
         }
@@ -86,6 +87,8 @@ const Review = () => {
   const canSeeScore = !vis || vis.canSeeScore;
   const hasAnswers = review?.correctAnswers?.length > 0;
   const structured = review?.examId?.mode === "structured";
+  // Paper exam: no questions PDF; the photographed answer sheet is shown instead.
+  const paper = review?.examId?.mode === "paper" || review?.source === "paper";
   const examQuestions = review?.examId?.questions?.correctAnswers;
   // What the analysis renders: structured exams carry their display content
   // (text/choices) on the revealed exam questions; PDF exams just need type +
@@ -153,7 +156,7 @@ const Review = () => {
           )}
         </div>
 
-        {!structured && (
+        {!structured && !paper && (
           <div className="grid grid-cols-2 gap-1 rounded-xl border border-line bg-surface2/50 p-1 lg:hidden">
             <button type="button" onClick={() => setMobileView("pdf")} className={tabClass(mobileView === "pdf")}>
               Suallar (PDF)
@@ -167,7 +170,7 @@ const Review = () => {
 
       <div className="flex min-h-0 flex-1 gap-4 p-3 sm:p-4 lg:p-6">
         {/* PDF panel (PDF exams only) */}
-        {!structured && (
+        {!structured && !paper && (
           <div
             className={`min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft lg:flex ${
               mobileView === "pdf" ? "flex" : "hidden"
@@ -185,11 +188,11 @@ const Review = () => {
         {/* Answers / analysis panel */}
         <div
           className={`min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft lg:flex ${
-            structured || mobileView === "answers" ? "flex" : "hidden"
+            structured || paper || mobileView === "answers" ? "flex" : "hidden"
           }`}
         >
           <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
-            <div className={structured ? "mx-auto w-full max-w-2xl" : ""}>
+            <div className={structured || paper ? "mx-auto w-full max-w-2xl" : ""}>
             {review?._id && (
               <div className="mb-6">
                 <h2 className="mb-2 text-sm font-semibold text-muted">Ümumi nəticə</h2>
@@ -216,6 +219,22 @@ const Review = () => {
               <div className="mt-8">
                 <h2 className="mb-3 font-display text-lg font-bold text-text">Video həll</h2>
                 <YoutubeVideoEmbed videoLink={review.examId.videoLink} />
+              </div>
+            )}
+
+            {review?.sheetPhotos?.length > 0 && (
+              <div className="mt-8">
+                <h2 className="mb-3 font-display text-lg font-bold text-text">Cavab vərəqi</h2>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {review.sheetPhotos.map((p, i) => (
+                    <ZoomableImage
+                      key={p}
+                      src={p}
+                      alt={`Cavab vərəqi — səhifə ${i + 1}`}
+                      className="w-full rounded-2xl border border-line"
+                    />
+                  ))}
+                </div>
               </div>
             )}
 

@@ -54,6 +54,7 @@ const QuestionAdd = () => {
     Array.from({ length: 25 }, (_, i) => newQuestion(i < CLOSED_COUNT ? "Cm" : "Co"))
   );
   const [mobileView, setMobileView] = useState("pdf"); // "pdf" | "builder"
+  const [paper, setPaper] = useState(false); // paper exam: answer key only, no PDF pane
   const [preset, setPreset] = useState(""); // exam scoring preset (for bal preview)
   const [typePoints, setTypePoints] = useState(null); // manual per-type bal override
   const { examId } = useParams();
@@ -62,12 +63,16 @@ const QuestionAdd = () => {
     const fetchData = async () => {
       try {
         await dispatch(getExamTagandClass(examId));
-        const getPdfAction = await dispatch(getPdfByExam({ examId }));
-        setPdfData(getPdfAction.payload.path);
-
         // Pre-load the existing answer key if this exam already has questions,
         // so editing is non-destructive (instead of starting from blanks).
         const examAction = await dispatch(getExam(examId));
+        // Paper exams have no question PDF — only the answer key is entered here.
+        const isPaper = examAction?.payload?.mode === "paper";
+        setPaper(isPaper);
+        if (!isPaper) {
+          const getPdfAction = await dispatch(getPdfByExam({ examId }));
+          setPdfData(getPdfAction.payload?.path);
+        }
         const existing = examAction?.payload?.questions?.correctAnswers;
         const presetId = examAction?.payload?.preset;
         setPreset(presetId || "");
@@ -300,8 +305,8 @@ const QuestionAdd = () => {
       await dispatch(
         addQuestion({ examId, questionData: { correctAnswers, typePoints } })
       ).unwrap();
-      // Take the teacher to the exam instructions overview after saving.
-      navigate(`/exam/details/${examId}`);
+      // Paper exams go straight to sheet grading; others to the instructions overview.
+      navigate(paper ? `/exam/${examId}/paper` : `/exam/details/${examId}`);
     } catch {
       // error toast is shown by the slice's rejected case
     } finally {
@@ -350,10 +355,12 @@ const QuestionAdd = () => {
             </button>
             <div className="min-w-0">
               <h1 className="truncate font-display text-lg font-bold text-text sm:text-xl">
-                Sualları əlavə et
+                {paper ? "Cavab açarı" : "Sualları əlavə et"}
               </h1>
               <p className="hidden text-xs text-muted sm:block">
-                Hər sual üçün tip və düzgün cavabı təyin et.
+                {paper
+                  ? "Kağız imtahanı: hər sualın tipini və düzgün cavabını daxil edin."
+                  : "Hər sual üçün tip və düzgün cavabı təyin et."}
               </p>
             </div>
           </div>
@@ -378,6 +385,7 @@ const QuestionAdd = () => {
           </div>
         </div>
 
+        {!paper && (
         <div className="grid grid-cols-2 gap-1 rounded-xl border border-line bg-surface2/50 p-1 lg:hidden">
           <button
             type="button"
@@ -398,6 +406,7 @@ const QuestionAdd = () => {
             Cavablar
           </button>
         </div>
+        )}
       </header>
 
       <div className="relative flex min-h-0 flex-1 gap-4 p-3 sm:p-4 lg:p-6">
@@ -407,22 +416,24 @@ const QuestionAdd = () => {
           </div>
         )}
 
-        <div
-          className={`min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft lg:flex ${
-            mobileView === "pdf" ? "flex" : "hidden"
-          }`}
-        >
-          <div className="hidden border-b border-line px-5 py-3 text-sm font-semibold text-muted lg:block">
-            İmtahan sualları (PDF)
+        {!paper && (
+          <div
+            className={`min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft lg:flex ${
+              mobileView === "pdf" ? "flex" : "hidden"
+            }`}
+          >
+            <div className="hidden border-b border-line px-5 py-3 text-sm font-semibold text-muted lg:block">
+              İmtahan sualları (PDF)
+            </div>
+            <div className="min-h-0 flex-1">
+              <PdfOpener pdfFile={pdfData} />
+            </div>
           </div>
-          <div className="min-h-0 flex-1">
-            <PdfOpener pdfFile={pdfData} />
-          </div>
-        </div>
+        )}
 
         <div
           className={`min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-soft lg:flex ${
-            mobileView === "builder" ? "flex" : "hidden"
+            paper ? "mx-auto flex w-full max-w-3xl" : mobileView === "builder" ? "flex" : "hidden"
           }`}
         >
           <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col">

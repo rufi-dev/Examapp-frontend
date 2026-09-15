@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { FiClock, FiBarChart2, FiEyeOff, FiGift, FiPlay, FiCheckCircle } from "react-icons/fi";
+import { FiClock, FiBarChart2, FiEyeOff, FiGift, FiPlay, FiCheckCircle, FiCamera, FiFileText } from "react-icons/fi";
 import { addExamToUser, getExamsByUser } from "../../redux/features/quiz/quizSlice";
 import useServerNow from "../customHook/useServerNow";
 import Button from "./ui/Button";
@@ -60,6 +60,8 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
     exam.questionCount ?? (Array.isArray(exam.questions) ? exam.questions.length : undefined) ?? "—";
 
   const isStaff = user?.role === "admin" || user?.role === "teacher";
+  // Paper exams are written in class on answer cards — never started online.
+  const paper = exam.mode === "paper";
 
   const buy = async (e) => {
     e.preventDefault();
@@ -114,6 +116,11 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
             {label}
           </span>
           <div className="flex items-center gap-1.5">
+            {paper && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold text-emerald-950 shadow-sm">
+                <FiFileText className="text-[12px]" /> Kağız
+              </span>
+            )}
             {exam.hidden && (
               <span className="inline-flex items-center gap-1 rounded-full bg-warning/90 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm backdrop-blur-sm">
                 <FiEyeOff /> Gizli
@@ -178,6 +185,10 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
                 </>
               )}
             </Button>
+          ) : paper && isStaff ? (
+            <Button to={`/exam/${exam._id}/paper`} size="lg" className="w-full">
+              <FiCamera /> Kağızları yoxla
+            </Button>
           ) : taken ? (
             <div className="flex gap-2">
               <Button
@@ -195,6 +206,10 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
               >
                 İmtahana bax
               </Button>
+            </div>
+          ) : paper ? (
+            <div className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line bg-surface2/50 px-3 text-sm font-semibold text-muted">
+              <FiFileText /> Kağız imtahanı · nəticə gözlənilir
             </div>
           ) : upcoming ? (
             <Button disabled size="lg" className="w-full">

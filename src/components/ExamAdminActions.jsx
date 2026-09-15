@@ -6,6 +6,7 @@ import {
   FiEye,
   FiEyeOff,
   FiRadio,
+  FiCamera,
   FiFilePlus,
   FiEdit3,
   FiTrash2,
@@ -82,9 +83,15 @@ const ExamAdminActions = ({ exam, onChanged, className = "" }) => {
         <ExamAction onClick={toggleHidden} label={exam.hidden ? "Göstər" : "Gizlət"}>
           {exam.hidden ? <FiEye className="text-[17px]" /> : <FiEyeOff className="text-[17px]" />}
         </ExamAction>
-        <ExamAction to={`/exam/${exam._id}/live`} label="Canlı izlə" tone="accent">
-          <FiRadio className="text-[17px]" />
-        </ExamAction>
+        {exam.mode === "paper" ? (
+          <ExamAction to={`/exam/${exam._id}/paper`} label="Kağızları yoxla" tone="accent">
+            <FiCamera className="text-[17px]" />
+          </ExamAction>
+        ) : (
+          <ExamAction to={`/exam/${exam._id}/live`} label="Canlı izlə" tone="accent">
+            <FiRadio className="text-[17px]" />
+          </ExamAction>
+        )}
         <ExamAction to={`/exam/${exam._id}/resultsByExam`} label="Nəticələr">
           <FiBarChart2 className="text-[17px]" />
         </ExamAction>

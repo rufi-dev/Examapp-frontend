@@ -139,10 +139,11 @@ const ExamAdd = () => {
   const addExamForm = async (e) => {
     e.preventDefault();
     const isStructured = source === "structured";
+    const isPaper = source === "paper";
     let pdfUrl;
 
     try {
-      if (!isStructured) {
+      if (source === "pdf") {
         // PDF mode: a PDF is required.
         if (!pdf || pdf.type !== "application/pdf") {
           return toast.error("Zəhmət olmasa PDF fayl seçin");
@@ -177,29 +178,29 @@ const ExamAdd = () => {
       const examData = new FormData();
       examData.append("name", name);
       examData.append("duration", duration);
-      examData.append("price", priceEnabled ? Number(price) || 0 : 0);
+      examData.append("price", !isPaper && priceEnabled ? Number(price) || 0 : 0);
       examData.append("videoLink", videoEnabled ? videoLink : "");
       examData.append("passingMarks", passingMarks);
       examData.append("totalMarks", totalMarks);
-      examData.append("maxTry", maxTryEnabled ? Number(maxTry) || 0 : 0);
+      examData.append("maxTry", !isPaper && maxTryEnabled ? Number(maxTry) || 0 : 0);
       examData.append("startDate", toUtcIso(startDate));
       examData.append("endDate", toUtcIso(endDate));
       examData.append("showScore", showScore);
       examData.append("showCorrectAnswers", showCorrectAnswers);
       examData.append("revealAfterEnd", revealAfterEnd);
-      examData.append("password", passwordEnabled ? password : "");
+      examData.append("password", !isPaper && passwordEnabled ? password : "");
       examData.append("negativeMarking", negEnabled);
       examData.append("wrongPerPenalty", wrongPerPenalty);
       examData.append("correctPerPenalty", correctPerPenalty);
       examData.append("negMarkUntil", negEnabled ? Number(negMarkUntil) || 0 : 0);
       examData.append("preset", preset);
-      examData.append("antiCheat", antiEnabled);
-      examData.append("mode", isStructured ? "structured" : "pdf");
+      examData.append("antiCheat", !isPaper && antiEnabled);
+      examData.append("mode", isStructured ? "structured" : isPaper ? "paper" : "pdf");
       examData.append("shuffleOptions", isStructured && shuffleEnabled);
       examData.append("partialCredit", isStructured && partialEnabled);
-      examData.append("studentSolutionPhotos", solutionPhotosEnabled);
+      examData.append("studentSolutionPhotos", !isPaper && solutionPhotosEnabled);
       examData.append("coverImage", coverImage || "");
-      if (!isStructured) examData.append("pdf", pdfUrl);
+      if (source === "pdf") examData.append("pdf", pdfUrl);
 
       const addExamData = await dispatch(addExam({ examData, classId }));
 
@@ -251,14 +252,16 @@ const ExamAdd = () => {
                 hint={
                   source === "pdf"
                     ? "Hazır PDF faylı yüklə"
-                    : "Sualları özün yaz və ya AI ilə PDF-dən avtomatik çıxar"
+                    : source === "paper"
+                      ? "Şagirdlər kağız cavab vərəqində yazır; siz yalnız cavab açarını daxil edirsiniz"
+                      : "Sualları özün yaz və ya AI ilə PDF-dən avtomatik çıxar"
                 }
               >
-                <div className="inline-flex w-full rounded-xl border border-line bg-surface p-1">
+                <div className="grid w-full grid-cols-3 gap-1 rounded-xl border border-line bg-surface p-1">
                   <button
                     type="button"
                     onClick={() => setSource("pdf")}
-                    className={`flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                    className={`rounded-lg px-2 py-2 text-sm font-semibold transition ${
                       source === "pdf" ? "bg-primary text-primary-fg shadow-sm" : "text-muted hover:text-text"
                     }`}
                   >
@@ -267,11 +270,24 @@ const ExamAdd = () => {
                   <button
                     type="button"
                     onClick={() => setSource("structured")}
-                    className={`flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                    className={`rounded-lg px-2 py-2 text-sm font-semibold transition ${
                       source === "structured" ? "bg-primary text-primary-fg shadow-sm" : "text-muted hover:text-text"
                     }`}
                   >
-                    Özüm yazım / AI ilə
+                    Özüm yazım / AI
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSource("paper");
+                      // Paper results are graded after class — show the answers right away.
+                      setExamForm((f) => ({ ...f, showCorrectAnswers: true, revealAfterEnd: false }));
+                    }}
+                    className={`rounded-lg px-2 py-2 text-sm font-semibold transition ${
+                      source === "paper" ? "bg-primary text-primary-fg shadow-sm" : "text-muted hover:text-text"
+                    }`}
+                  >
+                    Kağız imtahanı
                   </button>
                 </div>
               </Field>
@@ -302,6 +318,15 @@ const ExamAdd = () => {
                 <Field label="PDF fayl" htmlFor="pdf" required hint="İmtahan sualları (PDF)">
                   <input type="file" id="pdf" name="pdf" accept="application/pdf" onChange={handlePdfChange} className={fileInputClass} />
                 </Field>
+              ) : source === "paper" ? (
+                <div className="rounded-xl border border-primary/25 bg-primary/5 px-4 py-3.5 text-sm">
+                  <p className="font-semibold text-text">Necə işləyir?</p>
+                  <ol className="mt-1.5 list-decimal space-y-1 pl-4 text-muted">
+                    <li>Yaratdıqdan sonra hər sualın düzgün cavabını daxil edirsiniz.</li>
+                    <li>Şagirdlər imtahanı sinifdə cavab vərəqində yazır.</li>
+                    <li>Vərəqlərin şəklini çəkirsiniz — AI cavabları oxuyur, siz yoxlayıb yadda saxlayırsınız.</li>
+                  </ol>
+                </div>
               ) : (
                 <p className="rounded-xl border border-dashed border-line bg-surface px-4 py-3 text-sm text-muted">
                   İmtahanı yaratdıqdan sonra sualları əlavə etmək üçün avtomatik olaraq sual qurğusuna yönləndiriləcəksiniz.
@@ -310,8 +335,9 @@ const ExamAdd = () => {
             </div>
           </FormSection>
 
-          <FormSection title="Vaxt və müddət">
+          <FormSection title={source === "paper" ? "Tarix" : "Vaxt və müddət"}>
             <div className="space-y-5">
+              {source !== "paper" && (
               <Field label="Müddət (dəqiqə)" htmlFor="duration" required>
                 <IconInput icon={FiClock}>
                   <input
@@ -345,6 +371,7 @@ const ExamAdd = () => {
                   })}
                 </div>
               </Field>
+              )}
               <div className="grid gap-5 sm:grid-cols-2">
                 <Field label="Başlanma tarixi" htmlFor="startDate">
                   <DateTimePicker
@@ -380,9 +407,13 @@ const ExamAdd = () => {
         {/* Right: optional settings + result visibility */}
         <div className="space-y-6">
           <VideoLinkField enabled={videoEnabled} value={videoLink} onToggle={setVideoEnabled} onChange={handleInputChange} />
-          <PriceField enabled={priceEnabled} value={price} onToggle={setPriceEnabled} onChange={handleInputChange} />
-          <MaxTryField enabled={maxTryEnabled} value={maxTry} onToggle={setMaxTryEnabled} onChange={handleInputChange} />
-          <PasswordField enabled={passwordEnabled} value={password} onToggle={setPasswordEnabled} onChange={handleInputChange} />
+          {source !== "paper" && (
+            <>
+              <PriceField enabled={priceEnabled} value={price} onToggle={setPriceEnabled} onChange={handleInputChange} />
+              <MaxTryField enabled={maxTryEnabled} value={maxTry} onToggle={setMaxTryEnabled} onChange={handleInputChange} />
+              <PasswordField enabled={passwordEnabled} value={password} onToggle={setPasswordEnabled} onChange={handleInputChange} />
+            </>
+          )}
           <NegativeMarkingField
             enabled={negEnabled}
             wrong={wrongPerPenalty}
@@ -391,11 +422,15 @@ const ExamAdd = () => {
             onToggle={setNegEnabled}
             onChange={handleInputChange}
           />
-          <AntiCheatField enabled={antiEnabled} onToggle={setAntiEnabled} />
-          <SolutionPhotosField
-            enabled={solutionPhotosEnabled}
-            onToggle={setSolutionPhotosEnabled}
-          />
+          {source !== "paper" && (
+            <>
+              <AntiCheatField enabled={antiEnabled} onToggle={setAntiEnabled} />
+              <SolutionPhotosField
+                enabled={solutionPhotosEnabled}
+                onToggle={setSolutionPhotosEnabled}
+              />
+            </>
+          )}
           {source === "structured" && (
             <StructuredGradingFields
               shuffle={shuffleEnabled}

@@ -77,6 +77,7 @@ const MyExams = lazy(() => import("./pages/exam/MyExams"));
 const Review = lazy(() => import("./pages/exam/Review"));
 const ResultsByExam = lazy(() => import("./pages/exam/ResultsByExam"));
 const LiveExam = lazy(() => import("./pages/exam/LiveExam"));
+const PaperGrading = lazy(() => import("./pages/admin/PaperGrading"));
 const LiveExamsHub = lazy(() => import("./pages/exam/LiveExamsHub"));
 
 const Wrapper = ({ children }) => {
@@ -244,6 +245,8 @@ function App() {
               <Route path="/exam/:examId/result" element={<Result />} />
               <Route path="/exam/:examId/resultsByExam" element={<ResultsByExam />} />
               <Route path="/exam/:examId/live" element={<LiveExam />} />
+              {/* Paper exams: photograph answer cards, review the AI read, grade. */}
+              <Route path="/exam/:examId/paper" element={<PaperGrading />} />
               {/* "Canlı imtahan" overview — exams with students taking them right now. */}
               <Route path="/canli-imtahan" element={<LiveExamsHub />} />
 

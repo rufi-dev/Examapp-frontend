@@ -57,6 +57,8 @@ const ExamEdit = () => {
   useRedirectLoggedOutUser("/login");
   const { singleExam } = useSelector((state) => state.quiz);
   const isStructured = singleExam?.mode === "structured";
+  // Paper exams have no PDF either — just the answer key + graded sheets.
+  const isPaper = singleExam?.mode === "paper";
   const navigate = useNavigate();
   const { examId } = useParams();
 
@@ -260,7 +262,7 @@ const ExamEdit = () => {
         pdfPath: pdfUrl,
       };
       // Structured exams have no PDF, so don't require one to save.
-      const ready = name && duration && passingMarks && totalMarks && (isStructured || pdfPath);
+      const ready = name && duration && passingMarks && totalMarks && (isStructured || isPaper || pdfPath);
       if (ready) {
         const editExamData = await dispatch(editExam({ examData, examId }));
         if (editExamData.type != "quiz/editExam/rejected") {
@@ -307,15 +309,17 @@ const ExamEdit = () => {
                 <input value={name} onChange={handleInputChange} type="text" name="name" id="name" className={inputClass} />
               </Field>
               <CoverImageField value={coverImage} onChange={(url) => setField("coverImage", url)} />
-              {isStructured ? (
+              {isStructured || isPaper ? (
                 <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-surface2/40 px-3.5 py-3 text-sm">
-                  <span className="font-medium text-text">Variantlı (manual) imtahan</span>
+                  <span className="font-medium text-text">
+                    {isPaper ? "Kağız imtahanı" : "Variantlı (manual) imtahan"}
+                  </span>
                   <button
                     type="button"
-                    onClick={() => navigate(`/exam/${examId}/build`)}
+                    onClick={() => navigate(isPaper ? `/exam/${examId}/addQuestion` : `/exam/${examId}/build`)}
                     className="font-semibold text-primary hover:underline"
                   >
-                    Sualları redaktə et →
+                    {isPaper ? "Cavab açarını redaktə et →" : "Sualları redaktə et →"}
                   </button>
                 </div>
               ) : (
@@ -466,11 +470,15 @@ const ExamEdit = () => {
             onToggle={setNegEnabled}
             onChange={handleInputChange}
           />
-          <AntiCheatField enabled={antiEnabled} onToggle={setAntiEnabled} />
-          <SolutionPhotosField
-            enabled={solutionPhotosEnabled}
-            onToggle={setSolutionPhotosEnabled}
-          />
+          {!isPaper && (
+            <>
+              <AntiCheatField enabled={antiEnabled} onToggle={setAntiEnabled} />
+              <SolutionPhotosField
+                enabled={solutionPhotosEnabled}
+                onToggle={setSolutionPhotosEnabled}
+              />
+            </>
+          )}
           {isStructured && (
             <StructuredGradingFields
               shuffle={shuffleEnabled}

@@ -11,7 +11,18 @@ import AccountLayout from "../../components/AccountLayout";
 import Button from "../../components/ui/Button";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { formatDateTime } from "../../helper/datetime";
-import { FiClock, FiCalendar, FiList, FiInfo, FiPlay, FiRepeat } from "react-icons/fi";
+import {
+  FiClock,
+  FiCalendar,
+  FiList,
+  FiInfo,
+  FiPlay,
+  FiRepeat,
+  FiFileText,
+  FiCamera,
+  FiBarChart2,
+  FiKey,
+} from "react-icons/fi";
 
 const ExamInstructions = () => {
   useRedirectLoggedOutUser("/login");
@@ -81,6 +92,8 @@ const ExamInstructions = () => {
   }
 
   const duration = singleExam.duration || 0;
+  // Paper exams are written in class on answer cards: no online start.
+  const paper = singleExam.mode === "paper";
   const maxTry = usage?.maxTry ?? (singleExam.maxTry || 0);
   // Server-truth used-try count (started attempts OR results, whichever is
   // higher) so we never offer a start the backend will reject. Falls back to the
@@ -144,9 +157,15 @@ const ExamInstructions = () => {
     },
     { icon: FiCalendar, label: "Başlanma", value: startDateString || "Məhdudiyyət yoxdur" },
     { icon: FiCalendar, label: "Bitmə", value: endDateString || "Məhdudiyyət yoxdur" },
-  ];
+  ].filter((m) => !paper || (m.label !== "Müddət" && m.label !== "Cəhdlər"));
 
-  const rules = [
+  const rules = paper
+    ? [
+        "İmtahan sinifdə, kağız cavab vərəqində yazılır.",
+        "Cavabları vərəqdə aydın işarələyin; düzəlişləri səliqəli edin.",
+        "Nəticə müəllim vərəqi yoxladıqdan sonra burada görünür.",
+      ]
+    : [
     "İmtahanı verilən vaxt ərzində tamamlamalısınız.",
     "Təqdim etməzdən əvvəl cavablarınızı nəzərdən keçirə bilərsiniz.",
     "Təqdim edildikdən sonra nəticələri və cavabları görə bilərsiniz.",
@@ -159,7 +178,7 @@ const ExamInstructions = () => {
       } sualın balını aparır (boş suallar cəzalanmır).`
     );
   }
-  if (singleExam.antiCheat) {
+  if (singleExam.antiCheat && !paper) {
     rules.push(
       "Anti-cheat aktivdir: imtahan ayrıca pəncərədə və tam ekranda açılır; tab/pəncərə dəyişmə və ya pəncərəni kiçiltmə qeydə alınır."
     );
@@ -168,7 +187,11 @@ const ExamInstructions = () => {
   return (
     <AccountLayout
       title={singleExam.name}
-      subtitle="İmtahana başlamazdan əvvəl təlimatları nəzərdən keçirin."
+      subtitle={
+        paper
+          ? "Kağız üzərində keçirilən imtahan."
+          : "İmtahana başlamazdan əvvəl təlimatları nəzərdən keçirin."
+      }
     >
       <div className="max-w-5xl">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -208,7 +231,40 @@ const ExamInstructions = () => {
         </div>
 
         <div className="mt-10">
-          {resumeActive ? (
+          {paper ? (
+            <div className="max-w-2xl rounded-3xl border border-line bg-surface p-6 shadow-soft">
+              <div className="flex items-start gap-4">
+                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-primary/12 text-primary">
+                  <FiFileText className="text-[22px]" />
+                </span>
+                <div>
+                  <p className="font-display text-lg font-bold text-text">Kağız üzərində imtahan</p>
+                  <p className="mt-1 text-sm leading-relaxed text-muted">
+                    {isStaff
+                      ? "Şagirdlər bu imtahanı sinifdə cavab vərəqində yazır. Vərəqləri çəkib yoxlayın — nəticə hər şagirdin hesabında görünəcək."
+                      : "Bu imtahan sinifdə cavab vərəqində yazılır. Müəllim vərəqini yoxladıqdan sonra nəticən və cavabların burada görünəcək."}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5 flex flex-wrap gap-3">
+                {isStaff && (
+                  <>
+                    <Button to={`/exam/${singleExam._id}/paper`} size="lg">
+                      <FiCamera /> Kağızları yoxla
+                    </Button>
+                    <Button to={`/exam/${singleExam._id}/addQuestion`} variant="secondary" size="lg">
+                      <FiKey /> Cavab açarı
+                    </Button>
+                  </>
+                )}
+                {!isStaff && resultByExam?.length > 0 && (
+                  <Button to={`/exam/${singleExam._id}/result`} size="lg">
+                    <FiBarChart2 /> Nəticəmə bax
+                  </Button>
+                )}
+              </div>
+            </div>
+          ) : resumeActive ? (
             <div className="max-w-md space-y-4">
               <div className="flex items-center gap-2.5 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm font-medium text-text">
                 <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-warning" />

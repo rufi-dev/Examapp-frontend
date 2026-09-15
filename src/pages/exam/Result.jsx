@@ -13,7 +13,8 @@ import ResultCard from "../../components/ResultCard";
 import AccountLayout from "../../components/AccountLayout";
 import Button from "../../components/ui/Button";
 import { isSelectionCorrect } from "../../helper/helper";
-import { FiRotateCcw, FiList, FiAlertTriangle } from "react-icons/fi";
+import ZoomableImage from "../../components/ZoomableImage";
+import { FiRotateCcw, FiList, FiAlertTriangle, FiImage } from "react-icons/fi";
 
 // The attempt whose result to show — persisted by the Quiz runner on submit so a
 // multi-try student sees THIS attempt's result, not the stale "latest". Kept until
@@ -207,6 +208,8 @@ const Result = () => {
     );
   }
 
+  // Paper exam: graded by the teacher from a photographed answer card.
+  const paper = lastResult.source === "paper" || lastResult.examId?.mode === "paper";
   const correctAnswers = lastResult.correctAnswers || [];
   const selectedAnswers = lastResult.selectedAnswers || [];
   const canScore = lastResult.earnPoints != null;
@@ -229,7 +232,10 @@ const Result = () => {
     : 0;
 
   return (
-    <AccountLayout title="İmtahan nəticələri" subtitle="Son cəhdinin nəticəsi və təhlili.">
+    <AccountLayout
+      title="İmtahan nəticələri"
+      subtitle={paper ? "Müəllimin yoxladığı kağız imtahanı." : "Son cəhdinin nəticəsi və təhlili."}
+    >
       {lastResult.terminated && (
         <div className="mb-8 flex items-start gap-4 rounded-3xl border-2 border-danger bg-danger/10 p-6 shadow-lift">
           <div className="grid h-12 w-12 shrink-0 animate-pulse place-items-center rounded-2xl bg-danger text-white">
@@ -290,10 +296,12 @@ const Result = () => {
               </p>
             </div>
           )}
-          <div className="flex flex-col justify-center rounded-3xl border border-line bg-surface p-6 shadow-soft">
-            <p className="text-sm text-muted">Cəhd sayı</p>
-            <p className="font-display text-3xl font-extrabold text-text">{resultByExam.length}</p>
-          </div>
+          {!paper && (
+            <div className="flex flex-col justify-center rounded-3xl border border-line bg-surface p-6 shadow-soft">
+              <p className="text-sm text-muted">Cəhd sayı</p>
+              <p className="font-display text-3xl font-extrabold text-text">{resultByExam.length}</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -308,26 +316,45 @@ const Result = () => {
         </div>
       )}
 
+        {paper && lastResult.sheetPhotos?.length > 0 && (
+          <div className="mt-10">
+            <h2 className="mb-3 flex items-center gap-2 font-display text-lg font-bold text-text">
+              <FiImage className="text-primary" /> Cavab vərəqin
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {lastResult.sheetPhotos.map((src, i) => (
+                <div key={src} className="overflow-hidden rounded-2xl border border-line bg-surface p-2 shadow-soft">
+                  <ZoomableImage src={src} alt={`Cavab vərəqi — səhifə ${i + 1}`} className="w-full rounded-xl" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="mt-8 flex flex-wrap gap-3">
-          <Button
-            to={`/exam/details/${examId}`}
-            variant="secondary"
-            onClick={() => {
-              dispatch(RESET_QUIZ());
-              dispatch(RESET_RESULT());
-            }}
-          >
-            <FiRotateCcw /> Yenidən cəhd et
-          </Button>
+          {!paper && (
+            <Button
+              to={`/exam/details/${examId}`}
+              variant="secondary"
+              onClick={() => {
+                dispatch(RESET_QUIZ());
+                dispatch(RESET_RESULT());
+              }}
+            >
+              <FiRotateCcw /> Yenidən cəhd et
+            </Button>
+          )}
           <Button to="/myResults" variant="soft">
             <FiList /> Nəticələrim
           </Button>
         </div>
 
-        <div className="mt-12">
-          <h2 className="mb-3 font-display text-lg font-bold text-text">Bütün cəhdlər</h2>
-          <ResultTable results={resultByExam} />
-        </div>
+        {!paper && (
+          <div className="mt-12">
+            <h2 className="mb-3 font-display text-lg font-bold text-text">Bütün cəhdlər</h2>
+            <ResultTable results={resultByExam} />
+          </div>
+        )}
     </AccountLayout>
   );
 };
