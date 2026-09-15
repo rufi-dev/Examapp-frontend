@@ -190,9 +190,18 @@ const ResultsByExam = () => {
                   {result.source === "paper" && (
                     <span
                       className="inline-flex items-center gap-1 rounded-full bg-accent2/12 px-3 py-1 text-sm font-semibold text-accent2"
-                      title="Kağız cavab vərəqindən yoxlanılıb"
+                      title={
+                        result.submittedBy === "student"
+                          ? "Şagird öz cavab vərəqini yükləyib"
+                          : "Kağız cavab vərəqindən yoxlanılıb"
+                      }
                     >
-                      <FiFileText /> Kağız
+                      <FiFileText />{" "}
+                      {result.submittedBy === "student"
+                        ? `Şagird yükləyib${result.studentEdited?.length ? ` · ${result.studentEdited.length} dəyişiklik` : ""}${
+                            result.teacherReviewedAt ? "" : " · yoxlanmayıb"
+                          }`
+                        : "Kağız"}
                     </span>
                   )}
                   <span className="inline-flex items-center rounded-full bg-primary/12 px-3 py-1 text-sm font-semibold text-primary">

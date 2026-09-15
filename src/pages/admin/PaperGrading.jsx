@@ -3,7 +3,6 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import {
   FiCamera,
-  FiImage,
   FiX,
   FiCheck,
   FiMinus,
@@ -17,15 +16,14 @@ import {
   FiBarChart2,
   FiZap,
   FiKey,
+  FiUploadCloud,
 } from "react-icons/fi";
 import AccountLayout from "../../components/AccountLayout";
 import Button from "../../components/ui/Button";
 import Spinner from "../../components/Spinner";
-import ZoomableImage from "../../components/ZoomableImage";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
-import CameraCapture, { normalizeImageBlob } from "../../components/CameraCapture";
+import CameraCapture from "../../components/CameraCapture";
 import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser";
-import { uploadImage } from "../../helper/cloudinary";
 import {
   fetchPaperSheet,
   readPaperSheet,
@@ -34,313 +32,57 @@ import {
   deletePaperResult,
   apiError,
 } from "../../helper/paperApi";
+import {
+  AnswerEditor,
+  Avatar,
+  ReadingPanel,
+  SheetCapture,
+  SheetViewer,
+  Stepper,
+  TYPE_LABEL,
+  answerLabel,
+  blankAnswer,
+  correctLabel,
+  fromStored,
+  rowState,
+  useSheetPhotos,
+} from "../../components/paper/PaperKit";
 
 /*
- * Paper exam grading workspace.
+ * Paper exam grading workspace (teacher).
  *
- * Students write the exam in class on answer cards. For each sheet the teacher:
- *   1. photographs it (one or more pages) or picks photos from the gallery,
- *   2. lets the AI read what the student marked — or fills it in by hand,
- *   3. reviews the answer sheet against the key, corrects any misread answer,
- *      assigns the student and saves.
- * The score is always computed by the server (same scoring as online exams); the
- * number shown while editing is a live server preview.
+ * Students write the exam in class on answer cards. A sheet reaches the teacher
+ * either because they photograph it here, or because the student uploaded it
+ * themselves (then it waits in "Yoxlanmalı" with any answers the student changed
+ * from the AI read highlighted). The teacher reviews against the key, corrects,
+ * assigns (auto-matched from the name on the card) and saves. The score is always
+ * computed by the server; the number shown while editing is a live preview.
  */
 
-const MAX_PAGES = 6;
-const LETTERS = "abcdefghijklmnopqrstuvwxyz";
-const TYPE_LABEL = {
-  Cm: "Qapalı",
-  Co: "Açıq",
-  Cd: "Yazılı həll",
-  Cmu: "Uyğunluq",
-  Cs: "Çoxseçimli",
-  Cma: "Uyğunlaşdırma",
-};
 const STEPS = [
   { id: "capture", label: "Vərəq" },
   { id: "reading", label: "Oxunuş" },
   { id: "review", label: "Yoxla və saxla" },
 ];
 
-const optionsOf = (q) =>
-  (Array.isArray(q.options) && q.options.length ? q.options : ["a", "b", "c", "d", "e"]).map((o) =>
-    String(o).toLowerCase()
-  );
-const openNorm = (v) => String(v ?? "").trim().toLowerCase().replace(/\s+/g, " ");
-const blankAnswer = (q) => (q.type === "Cmu" ? {} : "");
-const isMap = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+const sheetNameText = (info) => [info?.firstName, info?.lastName, info?.fatherName].filter(Boolean).join(" ");
 
-const isBlank = (q, a) =>
-  q.type === "Cmu"
-    ? !isMap(a) || !Object.values(a).some((row) => Array.isArray(row) && row.length)
-    : String(a ?? "").trim() === "";
-
-// Client-side mirror of the server's per-question check — only for the ✓/✗ marks
-// while editing. The score itself always comes from the server.
-function isRight(q, a) {
-  if (isBlank(q, a)) return false;
-  if (q.type === "Cmu") {
-    const rows = Array.isArray(q.key) ? q.key : [];
-    if (!rows.length) return false;
-    return rows.every((row, k) => {
-      const want = (Array.isArray(row) ? row : []).map(Number).sort((x, y) => x - y);
-      const got = (Array.isArray(a[k]) ? a[k] : []).map(Number).sort((x, y) => x - y);
-      return want.length === got.length && want.every((v, j) => v === got[j]);
-    });
-  }
-  if (q.type === "Cm") return openNorm(a) === openNorm(q.answer);
-  // Handwriting spacing doesn't matter ("2 + x" = "2+x") — same rule the server
-  // applies to paper sheets.
-  const compact = (v) => String(v ?? "").toLowerCase().replace(/\s+/g, "");
-  const accepted = (Array.isArray(q.answers) && q.answers.length ? q.answers : [q.answer])
-    .map(compact)
-    .filter(Boolean);
-  return accepted.includes(compact(a));
-}
-const rowState = (q, a) => (isBlank(q, a) ? "blank" : isRight(q, a) ? "right" : "wrong");
-
-function correctLabel(q) {
-  if (q.type === "Cm") return String(q.answer || "—").toUpperCase();
-  if (q.type === "Cmu") {
-    return (Array.isArray(q.key) ? q.key : [])
-      .map((row, k) => `${k + 1}: ${(Array.isArray(row) ? row : []).map((i) => LETTERS[i]).join(",") || "—"}`)
-      .join(" · ");
-  }
-  const acc = (Array.isArray(q.answers) && q.answers.length ? q.answers : [q.answer]).filter(Boolean);
-  return acc.length ? acc.join(" / ") : "—";
-}
-
-const initials = (name = "") =>
-  String(name)
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((s) => s[0] || "")
-    .join("")
-    .toUpperCase() || "?";
-
-const nameKey = (s) =>
-  String(s || "")
-    .toLocaleLowerCase("az")
-    .replace(/[^\p{L}\s]/gu, "")
-    .replace(/\s+/g, " ")
-    .trim();
-
-// Match the name the AI read off the sheet to exactly one roster student. Only a
-// full match or a two-word overlap counts, and a tie picks nobody — a wrong
-// automatic assignment is worse than asking.
-function matchStudent(students, written) {
-  const w = nameKey(written);
-  if (w.length < 3) return null;
-  const parts = w.split(" ").filter((p) => p.length >= 3);
-  const scored = students
-    .map((s) => {
-      const n = nameKey(s.name);
-      if (!n) return { s, score: 0 };
-      if (n === w) return { s, score: 3 };
-      const words = n.split(" ");
-      const hits = parts.filter((p) => words.includes(p)).length;
-      return { s, score: hits >= 2 ? 2 : 0 };
-    })
-    .filter((x) => x.score > 0)
-    .sort((a, b) => b.score - a.score);
-  if (!scored.length) return null;
-  if (scored.length > 1 && scored[0].score === scored[1].score) return null;
-  return scored[0].s;
-}
-
-const Avatar = ({ s, size = "h-9 w-9" }) =>
-  s?.photo ? (
-    <img src={s.photo} alt="" className={`${size} shrink-0 rounded-full border border-line object-cover`} />
-  ) : (
-    <span
-      className={`${size} grid shrink-0 place-items-center rounded-full bg-primary/12 text-xs font-bold text-primary`}
-    >
-      {initials(s?.name)}
-    </span>
-  );
-
-const Stepper = ({ phase }) => {
-  const idx = STEPS.findIndex((s) => s.id === phase);
-  return (
-    <ol className="flex items-center gap-1.5 sm:gap-2">
-      {STEPS.map((s, i) => {
-        const done = i < idx;
-        const now = i === idx;
-        return (
-          <li key={s.id} className="flex items-center gap-1.5 sm:gap-2">
-            <span
-              className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold transition-colors ${
-                done ? "bg-success/15 text-success" : now ? "bg-primary text-primary-fg" : "bg-surface2 text-muted"
-              }`}
-            >
-              {done ? <FiCheck /> : i + 1}
-            </span>
-            <span className={`hidden text-sm sm:inline ${now ? "font-bold text-text" : "text-muted"}`}>
-              {s.label}
-            </span>
-            {i < STEPS.length - 1 && <span className="h-px w-4 bg-line sm:w-8" aria-hidden />}
-          </li>
-        );
-      })}
-    </ol>
-  );
-};
-
-// What is actually happening while the AI reads. One request returns one answer,
-// so the step timing is a paced estimate; the elapsed counter is real.
-const READ_STEPS = ["Şəkillər hazırlanır", "Vərəqdəki işarələr oxunur", "Cavablar açarla uyğunlaşdırılır"];
-const ReadingPanel = ({ startedAt, photos }) => {
-  const [secs, setSecs] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setSecs(Math.round((Date.now() - startedAt) / 1000)), 1000);
-    return () => clearInterval(t);
-  }, [startedAt]);
-  const step = secs < 4 ? 0 : secs < 20 ? 1 : 2;
-  return (
-    <div className="mx-auto max-w-md py-8">
-      <div className="mb-6 flex justify-center -space-x-6">
-        {photos.slice(0, 3).map((p, i) => (
-          <img
-            key={p.id}
-            src={p.url || p.preview}
-            alt=""
-            className="h-24 w-[4.5rem] rounded-xl border-2 border-surface object-cover shadow-soft"
-            style={{ transform: `rotate(${(i - 1) * 6}deg)` }}
-          />
-        ))}
-      </div>
-      <div className="mb-5 h-1.5 overflow-hidden rounded-full bg-surface2">
-        <div className="h-full w-full animate-pulse rounded-full bg-primary/70" />
-      </div>
-      <div className="mb-4 flex items-baseline justify-between gap-3">
-        <p className="font-display text-lg font-bold text-text">AI vərəqi oxuyur…</p>
-        <span className="rounded-lg bg-surface2 px-2 py-0.5 font-mono text-xs font-bold tabular-nums text-muted">
-          {String(Math.floor(secs / 60)).padStart(2, "0")}:{String(secs % 60).padStart(2, "0")}
-        </span>
-      </div>
-      <ol className="space-y-2.5">
-        {READ_STEPS.map((label, i) => (
-          <li key={label} className="flex items-center gap-2.5 text-sm">
-            <span
-              className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px] font-bold ${
-                i < step
-                  ? "bg-success/15 text-success"
-                  : i === step
-                    ? "bg-primary text-primary-fg"
-                    : "bg-surface2 text-muted"
-              }`}
-            >
-              {i < step ? <FiCheck /> : i + 1}
-            </span>
-            <span className={i === step ? "font-semibold text-text" : "text-muted"}>{label}</span>
-          </li>
-        ))}
-      </ol>
-      <p className="mt-6 text-center text-xs text-muted">Adətən 20–60 saniyə çəkir. Səhifəni bağlamayın.</p>
-    </div>
-  );
-};
-
-const ChoiceEditor = ({ q, value, state, onChange }) => (
-  <div className="flex flex-wrap gap-1.5">
-    {optionsOf(q).map((o) => {
-      const on = String(value ?? "").trim().toLowerCase() === o;
-      return (
-        <button
-          key={o}
-          type="button"
-          aria-pressed={on}
-          onClick={() => onChange(on ? "" : o)}
-          className={`grid h-9 w-9 place-items-center rounded-xl text-sm font-bold uppercase transition-colors ${
-            on
-              ? state === "right"
-                ? "bg-success text-white shadow-soft"
-                : "bg-danger text-white shadow-soft"
-              : "border border-line bg-surface text-muted hover:border-primary/50 hover:text-text"
-          }`}
-        >
-          {o}
-        </button>
-      );
-    })}
-  </div>
-);
-
-const MatchEditor = ({ q, value, onChange }) => {
-  const n = Number(q.leftCount) || 0;
-  const m = Number(q.rightCount) || 0;
-  const map = isMap(value) ? value : {};
-  const toggle = (k, j) => {
-    const row = new Set(Array.isArray(map[k]) ? map[k] : []);
-    if (row.has(j)) row.delete(j);
-    else row.add(j);
-    const next = { ...map };
-    const arr = [...row].sort((a, b) => a - b);
-    if (arr.length) next[k] = arr;
-    else delete next[k];
-    onChange(next);
-  };
-  return (
-    <div className="overflow-x-auto">
-      <table className="border-separate border-spacing-1">
-        <thead>
-          <tr>
-            <th aria-hidden />
-            {Array.from({ length: m }, (_, j) => (
-              <th key={j} className="w-8 text-center text-xs font-bold uppercase text-muted">
-                {LETTERS[j]}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {Array.from({ length: n }, (_, k) => (
-            <tr key={k}>
-              <td className="pr-1 text-right text-xs font-bold tabular-nums text-muted">{k + 1}</td>
-              {Array.from({ length: m }, (_, j) => {
-                const on = Array.isArray(map[k]) && map[k].includes(j);
-                return (
-                  <td key={j}>
-                    <button
-                      type="button"
-                      aria-pressed={on}
-                      aria-label={`${k + 1}${LETTERS[j]}`}
-                      onClick={() => toggle(k, j)}
-                      className={`grid h-8 w-8 place-items-center rounded-lg text-xs font-bold transition-colors ${
-                        on
-                          ? "bg-primary text-primary-fg"
-                          : "border border-line bg-surface text-muted hover:border-primary/50"
-                      }`}
-                    >
-                      {on ? <FiCheck /> : null}
-                    </button>
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-};
-
-const SheetRow = ({ index, q, value, ai, edited, onChange }) => {
+const SheetRow = ({ index, q, value, ai, edited, studentAi, onChange }) => {
   const state = rowState(q, value);
   const flagged = !!ai && ai.confidence !== "high" && !edited;
-  const tone = flagged
-    ? "border-warning/50 bg-warning/[0.07]"
-    : state === "right"
-      ? "border-success/25 bg-success/[0.05]"
-      : state === "wrong"
-        ? "border-danger/25 bg-danger/[0.05]"
-        : "border-line bg-surface";
+  const studentChanged = studentAi !== undefined;
+  const tone =
+    flagged || studentChanged
+      ? "border-warning/50 bg-warning/[0.07]"
+      : state === "right"
+        ? "border-success/25 bg-success/[0.05]"
+        : state === "wrong"
+          ? "border-danger/25 bg-danger/[0.05]"
+          : "border-line bg-surface";
   return (
     <div className={`rounded-2xl border p-3 transition-colors sm:p-3.5 ${tone}`}>
       <div className="flex items-start gap-3">
-        <span className="mt-1 w-7 shrink-0 text-center font-display text-base font-extrabold tabular-nums text-text">
+        <span className="mt-1.5 w-7 shrink-0 text-center font-display text-base font-extrabold tabular-nums text-text">
           {index + 1}
         </span>
         <div className="min-w-0 flex-1">
@@ -353,35 +95,25 @@ const SheetRow = ({ index, q, value, ai, edited, onChange }) => {
                 <FiAlertTriangle /> Yoxla{ai.note ? ` · ${ai.note}` : ""}
               </span>
             )}
+            {studentChanged && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-warning/15 px-1.5 py-0.5 text-[10px] font-bold text-warning">
+                <FiEdit3 /> Şagird dəyişib · AI oxumuşdu: {answerLabel(q, studentAi)}
+              </span>
+            )}
             {edited && (
               <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
                 <FiEdit3 /> Düzəliş edilib
               </span>
             )}
           </div>
-          {q.type === "Cm" ? (
-            <ChoiceEditor q={q} value={value} state={state} onChange={onChange} />
-          ) : q.type === "Cmu" ? (
-            <MatchEditor q={q} value={value} onChange={onChange} />
-          ) : (
-            <input
-              value={typeof value === "string" ? value : ""}
-              onChange={(e) => onChange(e.target.value)}
-              placeholder="Şagirdin cavabı"
-              className="h-10 w-full max-w-sm rounded-xl border border-line bg-surface px-3 text-sm text-text outline-none transition placeholder:text-muted/70 focus:border-primary focus:ring-4 focus:ring-ring/25"
-            />
-          )}
+          <AnswerEditor q={q} value={value} onChange={onChange} tone={state === "right" ? "right" : "wrong"} />
           <p className="mt-2 text-xs text-muted">
             Düzgün cavab: <span className="font-semibold text-text">{correctLabel(q)}</span>
           </p>
         </div>
         <span
           className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${
-            state === "right"
-              ? "bg-success text-white"
-              : state === "wrong"
-                ? "bg-danger text-white"
-                : "bg-surface2 text-muted"
+            state === "right" ? "bg-success text-white" : state === "wrong" ? "bg-danger text-white" : "bg-surface2 text-muted"
           }`}
           aria-label={state === "right" ? "Doğru" : state === "wrong" ? "Səhv" : "Boş"}
         >
@@ -401,15 +133,16 @@ const PaperGrading = () => {
   const [data, setData] = useState(null);
   const [loadError, setLoadError] = useState("");
   const [query, setQuery] = useState("");
-  const [rosterFilter, setRosterFilter] = useState("all"); // all | pending | graded
+  const [rosterFilter, setRosterFilter] = useState("all"); // all | pending | review | graded
   const [studentId, setStudentId] = useState("");
-  const [photos, setPhotos] = useState([]); // { id, preview, url, status, blob }
   const [phase, setPhase] = useState("capture"); // capture | reading | review
   const [answers, setAnswers] = useState([]);
-  const [ai, setAi] = useState(null); // [{ answer, confidence, note }] from the last AI read
+  const [ai, setAi] = useState(null); // [{ answer, confidence, note }] from this session's AI read
   const [edited, setEdited] = useState(() => new Set());
   const [dirty, setDirty] = useState(false);
-  const [sheetName, setSheetName] = useState("");
+  const [origin, setOrigin] = useState(null); // a student-uploaded result under review
+  const [sheetInfo, setSheetInfo] = useState(null); // name/class boxes read off the sheet
+  const [suggestions, setSuggestions] = useState([]);
   const [camOpen, setCamOpen] = useState(false);
   const [readStartedAt, setReadStartedAt] = useState(0);
   const [preview, setPreview] = useState(null);
@@ -417,12 +150,13 @@ const PaperGrading = () => {
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [sheetFilter, setSheetFilter] = useState("all"); // all | flagged | wrong
-  const [activePage, setActivePage] = useState(0);
+  const [sheetFilter, setSheetFilter] = useState("all"); // all | flagged | wrong | changed
   const galleryRef = useRef(null);
-  const pagesRef = useRef(0);
-  const blobUrls = useRef(new Set());
   const preselected = useRef(false);
+
+  const markDirty = useCallback(() => setDirty(true), []);
+  const sheet = useSheetPhotos({ onDirty: markDirty });
+  const { photos, done: donePhotos, uploading, reset: resetPhotos } = sheet;
 
   const load = useCallback(async () => {
     try {
@@ -437,16 +171,6 @@ const PaperGrading = () => {
   useEffect(() => {
     load();
   }, [load]);
-
-  useEffect(() => {
-    pagesRef.current = photos.length;
-  }, [photos.length]);
-
-  // Free local previews when leaving the page.
-  useEffect(() => {
-    const urls = blobUrls.current;
-    return () => urls.forEach((u) => URL.revokeObjectURL(u));
-  }, []);
 
   // Unsaved sheet → warn before the tab is closed/reloaded.
   useEffect(() => {
@@ -467,8 +191,7 @@ const PaperGrading = () => {
     return m;
   }, [results]);
 
-  // Class roster, plus anyone graded who has since left the class (their sheet
-  // stays reviewable).
+  // Class roster, plus anyone graded who has since left the class.
   const roster = useMemo(() => {
     const list = (data?.students || []).map((s) => ({ ...s, inClass: true }));
     const ids = new Set(list.map((s) => String(s._id)));
@@ -478,61 +201,46 @@ const PaperGrading = () => {
     return list.sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "az"));
   }, [data, results]);
 
+  const needsReview = (r) => !!r && r.submittedBy === "student" && !r.teacherReviewedAt;
   const selected = roster.find((s) => String(s._id) === String(studentId)) || null;
   const selectedResult = studentId ? resultByStudent.get(String(studentId)) || null : null;
   const inClass = roster.filter((s) => s.inClass);
   const gradedInClass = inClass.filter((s) => resultByStudent.has(String(s._id))).length;
-  const scoreTotal =
-    data?.exam?.preset && Number(data?.exam?.totalMarks) ? Number(data.exam.totalMarks) : 100;
+  const reviewCount = results.filter(needsReview).length;
+  const scoreTotal = data?.exam?.preset && Number(data?.exam?.totalMarks) ? Number(data.exam.totalMarks) : 100;
   const average = results.length
     ? Math.round((results.reduce((s, r) => s + (Number(r.earnPoints) || 0), 0) / results.length) * 10) / 10
     : null;
 
-  const donePhotos = photos.filter((p) => p.status === "done" && p.url);
-  const uploading = photos.some((p) => p.status === "uploading");
-
   const resetSheet = useCallback(() => {
-    setPhotos((prev) => {
-      prev.forEach((p) => {
-        if (p.preview && p.preview.startsWith("blob:")) {
-          URL.revokeObjectURL(p.preview);
-          blobUrls.current.delete(p.preview);
-        }
-      });
-      return [];
-    });
-    pagesRef.current = 0;
+    resetPhotos([]);
     setAnswers([]);
     setAi(null);
     setEdited(new Set());
-    setSheetName("");
+    setOrigin(null);
+    setSheetInfo(null);
+    setSuggestions([]);
     setPreview(null);
     setSheetFilter("all");
-    setActivePage(0);
     setDirty(false);
     setPhase("capture");
-  }, []);
+  }, [resetPhotos]);
 
-  // Open an already-graded sheet for review/correction.
+  // Open an already-saved sheet (teacher-graded or student-uploaded) for review.
   const openResult = useCallback(
     (r) => {
-      setPhotos((r.sheetPhotos || []).map((url, i) => ({ id: `saved-${i}`, url, preview: url, status: "done" })));
-      setAnswers(
-        key.map((q, i) => {
-          const a = r.selectedAnswers?.[i]?.answer;
-          if (q.type === "Cmu") return isMap(a) ? a : {};
-          return a == null ? "" : String(a);
-        })
-      );
-      setAi(null); // already reviewed by the teacher — no re-flagging
+      resetPhotos(r.sheetPhotos || []);
+      setAnswers(key.map((q, i) => fromStored(q, r.selectedAnswers?.[i]?.answer)));
+      setAi(null);
       setEdited(new Set());
-      setSheetName("");
-      setSheetFilter("all");
-      setActivePage(0);
+      setOrigin(r.submittedBy === "student" ? r : null);
+      setSheetInfo(r.sheetStudent || null);
+      setSuggestions([]);
+      setSheetFilter(r.submittedBy === "student" && r.studentEdited?.length ? "changed" : "all");
       setDirty(false);
       setPhase("review");
     },
-    [key]
+    [key, resetPhotos]
   );
 
   // Deep link (?student=…) from the results page opens that student's sheet.
@@ -555,63 +263,12 @@ const PaperGrading = () => {
     // A sheet is in progress: just assign it to this student.
     if (dirty) {
       setStudentId(id);
-      if (existing) toast.info("Bu şagird artıq yoxlanılıb — yadda saxlasanız nəticəsi yenilənəcək.");
+      if (existing) toast.info("Bu şagirdin artıq nəticəsi var — yadda saxlasanız yenilənəcək.");
       return;
     }
     setStudentId(id);
     if (existing) openResult(existing);
     else resetSheet();
-  };
-
-  const uploadPhoto = async (id, blob) => {
-    try {
-      const file = await normalizeImageBlob(blob, { prefix: "sheet", max: 2400 });
-      const url = await uploadImage(file);
-      setPhotos((prev) => prev.map((p) => (p.id === id ? { ...p, url, status: "done", blob: undefined } : p)));
-    } catch (e) {
-      setPhotos((prev) => prev.map((p) => (p.id === id ? { ...p, status: "error" } : p)));
-      toast.error(apiError(e, "Şəkil yüklənmədi"));
-    }
-  };
-
-  const addBlob = (blob) => {
-    if (!blob) return;
-    if (pagesRef.current >= MAX_PAGES) {
-      toast.info(`Bir vərəq üçün ən çox ${MAX_PAGES} şəkil əlavə etmək olar`);
-      return;
-    }
-    pagesRef.current += 1;
-    const id = `p-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    const previewUrl = URL.createObjectURL(blob);
-    blobUrls.current.add(previewUrl);
-    setDirty(true);
-    setPhotos((prev) => [...prev, { id, preview: previewUrl, url: "", status: "uploading", blob }]);
-    uploadPhoto(id, blob);
-  };
-
-  const retryPhoto = (p) => {
-    if (!p.blob) return;
-    setPhotos((prev) => prev.map((x) => (x.id === p.id ? { ...x, status: "uploading" } : x)));
-    uploadPhoto(p.id, p.blob);
-  };
-
-  const removePhoto = (id) => {
-    setPhotos((prev) => {
-      const p = prev.find((x) => x.id === id);
-      if (p?.preview?.startsWith("blob:")) {
-        URL.revokeObjectURL(p.preview);
-        blobUrls.current.delete(p.preview);
-      }
-      return prev.filter((x) => x.id !== id);
-    });
-    setActivePage(0);
-    setDirty(true);
-  };
-
-  const onGalleryPick = (e) => {
-    const files = Array.from(e.target.files || []).filter((f) => !f.type || f.type.startsWith("image/"));
-    e.target.value = "";
-    files.forEach(addBlob);
   };
 
   const runRead = async () => {
@@ -624,13 +281,7 @@ const PaperGrading = () => {
         donePhotos.map((p) => p.url)
       );
       const list = Array.isArray(res.answers) ? res.answers : [];
-      setAnswers(
-        key.map((q, i) => {
-          const a = list[i]?.answer;
-          if (q.type === "Cmu") return isMap(a) ? a : {};
-          return a == null ? "" : String(a);
-        })
-      );
+      setAnswers(key.map((q, i) => fromStored(q, list[i]?.answer)));
       setAi(
         key.map((q, i) => ({
           answer: list[i]?.answer ?? blankAnswer(q),
@@ -639,16 +290,16 @@ const PaperGrading = () => {
         }))
       );
       setEdited(new Set());
-      setSheetName(res.studentName || "");
+      setOrigin(null);
+      setSheetInfo(res.student || null);
+      setSuggestions(Array.isArray(res.suggestions) ? res.suggestions : []);
       setSheetFilter("all");
-      setActivePage(0);
       setDirty(true);
-      if (!studentId && res.studentName) {
-        const match = matchStudent(inClass, res.studentName);
-        if (match) {
-          setStudentId(String(match._id));
-          toast.success(`Vərəqdəki ada görə seçildi: ${match.name}`);
-        }
+      if (!studentId && res.match?._id) {
+        setStudentId(String(res.match._id));
+        toast.success(`Vərəqdəki ada görə seçildi: ${res.match.name}`);
+      } else if (studentId && res.match?._id && String(res.match._id) !== String(studentId)) {
+        toast.warn(`Vərəqdə "${sheetNameText(res.student)}" yazılıb — seçilmiş şagirdlə uyğun gəlmir.`);
       }
       setPhase("review");
     } catch (e) {
@@ -711,22 +362,26 @@ const PaperGrading = () => {
         answers: answers.map((a) => ({ answer: a })),
         photos: donePhotos.map((p) => p.url),
         aiAnswers: ai ? ai.map((x) => ({ answer: x.answer, confidence: x.confidence })) : undefined,
+        sheetStudent: sheetInfo || undefined,
       });
       const saved = res.result;
       const gradedIds = new Set([...results.map((r) => String(r.userId)), String(saved.userId)]);
       setData((prev) =>
         prev
-          ? {
-              ...prev,
-              results: [saved, ...prev.results.filter((r) => String(r.userId) !== String(saved.userId))],
-            }
+          ? { ...prev, results: [saved, ...prev.results.filter((r) => String(r.userId) !== String(saved.userId))] }
           : prev
       );
       toast.success(`${saved.student?.name || selected?.name || "Şagird"} — ${saved.earnPoints} bal yadda saxlanıldı`);
-      // Straight on to the next ungraded student.
+      // Next: a student upload still waiting for review, else the next ungraded student.
+      const waiting = results.find((r) => needsReview(r) && String(r.userId) !== String(saved.userId));
       const next = inClass.find((s) => !gradedIds.has(String(s._id)));
       resetSheet();
-      setStudentId(next ? String(next._id) : "");
+      if (waiting) {
+        setStudentId(String(waiting.userId));
+        openResult(waiting);
+      } else {
+        setStudentId(next ? String(next._id) : "");
+      }
     } catch (e) {
       toast.error(apiError(e, "Yadda saxlanılmadı"));
     } finally {
@@ -749,6 +404,8 @@ const PaperGrading = () => {
       setDeleting(false);
     }
   };
+
+  const changedSet = useMemo(() => new Set(origin?.studentEdited || []), [origin]);
 
   const stats = useMemo(() => {
     let right = 0;
@@ -788,9 +445,10 @@ const PaperGrading = () => {
 
   const q = query.trim().toLowerCase();
   const filteredRoster = roster.filter((s) => {
-    const graded = resultByStudent.has(String(s._id));
-    if (rosterFilter === "pending" && (graded || !s.inClass)) return false;
-    if (rosterFilter === "graded" && !graded) return false;
+    const r = resultByStudent.get(String(s._id));
+    if (rosterFilter === "pending" && (r || !s.inClass)) return false;
+    if (rosterFilter === "review" && !needsReview(r)) return false;
+    if (rosterFilter === "graded" && !r) return false;
     if (!q) return true;
     return String(s.name || "").toLowerCase().includes(q) || String(s.email || "").toLowerCase().includes(q);
   });
@@ -800,19 +458,18 @@ const PaperGrading = () => {
     .filter(({ question, i }) => {
       if (sheetFilter === "flagged") return ai?.[i] && ai[i].confidence !== "high" && !edited.has(i);
       if (sheetFilter === "wrong") return rowState(question, answers[i]) === "wrong";
+      if (sheetFilter === "changed") return changedSet.has(i);
       return true;
     });
 
   const tab = (active) =>
-    `rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+    `flex-1 rounded-lg px-1.5 py-1.5 text-[11px] font-semibold transition-colors ${
       active ? "bg-surface text-text shadow-sm" : "text-muted hover:text-text"
     }`;
   const chip = (active, tone) =>
-    `inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${
-      active ? `${tone} ring-2 ring-offset-1 ring-offset-surface` : tone
+    `inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${tone} ${
+      active ? "ring-2 ring-offset-1 ring-offset-surface" : ""
     }`;
-
-  const activePhoto = photos[Math.min(activePage, Math.max(0, photos.length - 1))];
 
   return (
     <AccountLayout
@@ -830,7 +487,7 @@ const PaperGrading = () => {
       }
     >
       {/* Progress strip */}
-      <div className="mb-6 grid gap-3 sm:grid-cols-3">
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-2xl border border-line bg-surface p-4 shadow-soft">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">Yoxlanılıb</p>
           <p className="mt-1 font-display text-2xl font-extrabold tabular-nums text-text">
@@ -844,6 +501,24 @@ const PaperGrading = () => {
             />
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() => setRosterFilter(reviewCount ? "review" : "all")}
+          className={`rounded-2xl border p-4 text-left shadow-soft transition-colors ${
+            reviewCount ? "border-accent2/40 bg-accent2/[0.06] hover:bg-accent2/10" : "border-line bg-surface"
+          }`}
+        >
+          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
+            <FiUploadCloud /> Şagird yükləyib
+          </p>
+          <p className="mt-1 font-display text-2xl font-extrabold tabular-nums text-text">
+            {reviewCount}
+            <span className="text-base font-bold text-muted"> yoxlanmalı</span>
+          </p>
+          <p className="mt-1 text-[11px] text-muted">
+            {data.exam.paperSelfUpload ? "Şagirdlər öz vərəqini yükləyə bilər" : "Şagird yükləməsi bağlıdır"}
+          </p>
+        </button>
         <div className="rounded-2xl border border-line bg-surface p-4 shadow-soft">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">Orta bal</p>
           <p className="mt-1 font-display text-2xl font-extrabold tabular-nums text-text">
@@ -892,15 +567,18 @@ const PaperGrading = () => {
                     className="h-10 w-full rounded-xl border border-line bg-surface2/40 pl-9 pr-3 text-sm text-text outline-none transition placeholder:text-muted/70 focus:border-primary focus:ring-4 focus:ring-ring/25"
                   />
                 </div>
-                <div className="mt-3 inline-flex w-full rounded-xl bg-surface2/70 p-1">
-                  <button type="button" onClick={() => setRosterFilter("all")} className={`flex-1 ${tab(rosterFilter === "all")}`}>
+                <div className="mt-3 flex w-full gap-0.5 rounded-xl bg-surface2/70 p-1">
+                  <button type="button" onClick={() => setRosterFilter("all")} className={tab(rosterFilter === "all")}>
                     Hamısı
                   </button>
-                  <button type="button" onClick={() => setRosterFilter("pending")} className={`flex-1 ${tab(rosterFilter === "pending")}`}>
-                    Gözləyir {inClass.length - gradedInClass}
+                  <button type="button" onClick={() => setRosterFilter("pending")} className={tab(rosterFilter === "pending")}>
+                    Gözləyir
                   </button>
-                  <button type="button" onClick={() => setRosterFilter("graded")} className={`flex-1 ${tab(rosterFilter === "graded")}`}>
-                    Hazır {results.length}
+                  <button type="button" onClick={() => setRosterFilter("review")} className={tab(rosterFilter === "review")}>
+                    Yoxla {reviewCount || ""}
+                  </button>
+                  <button type="button" onClick={() => setRosterFilter("graded")} className={tab(rosterFilter === "graded")}>
+                    Hazır
                   </button>
                 </div>
               </div>
@@ -921,12 +599,21 @@ const PaperGrading = () => {
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm font-semibold text-text">{s.name || "—"}</span>
                           <span className="block truncate text-[11px] text-muted">
-                            {s.inClass ? s.email || "" : "Sinifdə deyil"}
+                            {!s.inClass
+                              ? "Sinifdə deyil"
+                              : needsReview(r)
+                                ? `Özü yükləyib${r.studentEdited?.length ? ` · ${r.studentEdited.length} dəyişiklik` : ""}`
+                                : s.email || ""}
                           </span>
                         </span>
                         {r ? (
-                          <span className="shrink-0 rounded-full bg-success/12 px-2 py-0.5 text-xs font-bold tabular-nums text-success">
-                            {r.earnPoints}
+                          <span className="flex shrink-0 items-center gap-1.5">
+                            {needsReview(r) && (
+                              <span className="h-2 w-2 rounded-full bg-accent2" title="Şagird yükləyib, yoxlanmayıb" />
+                            )}
+                            <span className="rounded-full bg-success/12 px-2 py-0.5 text-xs font-bold tabular-nums text-success">
+                              {r.earnPoints}
+                            </span>
                           </span>
                         ) : (
                           <span className="shrink-0 rounded-full bg-surface2 px-2 py-0.5 text-[11px] font-semibold text-muted">
@@ -950,7 +637,7 @@ const PaperGrading = () => {
           <section className="min-w-0">
             <div className="rounded-3xl border border-line bg-surface shadow-soft">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
-                <Stepper phase={phase} />
+                <Stepper steps={STEPS} current={phase} />
                 {selected ? (
                   <span className="inline-flex min-w-0 items-center gap-2 rounded-full bg-surface2/70 py-1 pl-1 pr-3">
                     <Avatar s={selected} size="h-7 w-7" />
@@ -967,179 +654,139 @@ const PaperGrading = () => {
               </div>
 
               <div className="p-4 sm:p-6">
-                {phase === "capture" &&
-                  (photos.length === 0 ? (
-                    <div
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        Array.from(e.dataTransfer.files || [])
-                          .filter((f) => f.type.startsWith("image/"))
-                          .forEach(addBlob);
-                      }}
-                      className="rounded-3xl border-2 border-dashed border-line bg-surface2/40 px-6 py-12 text-center"
-                    >
-                      <span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-primary text-primary-fg shadow-soft">
-                        <FiCamera className="text-2xl" />
-                      </span>
-                      <h3 className="mt-5 font-display text-xl font-extrabold text-text">Cavab vərəqini çəkin</h3>
-                      <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
-                        Vərəqin hamısı kadrda, düz və yaxşı işıqda olsun. Vərəq bir neçə səhifədirsə, hər
-                        birini ayrıca çəkin.
-                      </p>
-                      <div className="mt-6 flex flex-col items-center justify-center gap-2.5 sm:flex-row">
-                        <Button size="lg" onClick={() => setCamOpen(true)}>
-                          <FiCamera /> Kamera ilə çək
+                {phase === "capture" && (
+                  <SheetCapture
+                    photos={photos}
+                    onCamera={() => setCamOpen(true)}
+                    onGallery={() => galleryRef.current?.click()}
+                    onRemove={sheet.remove}
+                    onRetry={sheet.retry}
+                    onDropFiles={(files) => files.forEach(sheet.add)}
+                    title="Cavab vərəqini çəkin"
+                    hint="Vərəqin hamısı kadrda, düz və yaxşı işıqda olsun. Vərəq bir neçə səhifədirsə, hər birini ayrıca çəkin."
+                    note={
+                      selected
+                        ? `Vərəq ${selected.name} üçün yoxlanılacaq.`
+                        : "Şagird vərəqdəki ad və soyada görə avtomatik seçiləcək."
+                    }
+                  >
+                    <div className="mt-6 flex flex-col-reverse items-stretch justify-between gap-3 border-t border-line pt-5 sm:flex-row sm:items-center">
+                      <button
+                        type="button"
+                        onClick={resetSheet}
+                        className="self-start text-sm font-semibold text-muted transition-colors hover:text-danger"
+                      >
+                        Vərəqi at
+                      </button>
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <Button variant="secondary" onClick={manualEntry} disabled={uploading}>
+                          <FiEdit3 /> Əl ilə doldur
                         </Button>
-                        <Button size="lg" variant="secondary" onClick={() => galleryRef.current?.click()}>
-                          <FiImage /> Qalereyadan seç
+                        <Button size="lg" onClick={runRead} disabled={uploading || !donePhotos.length}>
+                          {uploading ? (
+                            <>
+                              <Spinner size={16} /> Yüklənir…
+                            </>
+                          ) : (
+                            <>
+                              <FiZap /> AI ilə oxu
+                            </>
+                          )}
                         </Button>
-                      </div>
-                      <p className="mt-5 text-xs text-muted">
-                        {selected ? (
-                          <>
-                            Vərəq <b className="text-text">{selected.name}</b> üçün yoxlanılacaq.
-                          </>
-                        ) : (
-                          "Şagirdi indi siyahıdan və ya oxunuşdan sonra seçə bilərsiniz."
-                        )}
-                      </p>
-                    </div>
-                  ) : (
-                    <div>
-                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                        {photos.map((p, idx) => (
-                          <div
-                            key={p.id}
-                            className="relative aspect-[3/4] overflow-hidden rounded-2xl border border-line bg-surface2"
-                          >
-                            <img src={p.preview || p.url} alt={`Səhifə ${idx + 1}`} className="h-full w-full object-cover" />
-                            <span className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-bold text-white">
-                              {idx + 1}
-                            </span>
-                            {p.status === "uploading" && (
-                              <div className="absolute inset-0 grid place-items-center bg-black/35">
-                                <Spinner size={26} className="text-white" />
-                              </div>
-                            )}
-                            {p.status === "error" && (
-                              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/55 p-2 text-center text-xs font-semibold text-white">
-                                <FiAlertTriangle className="text-lg" /> Yüklənmədi
-                                {p.blob && (
-                                  <button
-                                    type="button"
-                                    onClick={() => retryPhoto(p)}
-                                    className="rounded-lg bg-white/15 px-2.5 py-1 hover:bg-white/25"
-                                  >
-                                    Yenidən
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => removePhoto(p.id)}
-                              aria-label="Şəkli sil"
-                              className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full bg-black/60 text-white transition-colors hover:bg-danger"
-                            >
-                              <FiX />
-                            </button>
-                          </div>
-                        ))}
-                        {photos.length < MAX_PAGES && (
-                          <div className="flex aspect-[3/4] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-line p-3">
-                            <button
-                              type="button"
-                              onClick={() => setCamOpen(true)}
-                              className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary/10 px-3 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/15"
-                            >
-                              <FiCamera /> Çək
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => galleryRef.current?.click()}
-                              className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold text-muted transition-colors hover:bg-surface2 hover:text-text"
-                            >
-                              <FiImage /> Qalereya
-                            </button>
-                            <span className="text-[11px] text-muted">Səhifə əlavə et</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="mt-6 flex flex-col-reverse items-stretch justify-between gap-3 border-t border-line pt-5 sm:flex-row sm:items-center">
-                        <button
-                          type="button"
-                          onClick={resetSheet}
-                          className="self-start text-sm font-semibold text-muted transition-colors hover:text-danger"
-                        >
-                          Vərəqi at
-                        </button>
-                        <div className="flex flex-col gap-2 sm:flex-row">
-                          <Button variant="secondary" onClick={manualEntry} disabled={uploading}>
-                            <FiEdit3 /> Əl ilə doldur
-                          </Button>
-                          <Button size="lg" onClick={runRead} disabled={uploading || !donePhotos.length}>
-                            {uploading ? (
-                              <>
-                                <Spinner size={16} /> Yüklənir…
-                              </>
-                            ) : (
-                              <>
-                                <FiZap /> AI ilə oxu
-                              </>
-                            )}
-                          </Button>
-                        </div>
                       </div>
                     </div>
-                  ))}
+                  </SheetCapture>
+                )}
 
                 {phase === "reading" && <ReadingPanel startedAt={readStartedAt} photos={donePhotos} />}
 
                 {phase === "review" && (
                   <div className="space-y-5">
-                    {!selected ? (
-                      <div className="flex flex-col gap-3 rounded-2xl border border-warning/40 bg-warning/[0.07] p-4 sm:flex-row sm:items-center">
-                        <div className="flex min-w-0 flex-1 items-center gap-3">
-                          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-warning/15 text-warning">
-                            <FiUser />
-                          </span>
-                          <div className="min-w-0">
-                            <p className="text-sm font-bold text-text">Bu vərəq hansı şagirdindir?</p>
-                            <p className="truncate text-xs text-muted">
-                              {sheetName ? (
-                                <>
-                                  Vərəqdə yazılıb: <b className="text-text">{sheetName}</b>
-                                </>
-                              ) : (
-                                "Siyahıdan seçin."
-                              )}
-                            </p>
-                          </div>
+                    {origin && (
+                      <div className="flex flex-col gap-2 rounded-2xl border border-accent2/35 bg-accent2/[0.06] p-4 sm:flex-row sm:items-center">
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent2/15 text-accent2">
+                          <FiUploadCloud />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-text">
+                            Bu vərəqi şagird özü yükləyib
+                            {origin.teacherReviewedAt ? " · yoxlanılıb" : " · hələ yoxlanmayıb"}
+                          </p>
+                          <p className="text-xs text-muted">
+                            {origin.studentEdited?.length
+                              ? `${origin.studentEdited.length} cavab AI-ın vərəqdən oxuduğundan fərqli təqdim edilib — şəkillə müqayisə edin.`
+                              : "Şagird AI-ın oxuduğu cavabları dəyişməyib."}
+                          </p>
                         </div>
-                        <select
-                          value=""
-                          onChange={(e) => {
-                            const s = roster.find((x) => String(x._id) === e.target.value);
-                            if (s) selectStudent(s);
-                          }}
-                          className="h-11 rounded-xl border border-line bg-surface px-3 text-sm font-semibold text-text outline-none focus:border-primary sm:w-64"
-                        >
-                          <option value="" disabled>
-                            Şagird seçin…
-                          </option>
-                          {inClass.map((s) => (
-                            <option key={s._id} value={s._id}>
-                              {s.name}
-                              {resultByStudent.has(String(s._id)) ? " ✓" : ""}
+                      </div>
+                    )}
+
+                    {(sheetInfo?.firstName || sheetInfo?.lastName) && (
+                      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+                        <FiUser className="text-primary" /> Vərəqdə:
+                        <b className="text-text">{sheetNameText(sheetInfo)}</b>
+                        {sheetInfo.className && <span>· {sheetInfo.className} sinif</span>}
+                      </p>
+                    )}
+
+                    {!selected ? (
+                      <div className="rounded-2xl border border-warning/40 bg-warning/[0.07] p-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                          <div className="flex min-w-0 flex-1 items-center gap-3">
+                            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-warning/15 text-warning">
+                              <FiUser />
+                            </span>
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-text">Bu vərəq hansı şagirdindir?</p>
+                              <p className="text-xs text-muted">
+                                {sheetInfo?.firstName || sheetInfo?.lastName
+                                  ? "Vərəqdəki ad sinifdə dəqiq tapılmadı."
+                                  : "Vərəqdə ad oxunmadı. Siyahıdan seçin."}
+                              </p>
+                            </div>
+                          </div>
+                          <select
+                            value=""
+                            onChange={(e) => {
+                              const s = roster.find((x) => String(x._id) === e.target.value);
+                              if (s) selectStudent(s);
+                            }}
+                            className="h-11 rounded-xl border border-line bg-surface px-3 text-sm font-semibold text-text outline-none focus:border-primary sm:w-64"
+                          >
+                            <option value="" disabled>
+                              Şagird seçin…
                             </option>
-                          ))}
-                        </select>
+                            {inClass.map((s) => (
+                              <option key={s._id} value={s._id}>
+                                {s.name}
+                                {resultByStudent.has(String(s._id)) ? " ✓" : ""}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        {suggestions.length > 0 && (
+                          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-warning/25 pt-3">
+                            <span className="text-xs font-semibold text-muted">Ola bilər:</span>
+                            {suggestions.map((s) => (
+                              <button
+                                key={s._id}
+                                type="button"
+                                onClick={() => {
+                                  const r = roster.find((x) => String(x._id) === String(s._id));
+                                  if (r) selectStudent(r);
+                                }}
+                                className="inline-flex items-center gap-2 rounded-full border border-line bg-surface py-1 pl-1 pr-3 text-sm font-semibold text-text transition-colors hover:border-primary/50"
+                              >
+                                <Avatar s={s} size="h-6 w-6" /> {s.name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ) : selectedResult && dirty ? (
                       <div className="flex items-center gap-2.5 rounded-2xl border border-line bg-surface2/50 px-4 py-3 text-sm text-text">
                         <FiAlertTriangle className="shrink-0 text-warning" />
-                        {selected.name} artıq yoxlanılıb ({selectedResult.earnPoints} bal). Yadda saxlasanız nəticə
+                        {selected.name} üçün artıq nəticə var ({selectedResult.earnPoints} bal). Yadda saxlasanız
                         yenilənəcək.
                       </div>
                     ) : null}
@@ -1170,10 +817,7 @@ const PaperGrading = () => {
                         <button
                           type="button"
                           onClick={() => setSheetFilter(sheetFilter === "wrong" ? "all" : "wrong")}
-                          className={chip(
-                            sheetFilter === "wrong",
-                            "border-danger/25 bg-danger/[0.07] text-danger ring-danger/40"
-                          )}
+                          className={chip(sheetFilter === "wrong", "border-danger/25 bg-danger/[0.07] text-danger ring-danger/40")}
                         >
                           <FiX /> {stats.wrong}
                         </button>
@@ -1184,12 +828,18 @@ const PaperGrading = () => {
                           <button
                             type="button"
                             onClick={() => setSheetFilter(sheetFilter === "flagged" ? "all" : "flagged")}
-                            className={chip(
-                              sheetFilter === "flagged",
-                              "border-warning/40 bg-warning/[0.08] text-warning ring-warning/40"
-                            )}
+                            className={chip(sheetFilter === "flagged", "border-warning/40 bg-warning/[0.08] text-warning ring-warning/40")}
                           >
                             <FiAlertTriangle /> Yoxlanmalı {stats.flagged}
+                          </button>
+                        )}
+                        {origin?.studentEdited?.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setSheetFilter(sheetFilter === "changed" ? "all" : "changed")}
+                            className={chip(sheetFilter === "changed", "border-warning/40 bg-warning/[0.08] text-warning ring-warning/40")}
+                          >
+                            <FiEdit3 /> Şagird dəyişib {origin.studentEdited.length}
                           </button>
                         )}
                       </div>
@@ -1205,46 +855,20 @@ const PaperGrading = () => {
                             value={answers[i]}
                             ai={ai?.[i]}
                             edited={edited.has(i)}
+                            studentAi={changedSet.has(i) ? origin?.aiAnswers?.[i]?.answer ?? blankAnswer(question) : undefined}
                             onChange={(v) => setAnswer(i, v)}
                           />
                         ))}
                         {!visibleRows.length && (
                           <div className="rounded-2xl border border-dashed border-line p-8 text-center text-sm text-muted">
-                            {sheetFilter === "flagged" ? "Yoxlanmalı sual qalmayıb ✓" : "Səhv cavab yoxdur ✓"}
+                            Bu filtrdə sual qalmayıb ✓
                           </div>
                         )}
                       </div>
 
                       {photos.length > 0 && (
                         <div className="order-1 lg:sticky lg:top-20 lg:order-2 lg:self-start">
-                          <div className="overflow-hidden rounded-2xl border border-line bg-surface2/40">
-                            <div className="flex items-center gap-1.5 overflow-x-auto border-b border-line p-2">
-                              {photos.map((p, idx) => (
-                                <button
-                                  key={p.id}
-                                  type="button"
-                                  onClick={() => setActivePage(idx)}
-                                  className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${
-                                    idx === activePage ? "bg-primary text-primary-fg" : "text-muted hover:bg-surface2"
-                                  }`}
-                                >
-                                  Səhifə {idx + 1}
-                                </button>
-                              ))}
-                              <span className="ml-auto hidden shrink-0 pr-1 text-[11px] text-muted sm:inline">
-                                Böyütmək üçün klikləyin
-                              </span>
-                            </div>
-                            <div className="grid place-items-center p-2">
-                              {activePhoto && (
-                                <ZoomableImage
-                                  src={activePhoto.url || activePhoto.preview}
-                                  alt="Cavab vərəqi"
-                                  className="max-h-[42vh] w-full rounded-xl object-contain lg:max-h-[68vh]"
-                                />
-                              )}
-                            </div>
-                          </div>
+                          <SheetViewer photos={photos} />
                         </div>
                       )}
                     </div>
@@ -1272,13 +896,9 @@ const PaperGrading = () => {
                         <Button variant="secondary" onClick={resetSheet} className="flex-1 sm:flex-none">
                           Ləğv et
                         </Button>
-                        <Button
-                          size="lg"
-                          onClick={save}
-                          disabled={saving || !studentId || uploading}
-                          className="flex-1 sm:flex-none"
-                        >
-                          {saving ? <Spinner size={16} /> : <FiSave />} {selectedResult ? "Yenilə" : "Yadda saxla"}
+                        <Button size="lg" onClick={save} disabled={saving || !studentId || uploading} className="flex-1 sm:flex-none">
+                          {saving ? <Spinner size={16} /> : <FiSave />}{" "}
+                          {origin && !origin.teacherReviewedAt ? "Təsdiqlə və saxla" : selectedResult ? "Yenilə" : "Yadda saxla"}
                         </Button>
                       </div>
                     </div>
@@ -1290,14 +910,25 @@ const PaperGrading = () => {
         </div>
       )}
 
-      <input ref={galleryRef} type="file" accept="image/*" multiple className="hidden" onChange={onGalleryPick} />
+      <input
+        ref={galleryRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          const files = Array.from(e.target.files || []).filter((f) => !f.type || f.type.startsWith("image/"));
+          e.target.value = "";
+          files.forEach(sheet.add);
+        }}
+      />
 
       {camOpen && (
         <CameraCapture
           title="Cavab vərəqini çək"
           multi
           count={photos.length}
-          onUse={addBlob}
+          onUse={sheet.add}
           onClose={() => setCamOpen(false)}
         />
       )}
@@ -1314,7 +945,7 @@ const PaperGrading = () => {
       >
         <p>
           <span className="font-semibold text-text">{selected?.name}</span> üçün yoxlanılmış vərəq və bal silinəcək.
-          Şagird bu nəticəni artıq görməyəcək.
+          Şagird bu nəticəni artıq görməyəcək və vərəqini yenidən yükləyə biləcək.
         </p>
       </ConfirmDialog>
     </AccountLayout>

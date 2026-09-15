@@ -22,6 +22,7 @@ import {
   FiCamera,
   FiBarChart2,
   FiKey,
+  FiUploadCloud,
 } from "react-icons/fi";
 
 const ExamInstructions = () => {
@@ -241,12 +242,23 @@ const ExamInstructions = () => {
                   <p className="font-display text-lg font-bold text-text">Kağız üzərində imtahan</p>
                   <p className="mt-1 text-sm leading-relaxed text-muted">
                     {isStaff
-                      ? "Şagirdlər bu imtahanı sinifdə cavab vərəqində yazır. Vərəqləri çəkib yoxlayın — nəticə hər şagirdin hesabında görünəcək."
-                      : "Bu imtahan sinifdə cavab vərəqində yazılır. Müəllim vərəqini yoxladıqdan sonra nəticən və cavabların burada görünəcək."}
+                      ? singleExam.paperSelfUpload !== false
+                        ? "Şagirdlər imtahanı sinifdə cavab vərəqində yazır və vərəqin şəklini özləri yükləyə bilər. Yüklənən vərəqlər sizə “Yoxlanmalı” kimi gəlir; qalanlarını özünüz çəkib yoxlayın."
+                        : "Şagirdlər bu imtahanı sinifdə cavab vərəqində yazır. Vərəqləri çəkib yoxlayın, nəticə hər şagirdin hesabında görünəcək."
+                      : resultByExam?.length > 0
+                        ? "Cavab vərəqin qəbul olunub. Nəticən və cavabların aşağıda."
+                        : singleExam.paperSelfUpload !== false
+                          ? "İmtahanı sinifdə cavab vərəqində yaz, sonra vərəqin şəklini buradan yüklə. AI cavablarını oxuyur, sən yoxlayıb təqdim edirsən."
+                          : "Bu imtahan sinifdə cavab vərəqində yazılır. Müəllim vərəqini yoxladıqdan sonra nəticən və cavabların burada görünəcək."}
                   </p>
                 </div>
               </div>
               <div className="mt-5 flex flex-wrap gap-3">
+                {!isStaff && !(resultByExam?.length > 0) && singleExam.paperSelfUpload !== false && (
+                  <Button to={`/exam/${singleExam._id}/paper/upload`} size="lg">
+                    <FiUploadCloud /> Cavab vərəqini yüklə
+                  </Button>
+                )}
                 {isStaff && (
                   <>
                     <Button to={`/exam/${singleExam._id}/paper`} size="lg">

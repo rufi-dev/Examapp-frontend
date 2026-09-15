@@ -20,6 +20,7 @@ import AntiCheatField from "../../components/ui/AntiCheatField";
 import SolutionPhotosField from "../../components/ui/SolutionPhotosField";
 import StructuredGradingFields from "../../components/ui/StructuredGradingFields";
 import CoverImageField from "../../components/ui/CoverImageField";
+import PaperSelfUploadField from "../../components/ui/PaperSelfUploadField";
 import { toLocalInput, toUtcIso } from "../../helper/datetime";
 import { HiOutlinePhotograph } from "react-icons/hi";
 import { FiX, FiFileText, FiClock } from "react-icons/fi";
@@ -37,6 +38,12 @@ const IconInput = ({ icon: Icon, children }) => (
     {children}
   </div>
 );
+// Red outline for a field that failed validation.
+const invalid = (cls, bad) =>
+  bad ? `${cls.replace("border-line", "border-danger")} ring-4 ring-danger/15 focus:border-danger` : cls;
+const InvalidRing = ({ bad, children }) => (
+  <div className={bad ? "rounded-xl ring-2 ring-danger ring-offset-1 ring-offset-surface" : ""}>{children}</div>
+);
 
 const ExamEdit = () => {
   const dispatch = useDispatch();
@@ -53,6 +60,9 @@ const ExamEdit = () => {
   const [shuffleEnabled, setShuffleEnabled] = useState(false);
   const [partialEnabled, setPartialEnabled] = useState(false);
   const [solutionPhotosEnabled, setSolutionPhotosEnabled] = useState(false);
+  const [paperSelfUpload, setPaperSelfUpload] = useState(true);
+  // field id → message, for fields that failed validation on submit.
+  const [errors, setErrors] = useState({});
 
   useRedirectLoggedOutUser("/login");
   const { singleExam } = useSelector((state) => state.quiz);
@@ -110,11 +120,22 @@ const ExamEdit = () => {
     negMarkUntil,
   } = examForm;
 
+  const clearError = (...keys) =>
+    setErrors((prev) => {
+      if (!keys.some((k) => prev[k])) return prev;
+      const next = { ...prev };
+      keys.forEach((k) => delete next[k]);
+      return next;
+    });
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setExamForm({ ...examForm, [name]: type === "checkbox" ? checked : value });
+    setExamForm((f) => ({ ...f, [name]: type === "checkbox" ? checked : value }));
+    clearError(name);
   };
-  const setField = (name, value) => setExamForm((f) => ({ ...f, [name]: value }));
+  const setField = (name, value) => {
+    setExamForm((f) => ({ ...f, [name]: value }));
+    clearError(name, name === "startDate" ? "endDate" : name);
+  };
 
   useEffect(() => {
     if (singleExam) {
@@ -148,6 +169,8 @@ const ExamEdit = () => {
       setShuffleEnabled(!!singleExam.shuffleOptions);
       setSolutionPhotosEnabled(!!singleExam.studentSolutionPhotos);
       setPartialEnabled(!!singleExam.partialCredit);
+      setPaperSelfUpload(singleExam.paperSelfUpload !== false);
+      setErrors({});
     }
   }, [singleExam]);
 
@@ -200,8 +223,39 @@ const ExamEdit = () => {
       solutionPhotos: (prev.solutionPhotos || []).filter((_, i) => i !== idx),
     }));
 
+  // Every problem at once, keyed by the field's element id (in page order).
+  const validate = () => {
+    const e = {};
+    if (!String(name).trim()) e.name = "İmtahan adını yazın";
+    if (!isStructured && !isPaper && !pdfPath && !(pdf && pdf.type === "application/pdf")) e.pdf = "PDF fayl seçin";
+    if (!isPaper && !(Number(duration) > 0)) e.duration = "Müddəti daxil edin";
+    if (startDate && endDate) {
+      const startMs = new Date(startDate).getTime();
+      const endMs = new Date(endDate).getTime();
+      const durSec = Number(duration) || 0;
+      if (endMs <= startMs) e.endDate = "Bitmə tarixi başlanmadan sonra olmalıdır";
+      else if (!isPaper && durSec > 0 && endMs - startMs < durSec * 1000)
+        e.endDate = `Pəncərə müddətdən (${Math.round(durSec / 60)} dəq) qısadır`;
+    }
+    const total = Number(totalMarks);
+    const pass = Number(passingMarks);
+    if (!(total > 0)) e.totalMarks = "Ümumi balı daxil edin";
+    if (!(pass > 0)) e.passingMarks = "Keçid balını daxil edin";
+    else if (total > 0 && pass > total) e.passingMarks = "Keçid balı ümumi baldan çox ola bilməz";
+    return e;
+  };
+
   const editExamForm = async (e) => {
     e.preventDefault();
+    const found = validate();
+    setErrors(found);
+    const first = Object.keys(found)[0];
+    if (first) {
+      const el = document.getElementById(first);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      el?.focus?.({ preventScroll: true });
+      return toast.error(found[first]);
+    }
     let pdfUrl;
     try {
       if (pdf !== null && pdf.type === "application/pdf") {
@@ -214,41 +268,26 @@ const ExamEdit = () => {
         pdfUrl = upRes.data?.url;
         if (!pdfUrl) return toast.error("PDF yüklənmədi");
       }
-      // Validate the exam window: end must be after start, and the window must
-      // be at least as long as one student's duration. Times are local
-      // wall-clock here (datetime-local), so comparing the parsed Dates is
-      // safe — both are in the teacher's own timezone.
-      if (startDate && endDate) {
-        const startMs = new Date(startDate).getTime();
-        const endMs = new Date(endDate).getTime();
-        if (endMs <= startMs) {
-          return toast.error("Bitmə tarixi başlanma tarixindən sonra olmalıdır");
-        }
-        const durSec = Number(duration) || 0;
-        if (durSec > 0 && endMs - startMs < durSec * 1000) {
-          const mins = Math.round(durSec / 60);
-          return toast.error(`İmtahan pəncərəsi müddətdən (${mins} dəq) qısadır`);
-        }
-      }
       const examData = {
-        name,
-        duration,
+        name: name.trim(),
+        duration: isPaper ? Number(duration) || 3600 : duration,
         // Off = free / no video.
-        price: priceEnabled ? Number(price) || 0 : 0,
+        price: !isPaper && priceEnabled ? Number(price) || 0 : 0,
         videoLink: videoEnabled ? videoLink : "",
         coverImage: coverImage || "",
-        startDate: toUtcIso(startDate),
-        endDate: toUtcIso(endDate),
+        // Empty = no time limit (null clears a previously set date).
+        startDate: startDate ? toUtcIso(startDate) : null,
+        endDate: endDate ? toUtcIso(endDate) : null,
         passingMarks,
         totalMarks,
         // 0 = unlimited tries.
-        maxTry: maxTryEnabled ? Number(maxTry) || 0 : 0,
+        maxTry: !isPaper && maxTryEnabled ? Number(maxTry) || 0 : 0,
         showScore,
         showCorrectAnswers,
         revealAfterEnd,
         solutionPhotos,
         // Empty string disables the password gate.
-        password: passwordEnabled ? password : "",
+        password: !isPaper && passwordEnabled ? password : "",
         negativeMarking: negEnabled,
         wrongPerPenalty,
         correctPerPenalty,
@@ -260,23 +299,21 @@ const ExamEdit = () => {
         // Only send a path when a new PDF was uploaded (so the old file is
         // replaced/deleted, and untouched edits keep the existing PDF).
         pdfPath: pdfUrl,
+        ...(isPaper ? { paperSelfUpload } : {}),
       };
-      // Structured exams have no PDF, so don't require one to save.
-      const ready = name && duration && passingMarks && totalMarks && (isStructured || isPaper || pdfPath);
-      if (ready) {
-        const editExamData = await dispatch(editExam({ examData, examId }));
-        if (editExamData.type != "quiz/editExam/rejected") {
-          navigate(-1);
-        }
-      } else {
-        toast.error("Bütün xanaları doldurun");
+      const editExamData = await dispatch(editExam({ examData, examId }));
+      if (editExamData.type != "quiz/editExam/rejected") {
+        navigate(-1);
       }
     } catch (error) {
       toast.error(error.message);
     }
   };
 
-  const handlePdfChange = (e) => setPdf(e.target.files[0]);
+  const handlePdfChange = (e) => {
+    setPdf(e.target.files[0]);
+    clearError("pdf");
+  };
 
   // Duration is stored in SECONDS (backend), but the teacher enters MINUTES.
   const durationMin = Math.round((Number(duration) || 0) / 60);
@@ -299,14 +336,23 @@ const ExamEdit = () => {
     <AccountLayout title="İmtahanı redaktə et" subtitle="İmtahan məlumatlarını yenilə.">
       <form
         onSubmit={editExamForm}
+        noValidate
         className="grid items-start gap-6 lg:grid-cols-2"
       >
         {/* Left: core exam data */}
         <div className="space-y-6">
           <FormSection title="İmtahan məlumatı">
             <div className="space-y-5">
-              <Field label="İmtahan adı" htmlFor="name" required>
-                <input value={name} onChange={handleInputChange} type="text" name="name" id="name" className={inputClass} />
+              <Field label="İmtahan adı" htmlFor="name" required error={errors.name}>
+                <input
+                  value={name}
+                  onChange={handleInputChange}
+                  type="text"
+                  name="name"
+                  id="name"
+                  aria-invalid={!!errors.name}
+                  className={invalid(inputClass, errors.name)}
+                />
               </Field>
               <CoverImageField value={coverImage} onChange={(url) => setField("coverImage", url)} />
               {isStructured || isPaper ? (
@@ -323,8 +369,16 @@ const ExamEdit = () => {
                   </button>
                 </div>
               ) : (
-                <Field label="PDF fayl" htmlFor="pdf" hint="Dəyişmək üçün yeni fayl seçin">
-                  <input type="file" id="pdf" name="pdf" accept="application/pdf" onChange={handlePdfChange} className={fileInputClass} />
+                <Field label="PDF fayl" htmlFor="pdf" hint="Dəyişmək üçün yeni fayl seçin" error={errors.pdf}>
+                  <input
+                    type="file"
+                    id="pdf"
+                    name="pdf"
+                    accept="application/pdf"
+                    onChange={handlePdfChange}
+                    aria-invalid={!!errors.pdf}
+                    className={invalid(fileInputClass, errors.pdf)}
+                  />
                   {/* A file input can't be pre-filled by the browser, so show
                       what's already attached (or the freshly picked file). */}
                   {pdf ? (
@@ -351,9 +405,10 @@ const ExamEdit = () => {
             </div>
           </FormSection>
 
-          <FormSection title="Vaxt və müddət">
+          <FormSection title={isPaper ? "Tarix" : "Vaxt və müddət"}>
             <div className="space-y-5">
-              <Field label="Müddət (dəqiqə)" htmlFor="duration" required>
+              {!isPaper && (
+              <Field label="Müddət (dəqiqə)" htmlFor="duration" required error={errors.duration}>
                 <IconInput icon={FiClock}>
                   <input
                     value={durationMin || ""}
@@ -362,7 +417,8 @@ const ExamEdit = () => {
                     min="0"
                     id="duration"
                     name="duration"
-                    className={iconInputClass}
+                    aria-invalid={!!errors.duration}
+                    className={invalid(iconInputClass, errors.duration)}
                     placeholder="60"
                   />
                 </IconInput>
@@ -386,33 +442,57 @@ const ExamEdit = () => {
                   })}
                 </div>
               </Field>
+              )}
               <div className="grid gap-5 sm:grid-cols-2">
-                <Field label="Başlanma tarixi" htmlFor="startDate">
+                <Field label="Başlanma tarixi" htmlFor="startDate" hint="İstəyə bağlı">
                   <DateTimePicker
                     id="startDate"
                     value={startDate || ""}
                     onChange={(v) => setField("startDate", v)}
                   />
                 </Field>
-                <Field label="Bitmə tarixi" htmlFor="endDate">
-                  <DateTimePicker
-                    id="endDate"
-                    value={endDate || ""}
-                    onChange={(v) => setField("endDate", v)}
-                    align="right"
-                  />
+                <Field label="Bitmə tarixi" htmlFor="endDate" hint="İstəyə bağlı" error={errors.endDate}>
+                  <InvalidRing bad={errors.endDate}>
+                    <DateTimePicker
+                      id="endDate"
+                      value={endDate || ""}
+                      onChange={(v) => setField("endDate", v)}
+                      align="right"
+                    />
+                  </InvalidRing>
                 </Field>
               </div>
+              {!startDate && !endDate && (
+                <p className="-mt-2 text-xs text-muted">
+                  Tarix seçilməsə, imtahan vaxt məhdudiyyəti olmadan açıq qalır.
+                </p>
+              )}
             </div>
           </FormSection>
 
           <FormSection title="Qiymətləndirmə">
             <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Ümumi bal" htmlFor="totalMarks" required>
-                <input value={totalMarks} onChange={handleInputChange} type="number" id="totalMarks" name="totalMarks" className={inputClass} />
+              <Field label="Ümumi bal" htmlFor="totalMarks" required error={errors.totalMarks}>
+                <input
+                  value={totalMarks}
+                  onChange={handleInputChange}
+                  type="number"
+                  id="totalMarks"
+                  name="totalMarks"
+                  aria-invalid={!!errors.totalMarks}
+                  className={invalid(inputClass, errors.totalMarks)}
+                />
               </Field>
-              <Field label="Keçid balı" htmlFor="passingMarks" required>
-                <input value={passingMarks} onChange={handleInputChange} type="number" name="passingMarks" id="passingMarks" className={inputClass} />
+              <Field label="Keçid balı" htmlFor="passingMarks" required error={errors.passingMarks}>
+                <input
+                  value={passingMarks}
+                  onChange={handleInputChange}
+                  type="number"
+                  name="passingMarks"
+                  id="passingMarks"
+                  aria-invalid={!!errors.passingMarks}
+                  className={invalid(inputClass, errors.passingMarks)}
+                />
               </Field>
             </div>
           </FormSection>
@@ -458,10 +538,15 @@ const ExamEdit = () => {
 
         {/* Right: optional settings + result visibility */}
         <div className="space-y-6">
+          {isPaper && <PaperSelfUploadField enabled={paperSelfUpload} onToggle={setPaperSelfUpload} />}
           <VideoLinkField enabled={videoEnabled} value={videoLink} onToggle={setVideoEnabled} onChange={handleInputChange} />
-          <PriceField enabled={priceEnabled} value={price} onToggle={setPriceEnabled} onChange={handleInputChange} />
-          <MaxTryField enabled={maxTryEnabled} value={maxTry} onToggle={setMaxTryEnabled} onChange={handleInputChange} />
-          <PasswordField enabled={passwordEnabled} value={password} onToggle={setPasswordEnabled} onChange={handleInputChange} />
+          {!isPaper && (
+            <>
+              <PriceField enabled={priceEnabled} value={price} onToggle={setPriceEnabled} onChange={handleInputChange} />
+              <MaxTryField enabled={maxTryEnabled} value={maxTry} onToggle={setMaxTryEnabled} onChange={handleInputChange} />
+              <PasswordField enabled={passwordEnabled} value={password} onToggle={setPasswordEnabled} onChange={handleInputChange} />
+            </>
+          )}
           <NegativeMarkingField
             enabled={negEnabled}
             wrong={wrongPerPenalty}

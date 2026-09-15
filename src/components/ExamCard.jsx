@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { FiClock, FiBarChart2, FiEyeOff, FiGift, FiPlay, FiCheckCircle, FiCamera, FiFileText } from "react-icons/fi";
+import { FiClock, FiBarChart2, FiEyeOff, FiGift, FiPlay, FiCheckCircle, FiCamera, FiFileText, FiUploadCloud } from "react-icons/fi";
 import { addExamToUser, getExamsByUser } from "../../redux/features/quiz/quizSlice";
 import useServerNow from "../customHook/useServerNow";
 import Button from "./ui/Button";
@@ -208,9 +208,16 @@ const ExamCard = ({ exam, onChanged, publicView = false }) => {
               </Button>
             </div>
           ) : paper ? (
-            <div className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line bg-surface2/50 px-3 text-sm font-semibold text-muted">
-              <FiFileText /> Kağız imtahanı · nəticə gözlənilir
-            </div>
+            // Students may upload their own sheet (closed 30 min after endDate).
+            exam.paperSelfUpload !== false && !upcoming && !(eTime && now > eTime + 30 * 60 * 1000) ? (
+              <Button to={`/exam/${exam._id}/paper/upload`} size="lg" className="w-full">
+                <FiUploadCloud /> Cavab vərəqini yüklə
+              </Button>
+            ) : (
+              <div className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line bg-surface2/50 px-3 text-sm font-semibold text-muted">
+                <FiFileText /> {upcoming ? "Kağız imtahanı · hələ başlamayıb" : "Kağız imtahanı · nəticə gözlənilir"}
+              </div>
+            )
           ) : upcoming ? (
             <Button disabled size="lg" className="w-full">
               <FiClock /> Tezliklə · {fmtDate(exam.startDate)}
