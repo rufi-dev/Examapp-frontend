@@ -217,9 +217,6 @@ const PaperGrading = () => {
   const gradedInClass = inClass.filter((s) => resultByStudent.has(String(s._id))).length;
   const reviewCount = results.filter(needsReview).length;
   const scoreTotal = data?.exam?.preset && Number(data?.exam?.totalMarks) ? Number(data.exam.totalMarks) : 100;
-  const average = results.length
-    ? Math.round((results.reduce((s, r) => s + (Number(r.earnPoints) || 0), 0) / results.length) * 10) / 10
-    : null;
 
   const resetSheet = useCallback(() => {
     resetPhotos([]);
@@ -568,7 +565,7 @@ const PaperGrading = () => {
       }
     >
       {/* Progress strip */}
-      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-6 grid gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-line bg-surface p-4 shadow-soft">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">Yoxlanılıb</p>
           {data.exam.openClass ? (
@@ -613,13 +610,6 @@ const PaperGrading = () => {
             {data.exam.paperSelfUpload ? "Şagirdlər öz vərəqini yükləyə bilər" : "Şagird yükləməsi bağlıdır"}
           </p>
         </button>
-        <div className="rounded-2xl border border-line bg-surface p-4 shadow-soft">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">Orta bal</p>
-          <p className="mt-1 font-display text-2xl font-extrabold tabular-nums text-text">
-            {average ?? "—"}
-            <span className="text-base font-bold text-muted"> / {scoreTotal}</span>
-          </p>
-        </div>
         <div className="rounded-2xl border border-line bg-surface p-4 shadow-soft">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">Cavab açarı</p>
           <p className="mt-1 font-display text-2xl font-extrabold tabular-nums text-text">
