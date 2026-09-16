@@ -79,6 +79,7 @@ const ResultsByExam = lazy(() => import("./pages/exam/ResultsByExam"));
 const LiveExam = lazy(() => import("./pages/exam/LiveExam"));
 const PaperGrading = lazy(() => import("./pages/admin/PaperGrading"));
 const PaperUpload = lazy(() => import("./pages/exam/PaperUpload"));
+const PaperExams = lazy(() => import("./pages/paper/PaperExams"));
 const LiveExamsHub = lazy(() => import("./pages/exam/LiveExamsHub"));
 
 const Wrapper = ({ children }) => {
@@ -231,6 +232,8 @@ function App() {
               />
               <Route path="/myResults" element={<MyResults />} />
               <Route path="/myExams" element={<MyExams />} />
+              {/* Paper exams have their own home: list + one-step creation. */}
+              <Route path="/paper-exams" element={<PaperExams />} />
               <Route path="/exam/:examId/pay" element={<ExamPayment />} />
               <Route path="/examPayments" element={<ExamPayments />} />
               <Route path="/user/:id/details" element={<UserDetails />} />

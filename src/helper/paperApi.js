@@ -1,6 +1,27 @@
 import axios from "axios";
 
-const API = `${import.meta.env.VITE_BACKEND_URL}/api/quiz/exam`;
+const QUIZ = `${import.meta.env.VITE_BACKEND_URL}/api/quiz`;
+const API = `${QUIZ}/exam`;
+
+// ---- the "Kağız imtahanları" page ----
+
+// Teacher: own paper exams + grading progress. Student: theirs + upload status.
+export const fetchPaperExams = async () => {
+  const { data } = await axios.get(`${QUIZ}/paperExams`);
+  return data;
+};
+
+// One-step creation → { exam: { _id, name } }.
+export const createPaperExam = async (payload) => {
+  const { data } = await axios.post(`${QUIZ}/paperExam`, payload);
+  return data;
+};
+
+// Classes the teacher owns (admin: all) — for the create form's class picker.
+export const fetchMyClasses = async () => {
+  const { data } = await axios.get(`${QUIZ}/teacher/classes`);
+  return data;
+};
 
 // ---- teacher ----
 

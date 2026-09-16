@@ -301,7 +301,8 @@ const ExamAdd = () => {
                       : "Sualları özün yaz və ya AI ilə PDF-dən avtomatik çıxar"
                 }
               >
-                <div className="grid w-full grid-cols-3 gap-1 rounded-xl border border-line bg-surface p-1">
+                {/* Paper exams are created on their own page (/paper-exams). */}
+                <div className="grid w-full grid-cols-2 gap-1 rounded-xl border border-line bg-surface p-1">
                   <button
                     type="button"
                     onClick={() => setSource("pdf")}
@@ -322,20 +323,6 @@ const ExamAdd = () => {
                     }`}
                   >
                     Özüm yazım / AI
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSource("paper");
-                      clearError("pdf", "duration", "endDate");
-                      // Paper results are graded after class — show the answers right away.
-                      setExamForm((f) => ({ ...f, showCorrectAnswers: true, revealAfterEnd: false }));
-                    }}
-                    className={`rounded-lg px-2 py-2 text-sm font-semibold transition ${
-                      paperMode ? "bg-primary text-primary-fg shadow-sm" : "text-muted hover:text-text"
-                    }`}
-                  >
-                    Kağız imtahanı
                   </button>
                 </div>
               </Field>

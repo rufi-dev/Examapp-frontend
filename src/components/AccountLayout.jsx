@@ -23,6 +23,7 @@ import {
   FiTrash2,
   FiActivity,
   FiRadio,
+  FiFileText,
 } from "react-icons/fi";
 import { LuGraduationCap } from "react-icons/lu";
 import BunkerMathLogo from "./blueprint/BunkerMathLogo";
@@ -33,6 +34,8 @@ const navItems = [
   // class the user can access; each class opens its exams.
   { to: "/classes", label: "Siniflər", icon: LuGraduationCap },
   { to: "/myExams", label: "İmtahanlarım", icon: FiAward },
+  // Paper exams live only here — they are kept out of classes/dashboard lists.
+  { to: "/paper-exams", label: "Kağız imtahanları", icon: FiFileText },
   { to: "/myResults", label: "Nəticələrim", icon: FiBarChart2 },
   // Teachers add YouTube topic-explanation videos; everyone watches (add/delete
   // controls are gated inside the page).
@@ -65,6 +68,7 @@ const PATH_LABELS = {
   "/dashboard": "İcmal",
   "/classes": "Siniflər",
   "/myExams": "İmtahanlarım",
+  "/paper-exams": "Kağız imtahanları",
   "/myResults": "Nəticələrim",
   "/videos": "Mövzu izahları",
   "/achievements": "Nailiyyətlərimiz",
