@@ -30,11 +30,14 @@ export const optionsOf = (q) =>
     String(o).toLowerCase()
   );
 export const isMap = (v) => !!v && typeof v === "object" && !Array.isArray(v);
-export const blankAnswer = (q) => (q.type === "Cmu" ? {} : "");
-export const fromStored = (q, v) => (q.type === "Cmu" ? (isMap(v) ? v : {}) : v == null ? "" : String(v));
+// Both matching types are filled in as a grid on the card (Cma is converted to the
+// scorer's pair shape server-side), so the UI treats them alike.
+export const isMatchType = (q) => q?.type === "Cmu" || q?.type === "Cma";
+export const blankAnswer = (q) => (isMatchType(q) ? {} : "");
+export const fromStored = (q, v) => (isMatchType(q) ? (isMap(v) ? v : {}) : v == null ? "" : String(v));
 
 export const isBlank = (q, a) =>
-  q.type === "Cmu"
+  isMatchType(q)
     ? !isMap(a) || !Object.values(a).some((row) => Array.isArray(row) && row.length)
     : String(a ?? "").trim() === "";
 
@@ -45,6 +48,15 @@ const compact = (v) => String(v ?? "").trim().toLowerCase().replace(/\s+/g, "").
 // editing (needs the key). The score itself always comes from the server.
 export function isRight(q, a) {
   if (isBlank(q, a)) return false;
+  if (q.type === "Cma") {
+    // Each left must have exactly one pick, and it must name the pair's right value.
+    const pairs = Array.isArray(q.pairs) ? q.pairs : [];
+    if (!pairs.length) return false;
+    return pairs.every((p, k) => {
+      const picks = Array.isArray(a[k]) ? a[k] : [];
+      return picks.length === 1 && compact(pairs[picks[0]]?.right) === compact(p.right);
+    });
+  }
   if (q.type === "Cmu") {
     const rows = Array.isArray(q.key) ? q.key : [];
     if (!rows.length) return false;
@@ -65,7 +77,7 @@ export const rowState = (q, a) => (isBlank(q, a) ? "blank" : isRight(q, a) ? "ri
 
 // Same answer ignoring case/spacing (Cmu: same letters per number).
 export function sameAnswer(q, a, b) {
-  if (q.type === "Cmu") {
+  if (isMatchType(q)) {
     const canon = (m) =>
       JSON.stringify(
         Object.keys(isMap(m) ? m : {})
@@ -80,7 +92,7 @@ export function sameAnswer(q, a, b) {
 
 export function answerLabel(q, a) {
   if (isBlank(q, a)) return "boş";
-  if (q.type === "Cmu") {
+  if (isMatchType(q)) {
     return Object.keys(a)
       .filter((k) => Array.isArray(a[k]) && a[k].length)
       .sort((x, y) => Number(x) - Number(y))
@@ -92,6 +104,9 @@ export function answerLabel(q, a) {
 
 export function correctLabel(q) {
   if (q.type === "Cm") return String(q.answer || "—").toUpperCase();
+  if (q.type === "Cma") {
+    return (Array.isArray(q.pairs) ? q.pairs : []).map((p, k) => `${k + 1}: ${p.right ?? "—"}`).join(" · ");
+  }
   if (q.type === "Cmu") {
     return (Array.isArray(q.key) ? q.key : [])
       .map((row, k) => `${k + 1}: ${(Array.isArray(row) ? row : []).map((i) => LETTERS[i]).join(",") || "—"}`)
@@ -481,7 +496,7 @@ export const MatchEditor = ({ q, value, onChange, disabled }) => {
 export const AnswerEditor = ({ q, value, onChange, tone, disabled }) =>
   q.type === "Cm" ? (
     <ChoiceEditor q={q} value={value} onChange={onChange} tone={tone} disabled={disabled} />
-  ) : q.type === "Cmu" ? (
+  ) : isMatchType(q) ? (
     <MatchEditor q={q} value={value} onChange={onChange} disabled={disabled} />
   ) : (
     <input
