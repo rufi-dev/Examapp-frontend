@@ -21,6 +21,7 @@ import Button from "../../components/ui/Button";
 import Spinner from "../../components/Spinner";
 import DateTimePicker from "../../components/ui/DateTimePicker";
 import { Field, inputClass } from "../../components/ui/Field";
+import Select from "../../components/ui/Select";
 import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser";
 import { useSelector } from "react-redux";
 import { formatDateTime, toUtcIso } from "../../helper/datetime";
@@ -348,19 +349,13 @@ const PaperExams = () => {
               />
             </Field>
             <Field label="Sinif" htmlFor="pe-class" required hint="Şagirdlər vərəqi bu sinif üzərindən yükləyir">
-              <select
+              <Select
                 id="pe-class"
                 value={form.classId}
-                onChange={(e) => setField("classId", e.target.value)}
-                className={`${inputClass} pr-9`}
-              >
-                {!classes.length && <option value="">Sinif yoxdur</option>}
-                {classes.map((c) => (
-                  <option key={c._id} value={c._id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setField("classId", v)}
+                placeholder={classes.length ? "Sinif seç" : "Sinif yoxdur"}
+                options={classes.map((c) => ({ value: String(c._id), label: c.name }))}
+              />
             </Field>
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Ümumi bal" htmlFor="pe-total" required>

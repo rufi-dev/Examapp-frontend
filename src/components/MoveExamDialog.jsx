@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { FiFolder } from "react-icons/fi";
 import ConfirmDialog from "./ui/ConfirmDialog";
-import { inputClass } from "./ui/Field";
+import Select from "./ui/Select";
 import { fetchMyClasses, moveExamToClass } from "../helper/classApi";
 
 // Move an exam to another class the teacher owns. Used by the exam card's owner
@@ -70,22 +70,17 @@ const MoveExamDialog = ({ open, exam, onClose, onMoved }) => {
       <label htmlFor="move-class" className="mt-4 block text-sm font-medium text-text">
         Yeni sinif
       </label>
-      <select
+      <Select
         id="move-class"
+        className="mt-1.5"
         value={classId}
-        onChange={(e) => setClassId(e.target.value)}
-        disabled={classes === null || !options.length}
-        className={`${inputClass} mt-1.5`}
-      >
-        {classes === null && <option value="">Yüklənir…</option>}
-        {classes !== null && !options.length && <option value="">Başqa sinif yoxdur</option>}
-        {options.map((c) => (
-          <option key={c._id} value={c._id}>
-            {c.name}
-            {c.students ? ` · ${c.students} şagird` : ""}
-          </option>
-        ))}
-      </select>
+        onChange={setClassId}
+        placeholder={classes === null ? "Yüklənir…" : options.length ? "Sinif seç" : "Başqa sinif yoxdur"}
+        options={options.map((c) => ({
+          value: String(c._id),
+          label: `${c.name}${c.students ? ` · ${c.students} şagird` : ""}`,
+        }))}
+      />
       <p className="mt-3 text-xs">
         Nəticələr və suallar imtahanla birlikdə gedir. İmtahan yalnız yeni sinfin şagirdlərinə görünəcək.
       </p>
