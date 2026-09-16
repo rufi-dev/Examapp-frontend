@@ -277,11 +277,13 @@ const PaperUpload = () => {
       if (extra.student) setSheetInfo(extra.student);
       if (extra.nameCheck) setNameCheck(extra.nameCheck);
       setReadsLeft(extra.readsLeft ?? 0);
+      // What the AI still could not settle stays pending — the server says which.
+      const stillPending = Array.isArray(extra.unresolved) ? extra.unresolved : [];
       setReadInfo((prev) => ({
         ...(prev || {}),
-        aiUsed: [...(prev?.aiUsed || []), ...(extra.aiQuestions || [])],
-        pendingAi: [],
-        aiError: "",
+        aiUsed: [...(prev?.aiUsed || []), ...(extra.aiQuestions || []).filter((i) => !stillPending.includes(i))],
+        pendingAi: stillPending,
+        aiError: stillPending.length ? "AI bu cavabları dəqiq oxuya bilmədi." : "",
       }));
       setConfirmed(false);
       setDirty(true);

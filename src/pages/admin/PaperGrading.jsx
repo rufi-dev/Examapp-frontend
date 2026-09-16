@@ -362,11 +362,22 @@ const PaperGrading = () => {
         )
       );
       setAnswers((prev) => prev.map((v, i) => (byIndex.has(i) && !edited.has(i) ? fromStored(key[i], byIndex.get(i).answer) : v)));
+      // An answer the AI returned empty or low-confidence is NOT settled: keep it
+      // pending so the row stays flagged and the button can run again.
+      const unsettled = pending.filter((i) => {
+        const a = byIndex.get(i);
+        if (!a) return true;
+        const blank =
+          a.answer && typeof a.answer === "object" && !Array.isArray(a.answer)
+            ? !Object.keys(a.answer).length
+            : String(a.answer ?? "").trim() === "";
+        return a.confidence === "low" || blank;
+      });
       setReadInfo((prev) => ({
         ...(prev || {}),
-        aiUsed: [...(prev?.aiUsed || []), ...pending],
-        pendingAi: [],
-        aiError: "",
+        aiUsed: [...(prev?.aiUsed || []), ...pending.filter((i) => !unsettled.includes(i))],
+        pendingAi: unsettled,
+        aiError: unsettled.length ? "AI bu cavabları dəqiq oxuya bilmədi." : "",
         nameByAi: wantName && !!extra.student,
       }));
       setDirty(true);
