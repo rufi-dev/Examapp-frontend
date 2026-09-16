@@ -62,13 +62,15 @@ const QuestionAdd = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        await dispatch(getExamTagandClass(examId));
         // Pre-load the existing answer key if this exam already has questions,
         // so editing is non-destructive (instead of starting from blanks).
         const examAction = await dispatch(getExam(examId));
         // Paper exams have no question PDF — only the answer key is entered here.
         const isPaper = examAction?.payload?.mode === "paper";
         setPaper(isPaper);
+        // Class/tag context is only fetched for exams that HAVE a class: a paper
+        // exam belongs to its teacher, and this page doesn't use the class anyway.
+        if (!isPaper) await dispatch(getExamTagandClass(examId));
         if (!isPaper) {
           const getPdfAction = await dispatch(getPdfByExam({ examId }));
           setPdfData(getPdfAction.payload?.path);
