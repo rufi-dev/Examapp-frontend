@@ -89,7 +89,6 @@ const ExamRow = ({ exam, staff, onOpen }) => {
   const progress = exam.sheets && staff ? Math.min(100, Math.round((exam.sheets / Math.max(exam.sheets, 1)) * 100)) : 0;
   return (
     <li className="group relative overflow-hidden rounded-2xl border border-line bg-surface transition-all duration-200 ease-out-quint hover:-translate-y-0.5 hover:shadow-lift">
-      {/* dashed spine, echoing the card's centre divider */}
       <span aria-hidden className="absolute inset-y-4 left-[86px] hidden w-px border-l border-dashed border-line sm:block" />
       {staff && exam.needsReview > 0 && (
         <span className="absolute right-0 top-0 rounded-bl-xl bg-accent2 px-2.5 py-1 text-[11px] font-bold text-white">
@@ -98,7 +97,6 @@ const ExamRow = ({ exam, staff, onOpen }) => {
       )}
       <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:gap-6 sm:p-5">
         <SheetThumb marked={exam.name.length} className="h-[68px] w-[54px] shrink-0 drop-shadow-sm" />
-
         <div className="min-w-0 flex-1">
           <p className="truncate font-display text-lg font-bold text-text">{exam.name}</p>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
@@ -130,15 +128,9 @@ const ExamRow = ({ exam, staff, onOpen }) => {
                 <p className="font-display text-2xl font-extrabold leading-none tabular-nums text-text">{exam.sheets}</p>
                 <p className="mt-0.5 text-[11px] text-muted">vərəq</p>
               </div>
-              <div
-                aria-hidden
-                className="hidden h-10 w-px bg-line sm:block"
-                style={{ opacity: progress ? 1 : 0.5 }}
-              />
+              <div aria-hidden className="hidden h-10 w-px bg-line sm:block" style={{ opacity: progress ? 1 : 0.5 }} />
               <div className="text-center">
-                <p className="font-display text-2xl font-extrabold leading-none tabular-nums text-accent2">
-                  {exam.needsReview}
-                </p>
+                <p className="font-display text-2xl font-extrabold leading-none tabular-nums text-accent2">{exam.needsReview}</p>
                 <p className="mt-0.5 text-[11px] text-muted">yoxlanmalı</p>
               </div>
             </div>
@@ -270,13 +262,13 @@ const PaperExams = () => {
       }
     >
       {/* Intro band with the card motif — sets this page apart from exam cards. */}
-      <section className="mb-6 overflow-hidden rounded-3xl border border-line bg-surface shadow-soft">
-        <div className="grid gap-6 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+      <section className="mb-6 overflow-hidden rounded-3xl border border-line bg-gradient-to-br from-accent2/[0.07] via-surface to-surface shadow-soft">
+        <div className="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-7">
           <div className="max-w-xl">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-accent2/12 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-accent2">
               CAVAB KARTI
             </span>
-            <h2 className="mt-3 max-w-2xl font-display text-xl font-extrabold text-text sm:text-2xl">
+            <h2 className="mt-3 font-display text-xl font-extrabold text-text sm:text-2xl">
               Vərəqi platforma oxuyur, siz təsdiqləyirsiniz
             </h2>
             <p className="mt-1.5 text-sm leading-relaxed text-muted">
@@ -284,14 +276,14 @@ const PaperExams = () => {
               suallar pulsuz oxunur, oxunmayan cavablar sizə göstərilir.
             </p>
             {staff && (
-              <div className="mt-5 flex flex-wrap items-center gap-x-7 gap-y-3">
+              <div className="mt-5 flex items-center gap-7">
                 <Stat value={totals.exams} label="imtahan" />
                 <Stat value={totals.sheets} label="yoxlanmış vərəq" />
                 <Stat value={totals.review} label="yoxlanmalı" />
               </div>
             )}
           </div>
-          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-line pt-5 lg:justify-end lg:border-0 lg:pt-0">
+          <div className="flex shrink-0 items-center gap-4">
             <SheetThumb marked={2} className="h-28 w-[88px] rotate-[-4deg] drop-shadow-md" />
             <SheetThumb marked={4} className="hidden h-24 w-[76px] rotate-[5deg] opacity-80 drop-shadow sm:block" />
             {staff && (
@@ -325,6 +317,15 @@ const PaperExams = () => {
                 onChange={(e) => setField("name", e.target.value)}
                 className={inputClass}
                 placeholder="Məsələn: Buraxılış sınağı #4"
+              />
+            </Field>
+            <Field label="Sinif" htmlFor="pe-class" required hint="Şagirdlər vərəqi bu sinif üzərindən yükləyir">
+              <Select
+                id="pe-class"
+                value={form.classId}
+                onChange={(v) => setField("classId", v)}
+                placeholder={classes.length ? "Sinif seç" : "Sinif yoxdur"}
+                options={classes.map((c) => ({ value: String(c._id), label: c.name }))}
               />
             </Field>
             <div className="grid gap-5 sm:grid-cols-2">
