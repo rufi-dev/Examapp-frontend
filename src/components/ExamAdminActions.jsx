@@ -230,15 +230,18 @@ const ExamAdminActions = ({ exam, onChanged, className = "" }) => {
                   to={`/exam/${exam._id}/live`}
                 />
               )}
-              <MenuItem
-                icon={<FiFolder />}
-                label="Sinfi dəyiş"
-                hint="imtahanı başqa sinfə köçür"
-                onClick={() => {
-                  setMenuOpen(false);
-                  setMoving(true);
-                }}
-              />
+              {/* Paper exams have no class — they live only on the paper page. */}
+              {!paper && (
+                <MenuItem
+                  icon={<FiFolder />}
+                  label="Sinfi dəyiş"
+                  hint="imtahanı başqa sinfə köçür"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setMoving(true);
+                  }}
+                />
+              )}
               <div className="my-1 h-px bg-line" />
               <MenuItem
                 icon={<FiTrash2 />}

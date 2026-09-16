@@ -14,20 +14,16 @@ import {
   FiAlertTriangle,
   FiX,
   FiSearch,
-  FiFolder,
 } from "react-icons/fi";
 import AccountLayout from "../../components/AccountLayout";
 import Button from "../../components/ui/Button";
 import Spinner from "../../components/Spinner";
 import DateTimePicker from "../../components/ui/DateTimePicker";
 import { Field, inputClass } from "../../components/ui/Field";
-import Select from "../../components/ui/Select";
 import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser";
 import { useSelector } from "react-redux";
 import { formatDateTime, toUtcIso } from "../../helper/datetime";
 import { fetchPaperExams, createPaperExam, apiError } from "../../helper/paperApi";
-import { fetchMyClasses } from "../../helper/classApi";
-import MoveExamDialog from "../../components/MoveExamDialog";
 
 /*
  * "Kağız imtahanları" — the home of paper exams, deliberately unlike the exam
@@ -88,7 +84,7 @@ const Stat = ({ value, label }) => (
 );
 
 // One exam = one wide sheet row.
-const ExamRow = ({ exam, staff, onOpen, onMove }) => {
+const ExamRow = ({ exam, staff, onOpen }) => {
   const ready = exam.questionCount > 0;
   const progress = exam.sheets && staff ? Math.min(100, Math.round((exam.sheets / Math.max(exam.sheets, 1)) * 100)) : 0;
   return (
@@ -156,9 +152,6 @@ const ExamRow = ({ exam, staff, onOpen, onMove }) => {
               <Button to={`/exam/${exam._id}/resultsByExam`} variant="secondary" size="sm">
                 <FiBarChart2 /> Nəticələr
               </Button>
-              <Button variant="secondary" size="sm" onClick={() => onMove?.(exam)}>
-                <FiFolder /> Sinif
-              </Button>
             </div>
           </>
         ) : (
@@ -197,13 +190,10 @@ const PaperExams = () => {
   const [exams, setExams] = useState(null);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
-  const [classes, setClasses] = useState([]);
   const [creating, setCreating] = useState(false);
-  const [moving, setMoving] = useState(null); // exam whose class is being changed
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     name: "",
-    classId: "",
     totalMarks: 100,
     passingMarks: 50,
     startDate: null,
@@ -224,22 +214,11 @@ const PaperExams = () => {
     load();
   }, [load]);
 
-  useEffect(() => {
-    if (!staff) return;
-    fetchMyClasses()
-      .then((list) => {
-        setClasses(list || []);
-        setForm((f) => (f.classId ? f : { ...f, classId: list?.[0]?._id || "" }));
-      })
-      .catch(() => setClasses([]));
-  }, [staff]);
-
   const setField = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const submit = async (e) => {
     e.preventDefault();
     if (!form.name.trim()) return toast.error("İmtahan adını yazın");
-    if (!form.classId) return toast.error("Sinif seçin");
     setSaving(true);
     try {
       const res = await createPaperExam({
@@ -291,13 +270,13 @@ const PaperExams = () => {
       }
     >
       {/* Intro band with the card motif — sets this page apart from exam cards. */}
-      <section className="mb-6 overflow-hidden rounded-3xl border border-line bg-gradient-to-br from-accent2/[0.07] via-surface to-surface shadow-soft">
-        <div className="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-7">
+      <section className="mb-6 overflow-hidden rounded-3xl border border-line bg-surface shadow-soft">
+        <div className="grid gap-6 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div className="max-w-xl">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-accent2/12 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-accent2">
               CAVAB KARTI
             </span>
-            <h2 className="mt-3 font-display text-xl font-extrabold text-text sm:text-2xl">
+            <h2 className="mt-3 max-w-2xl font-display text-xl font-extrabold text-text sm:text-2xl">
               Vərəqi platforma oxuyur, siz təsdiqləyirsiniz
             </h2>
             <p className="mt-1.5 text-sm leading-relaxed text-muted">
@@ -305,14 +284,14 @@ const PaperExams = () => {
               suallar pulsuz oxunur, oxunmayan cavablar sizə göstərilir.
             </p>
             {staff && (
-              <div className="mt-5 flex items-center gap-7">
+              <div className="mt-5 flex flex-wrap items-center gap-x-7 gap-y-3">
                 <Stat value={totals.exams} label="imtahan" />
                 <Stat value={totals.sheets} label="yoxlanmış vərəq" />
                 <Stat value={totals.review} label="yoxlanmalı" />
               </div>
             )}
           </div>
-          <div className="flex shrink-0 items-center gap-4">
+          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-line pt-5 lg:justify-end lg:border-0 lg:pt-0">
             <SheetThumb marked={2} className="h-28 w-[88px] rotate-[-4deg] drop-shadow-md" />
             <SheetThumb marked={4} className="hidden h-24 w-[76px] rotate-[5deg] opacity-80 drop-shadow sm:block" />
             {staff && (
@@ -346,15 +325,6 @@ const PaperExams = () => {
                 onChange={(e) => setField("name", e.target.value)}
                 className={inputClass}
                 placeholder="Məsələn: Buraxılış sınağı #4"
-              />
-            </Field>
-            <Field label="Sinif" htmlFor="pe-class" required hint="Şagirdlər vərəqi bu sinif üzərindən yükləyir">
-              <Select
-                id="pe-class"
-                value={form.classId}
-                onChange={(v) => setField("classId", v)}
-                placeholder={classes.length ? "Sinif seç" : "Sinif yoxdur"}
-                options={classes.map((c) => ({ value: String(c._id), label: c.name }))}
               />
             </Field>
             <div className="grid gap-5 sm:grid-cols-2">
@@ -470,7 +440,7 @@ const PaperExams = () => {
           )}
           <ol className="space-y-3">
             {list.map((exam) => (
-              <ExamRow key={exam._id} exam={exam} staff={staff} onOpen={load} onMove={setMoving} />
+              <ExamRow key={exam._id} exam={exam} staff={staff} onOpen={load} />
             ))}
             {!list.length && (
               <li className="rounded-2xl border border-dashed border-line p-10 text-center text-sm text-muted">
@@ -481,7 +451,6 @@ const PaperExams = () => {
         </>
       )}
 
-      <MoveExamDialog open={!!moving} exam={moving} onClose={() => setMoving(null)} onMoved={load} />
     </AccountLayout>
   );
 };
