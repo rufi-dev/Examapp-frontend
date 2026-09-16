@@ -33,10 +33,12 @@ const navItems = [
   // Classes are top-level now (no category layer) — /classes lists every
   // class the user can access; each class opens its exams.
   { to: "/classes", label: "Siniflər", icon: LuGraduationCap },
-  { to: "/myExams", label: "İmtahanlarım", icon: FiAward },
+  // "My exams" / "My results" are a STUDENT's own record — a teacher grades from
+  // Nəticələr and the class pages instead, so these are hidden for staff.
+  { to: "/myExams", label: "İmtahanlarım", icon: FiAward, studentOnly: true },
   // Paper exams live only here — they are kept out of classes/dashboard lists.
   { to: "/paper-exams", label: "Kağız imtahanları", icon: FiFileText },
-  { to: "/myResults", label: "Nəticələrim", icon: FiBarChart2 },
+  { to: "/myResults", label: "Nəticələrim", icon: FiBarChart2, studentOnly: true },
   // Teachers add YouTube topic-explanation videos; everyone watches (add/delete
   // controls are gated inside the page).
   { to: "/videos", label: "Mövzu izahları", icon: FiVideo },
@@ -184,9 +186,11 @@ export default function AccountLayout({ title, subtitle, actions, children }) {
           Menyu
         </p>
         <div className="flex flex-col gap-1">
-          {navItems.map((it) => (
-            <SideItem key={it.to} {...it} />
-          ))}
+          {navItems
+            .filter((it) => !it.studentOnly || user?.role === "student")
+            .map((it) => (
+              <SideItem key={it.to} {...it} />
+            ))}
         </div>
         <AdminTeacherLink>
           <div className="my-3 border-t border-line" />
