@@ -139,7 +139,8 @@ const Overview = () => {
       <div className="mt-8">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="font-display text-lg font-bold text-text">Son nəticələr</h2>
-          {recent.length > 0 && (
+          {/* "Nəticələrim" is a student page — staff grade from Nəticələr instead. */}
+          {recent.length > 0 && !isStaff && (
             <Link to="/myResults" className="text-sm font-medium text-primary hover:underline">
               Hamısı
             </Link>
