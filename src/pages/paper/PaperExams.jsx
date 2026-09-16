@@ -100,7 +100,7 @@ const ExamRow = ({ exam, staff, onOpen }) => {
         <div className="min-w-0 flex-1">
           <p className="truncate font-display text-lg font-bold text-text">{exam.name}</p>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            {exam.className && <Chip>{exam.className}</Chip>}
+            {/* No class chip: a paper exam belongs to its teacher, not a class. */}
             <Chip tone={ready ? "ok" : "warn"}>{ready ? `${exam.questionCount} sual` : "Açar yoxdur"}</Chip>
             {exam.hidden && (
               <Chip>
