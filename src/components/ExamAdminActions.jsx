@@ -10,9 +10,11 @@ import {
   FiFilePlus,
   FiEdit3,
   FiTrash2,
+  FiFolder,
 } from "react-icons/fi";
 import { deleteExam, setExamHidden } from "../../redux/features/quiz/quizSlice";
 import ConfirmDialog from "./ui/ConfirmDialog";
+import MoveExamDialog from "./MoveExamDialog";
 
 // Owner/admin action button — a soft tinted chip that lifts + colours on hover,
 // with a tooltip naming the action. `tone` picks the hover accent.
@@ -52,6 +54,7 @@ const ExamAdminActions = ({ exam, onChanged, className = "" }) => {
     user?.role === "admin" || (exam?.owner && String(exam.owner) === String(user?._id));
   const [confirm, setConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [moving, setMoving] = useState(false);
 
   if (!canManage) return null;
 
@@ -101,6 +104,9 @@ const ExamAdminActions = ({ exam, onChanged, className = "" }) => {
         >
           <FiFilePlus className="text-[17px]" />
         </ExamAction>
+        <ExamAction onClick={() => setMoving(true)} label="Sinfi dəyiş">
+          <FiFolder className="text-[17px]" />
+        </ExamAction>
         <ExamAction to={`/exam/edit/${exam._id}`} label="Redaktə et">
           <FiEdit3 className="text-[17px]" />
         </ExamAction>
@@ -108,6 +114,13 @@ const ExamAdminActions = ({ exam, onChanged, className = "" }) => {
           <FiTrash2 className="text-[17px]" />
         </ExamAction>
       </div>
+
+      <MoveExamDialog
+        open={moving}
+        exam={exam}
+        onClose={() => setMoving(false)}
+        onMoved={() => onChanged?.()}
+      />
 
       <ConfirmDialog
         open={confirm}

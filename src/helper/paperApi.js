@@ -17,12 +17,6 @@ export const createPaperExam = async (payload) => {
   return data;
 };
 
-// Classes the teacher owns (admin: all) — for the create form's class picker.
-export const fetchMyClasses = async () => {
-  const { data } = await axios.get(`${QUIZ}/teacher/classes`);
-  return data;
-};
-
 // ---- teacher ----
 
 // Grading workspace: { exam, key, students, results }.

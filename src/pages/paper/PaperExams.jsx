@@ -14,6 +14,7 @@ import {
   FiAlertTriangle,
   FiX,
   FiSearch,
+  FiFolder,
 } from "react-icons/fi";
 import AccountLayout from "../../components/AccountLayout";
 import Button from "../../components/ui/Button";
@@ -23,7 +24,9 @@ import { Field, inputClass } from "../../components/ui/Field";
 import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser";
 import { useSelector } from "react-redux";
 import { formatDateTime, toUtcIso } from "../../helper/datetime";
-import { fetchPaperExams, createPaperExam, fetchMyClasses, apiError } from "../../helper/paperApi";
+import { fetchPaperExams, createPaperExam, apiError } from "../../helper/paperApi";
+import { fetchMyClasses } from "../../helper/classApi";
+import MoveExamDialog from "../../components/MoveExamDialog";
 
 /*
  * "Kağız imtahanları" — the home of paper exams, deliberately unlike the exam
@@ -84,7 +87,7 @@ const Stat = ({ value, label }) => (
 );
 
 // One exam = one wide sheet row.
-const ExamRow = ({ exam, staff, onOpen }) => {
+const ExamRow = ({ exam, staff, onOpen, onMove }) => {
   const ready = exam.questionCount > 0;
   const progress = exam.sheets && staff ? Math.min(100, Math.round((exam.sheets / Math.max(exam.sheets, 1)) * 100)) : 0;
   return (
@@ -152,6 +155,9 @@ const ExamRow = ({ exam, staff, onOpen }) => {
               <Button to={`/exam/${exam._id}/resultsByExam`} variant="secondary" size="sm">
                 <FiBarChart2 /> Nəticələr
               </Button>
+              <Button variant="secondary" size="sm" onClick={() => onMove?.(exam)}>
+                <FiFolder /> Sinif
+              </Button>
             </div>
           </>
         ) : (
@@ -192,6 +198,7 @@ const PaperExams = () => {
   const [query, setQuery] = useState("");
   const [classes, setClasses] = useState([]);
   const [creating, setCreating] = useState(false);
+  const [moving, setMoving] = useState(null); // exam whose class is being changed
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     name: "",
@@ -468,7 +475,7 @@ const PaperExams = () => {
           )}
           <ol className="space-y-3">
             {list.map((exam) => (
-              <ExamRow key={exam._id} exam={exam} staff={staff} onOpen={load} />
+              <ExamRow key={exam._id} exam={exam} staff={staff} onOpen={load} onMove={setMoving} />
             ))}
             {!list.length && (
               <li className="rounded-2xl border border-dashed border-line p-10 text-center text-sm text-muted">
@@ -478,6 +485,8 @@ const PaperExams = () => {
           </ol>
         </>
       )}
+
+      <MoveExamDialog open={!!moving} exam={moving} onClose={() => setMoving(null)} onMoved={load} />
     </AccountLayout>
   );
 };
