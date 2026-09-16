@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import Button from "./Button";
 import Spinner from "../Spinner";
 
@@ -26,7 +27,13 @@ const ConfirmDialog = ({
 
   if (!open) return null;
 
-  return (
+  /*
+   * PORTALLED to the body. Rendered in place, the `fixed` overlay resolves
+   * against the nearest transformed ancestor rather than the viewport — and an
+   * exam card animates with `hover:-translate-y-1` — so the dialog was landing
+   * INSIDE the hovered card and being clipped by its `overflow-hidden`.
+   */
+  return createPortal(
     <div className="fixed inset-0 z-[1500] flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -53,7 +60,8 @@ const ConfirmDialog = ({
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

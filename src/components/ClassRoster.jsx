@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { FiX, FiUserX, FiUserPlus, FiSearch, FiPlus } from "react-icons/fi";
@@ -145,8 +146,11 @@ const ClassRoster = ({ classObj, label, onClose, onChange, embedded = false }) =
     </div>
   );
 
-  // The add-student picker is a modal in BOTH modes (secondary action).
-  const pickerModal = picker && (
+  // The add-student picker is a modal in BOTH modes (secondary action). Portalled:
+  // a `fixed` overlay resolves against the nearest TRANSFORMED ancestor, and the
+  // class cards animate with `hover:-translate-y-1`, which would trap it inside
+  // the card and clip it against the card's `overflow-hidden`.
+  const pickerModal = picker && createPortal(
     <div className="fixed inset-0 z-[1600] flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -199,7 +203,8 @@ const ClassRoster = ({ classObj, label, onClose, onChange, embedded = false }) =
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 
   // Embedded: render inline as a plain card (no overlay).
@@ -215,16 +220,19 @@ const ClassRoster = ({ classObj, label, onClose, onChange, embedded = false }) =
     );
   }
 
-  // Default: floating modal.
+  // Default: floating modal (portalled for the same reason as the picker above).
   return (
     <>
-      <div className="fixed inset-0 z-[1500] flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-        <div className="relative flex max-h-[80vh] w-full max-w-md flex-col rounded-3xl border border-line bg-surface p-6 shadow-lift">
-          {header}
-          {list}
-        </div>
-      </div>
+      {createPortal(
+        <div className="fixed inset-0 z-[1500] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+          <div className="relative flex max-h-[80vh] w-full max-w-md flex-col rounded-3xl border border-line bg-surface p-6 shadow-lift">
+            {header}
+            {list}
+          </div>
+        </div>,
+        document.body
+      )}
       {pickerModal}
     </>
   );

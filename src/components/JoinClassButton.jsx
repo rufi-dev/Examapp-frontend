@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import axios from "axios";
 import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
@@ -44,7 +45,9 @@ const JoinClassButton = ({ onJoined }) => {
         <FiLogIn /> Sinifə qoşul
       </Button>
 
-      {open && (
+      {/* Portalled: a `fixed` overlay would otherwise resolve against a
+          transformed ancestor (cards lift on hover) and be clipped inside it. */}
+      {open && createPortal(
         <div className="fixed inset-0 z-[1500] flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -80,7 +83,8 @@ const JoinClassButton = ({ onJoined }) => {
               {busy ? <Spinner /> : "Qoşul"}
             </Button>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
