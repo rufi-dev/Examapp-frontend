@@ -319,15 +319,6 @@ const PaperExams = () => {
                 placeholder="Məsələn: Buraxılış sınağı #4"
               />
             </Field>
-            <Field label="Sinif" htmlFor="pe-class" required hint="Şagirdlər vərəqi bu sinif üzərindən yükləyir">
-              <Select
-                id="pe-class"
-                value={form.classId}
-                onChange={(v) => setField("classId", v)}
-                placeholder={classes.length ? "Sinif seç" : "Sinif yoxdur"}
-                options={classes.map((c) => ({ value: String(c._id), label: c.name }))}
-              />
-            </Field>
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Ümumi bal" htmlFor="pe-total" required>
                 <input
