@@ -52,7 +52,7 @@ const navItems = [
 // "Add class" already lives as a button on the Siniflər page, so the admin
 // nav doesn't repeat it — it only keeps user management here.
 const adminNav = [
-  { to: "/users", label: "İstifadəçilər", icon: FiUsers },
+  { to: "/users", label: "Şagirdlər", icon: FiUsers },
   // Canlı imtahan overview — exams with students taking them right now.
   { to: "/canli-imtahan", label: "Canlı imtahan", icon: FiRadio },
   { to: "/examResults", label: "Nəticələr", icon: FiPieChart },
@@ -75,7 +75,7 @@ const PATH_LABELS = {
   "/videos": "Mövzu izahları",
   "/achievements": "Nailiyyətlərimiz",
   "/profile": "Profil",
-  "/users": "İstifadəçilər",
+  "/users": "Şagirdlər",
   "/examResults": "Nəticələr",
   "/examPayments": "Ödənişlər",
   "/connections": "Bağlantılar",
@@ -89,7 +89,7 @@ const PATH_LABELS = {
 const sectionParents = (path) => {
   if (/^\/exam\/[^/]+\/result$/.test(path)) return [{ label: "Nəticələrim", to: "/myResults" }];
   if (/^\/exam\/[^/]+\/resultsByExam$/.test(path)) return [{ label: "Nəticələr", to: "/examResults" }];
-  if (/^\/user\/[^/]+\/details$/.test(path)) return [{ label: "İstifadəçilər", to: "/users" }];
+  if (/^\/user\/[^/]+\/details$/.test(path)) return [{ label: "Şagirdlər", to: "/users" }];
   if (
     /^\/(classAdd|class|examAdd|exams)\b/.test(path) ||
     /^\/class\/edit\//.test(path) ||
