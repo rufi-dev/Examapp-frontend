@@ -50,6 +50,7 @@ const ExamEdit = () => {
   const cloud_name = import.meta.env.VITE_CLOUD_NAME;
   const upload_preset = import.meta.env.VITE_UPLAD_PRESET;
   const [pdf, setPdf] = useState(null);
+  const [coverBusy, setCoverBusy] = useState(false); // cover still uploading
   const [uploadingSolution, setUploadingSolution] = useState(false);
   const [passwordEnabled, setPasswordEnabled] = useState(false);
   const [maxTryEnabled, setMaxTryEnabled] = useState(false);
@@ -247,6 +248,7 @@ const ExamEdit = () => {
 
   const editExamForm = async (e) => {
     e.preventDefault();
+    if (coverBusy) return toast.info("Üz qabığı şəkli hələ yüklənir — bir az gözləyin.");
     const found = validate();
     setErrors(found);
     const first = Object.keys(found)[0];
@@ -354,7 +356,7 @@ const ExamEdit = () => {
                   className={invalid(inputClass, errors.name)}
                 />
               </Field>
-              <CoverImageField value={coverImage} onChange={(url) => setField("coverImage", url)} />
+              <CoverImageField value={coverImage} onChange={(url) => setField("coverImage", url)} onBusyChange={setCoverBusy} />
               {isStructured || isPaper ? (
                 <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-surface2/40 px-3.5 py-3 text-sm">
                   <span className="font-medium text-text">
@@ -581,7 +583,7 @@ const ExamEdit = () => {
         </div>
 
         <div className="flex justify-end pb-2 lg:col-span-2">
-          <Button type="submit" size="lg">
+          <Button type="submit" size="lg" disabled={coverBusy}>
             Yadda saxla
           </Button>
         </div>

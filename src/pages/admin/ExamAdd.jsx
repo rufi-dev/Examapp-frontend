@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import axios from "axios";
 import AccountLayout from "../../components/AccountLayout";
 import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser";
@@ -187,8 +187,26 @@ const ExamAdd = () => {
     return e;
   };
 
+  // One exam per press: while a save (and its PDF upload) is on its way a second
+  // tap is ignored, and saving waits for the cover picture to finish uploading.
+  const [coverBusy, setCoverBusy] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const addExamForm = async (e) => {
-    e.preventDefault();
+    e?.preventDefault?.();
+    if (coverBusy) return toast.info("Üz qabığı şəkli hələ yüklənir — bir az gözləyin.");
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setSubmitting(true);
+    try {
+      await submitExam(e);
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
+  };
+  const submitExam = async (e) => {
+    e?.preventDefault?.();
     const isStructured = source === "structured";
     const isPaper = source === "paper";
 
@@ -289,7 +307,7 @@ const ExamAdd = () => {
                 />
               </Field>
 
-              <CoverImageField value={coverImage} onChange={setCoverImage} />
+              <CoverImageField value={coverImage} onChange={setCoverImage} onBusyChange={setCoverBusy} />
 
               <Field
                 label="Sual mənbəyi"
@@ -520,7 +538,7 @@ const ExamAdd = () => {
         </div>
 
         <div className="flex justify-end pb-2 lg:col-span-2">
-          <Button type="submit" size="lg">
+          <Button type="submit" size="lg" disabled={submitting || coverBusy}>
             İmtahanı əlavə et
           </Button>
         </div>

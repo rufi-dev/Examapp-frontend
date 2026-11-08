@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import AccountLayout from "../../components/AccountLayout";
 import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser";
 import { useDispatch } from "react-redux";
@@ -20,17 +20,33 @@ const ClassAdd = () => {
   // on code-only access.
   const [requireCode, setRequireCode] = useState(false);
   const [coverImage, setCoverImage] = useState("");
+  const [coverBusy, setCoverBusy] = useState(false); // cover still uploading
+  const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
 
   const addClassForm = async (e) => {
     e.preventDefault();
     if (!name.trim()) {
       return toast.error("Sinif adını daxil edin");
     }
-    const addClassData = await dispatch(
-      addClass({ classData: { name: name.trim(), requireCode, coverImage } })
-    );
-    if (addClassData.type != "quiz/addClass/rejected") {
-      navigate("/classes");
+    // Saving now would create the class WITHOUT its cover (and the teacher would
+    // have to upload the picture again).
+    if (coverBusy) return toast.info("Üz qabığı şəkli hələ yüklənir — bir az gözləyin.");
+    // One class per press: a second tap while the first save is on its way (easy
+    // on a slow phone) is ignored instead of creating a second class.
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setSubmitting(true);
+    try {
+      const addClassData = await dispatch(
+        addClass({ classData: { name: name.trim(), requireCode, coverImage } })
+      );
+      if (addClassData.type != "quiz/addClass/rejected") {
+        navigate("/classes");
+      }
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
     }
   };
 
@@ -51,7 +67,7 @@ const ClassAdd = () => {
             </Field>
 
             <div className="mt-5">
-              <CoverImageField value={coverImage} onChange={setCoverImage} />
+              <CoverImageField value={coverImage} onChange={setCoverImage} onBusyChange={setCoverBusy} />
               <p className="mt-1.5 text-xs text-muted">
                 Sinif kartının üz şəkli — şagirdlərin siniflər siyahısında görünəcək.
               </p>
@@ -81,8 +97,8 @@ const ClassAdd = () => {
             </div>
           )}
 
-          <Button type="submit" size="lg">
-            Əlavə et
+          <Button type="submit" size="lg" disabled={submitting || coverBusy}>
+            {coverBusy ? "Şəkil yüklənir…" : submitting ? "Yaradılır…" : "Əlavə et"}
           </Button>
         </form>
       </div>

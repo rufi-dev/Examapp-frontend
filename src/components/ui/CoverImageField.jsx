@@ -9,7 +9,7 @@ import { Field } from "./Field";
 // Optional exam cover/banner image. Uploads one image to Cloudinary and hands
 // the hosted URL back via onChange (""=removed). Shown at the top of the exam
 // card. Display-only, so it's safe in student payloads.
-const CoverImageField = ({ value, onChange }) => {
+const CoverImageField = ({ value, onChange, onBusyChange }) => {
   const [busy, setBusy] = useState(false);
 
   const onFile = async (e) => {
@@ -20,12 +20,14 @@ const CoverImageField = ({ value, onChange }) => {
       return toast.error("Yalnız şəkil faylı yükləyin");
     }
     setBusy(true);
+    onBusyChange?.(true); // the form must not save without this picture
     try {
       onChange(await uploadImage(file));
     } catch (err) {
       toast.error(err?.message || "Şəkil yüklənmədi");
     } finally {
       setBusy(false);
+      onBusyChange?.(false);
     }
   };
 

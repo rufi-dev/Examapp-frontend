@@ -24,6 +24,7 @@ const ClassEdit = () => {
   // shows the toggle ON. Saving then normalises it to an explicit boolean.
   const [requireCode, setRequireCode] = useState(true);
   const [coverImage, setCoverImage] = useState("");
+  const [coverBusy, setCoverBusy] = useState(false); // cover still uploading
   const [regenerating, setRegenerating] = useState(false);
   const dispatch = useDispatch();
 
@@ -50,6 +51,7 @@ const ClassEdit = () => {
   const editClassForm = async (e) => {
     e.preventDefault();
     if (!name.trim()) return toast.error("Sinif adını daxil edin");
+    if (coverBusy) return toast.info("Üz qabığı şəkli hələ yüklənir — bir az gözləyin.");
     const res = await dispatch(
       editClass({ classId, classData: { name: name.trim(), requireCode, coverImage } })
     );
@@ -95,7 +97,7 @@ const ClassEdit = () => {
             </Field>
 
             <div className="mt-5">
-              <CoverImageField value={coverImage} onChange={setCoverImage} />
+              <CoverImageField value={coverImage} onChange={setCoverImage} onBusyChange={setCoverBusy} />
               <p className="mt-1.5 text-xs text-muted">
                 Sinif kartının üz şəkli — siniflər siyahısında görünəcək.
               </p>
@@ -115,7 +117,7 @@ const ClassEdit = () => {
             </p>
           </ToggleSection>
 
-          <Button type="submit" size="lg" className="w-full sm:w-auto">
+          <Button type="submit" size="lg" className="w-full sm:w-auto" disabled={coverBusy}>
             Yadda saxla
           </Button>
         </form>

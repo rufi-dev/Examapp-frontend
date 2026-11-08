@@ -505,6 +505,9 @@ const StructuredBuilder = () => {
   const [kickoffMode, setKickoffMode] = useState("replace"); // replace | append
   const [kickoffDrag, setKickoffDrag] = useState(false);
   const [generating, setGenerating] = useState(false); // AI writing questions
+  // What the server says it is doing now ("Suallar yoxlanılır…", "Cavablar
+  // tapılır… 3/8"): one line in the AI window, not a toast per step.
+  const [aiPhase, setAiPhase] = useState("");
   const kickoffRef = useRef(null);
   const kickoffFileRef = useRef(null);
   const runAbortRef = useRef(null);
@@ -1160,7 +1163,7 @@ const StructuredBuilder = () => {
             hasFigure: !!q?.hasFigure,
           },
         ]),
-      status: (st) => st?.message && toast.info(st.message),
+      status: (st) => st?.message && setAiPhase(st.message),
       done: (d) => (finalData = d),
       error: (er) => (streamErr = er?.message || fallbackMsg),
     });
@@ -1184,6 +1187,7 @@ const StructuredBuilder = () => {
     const pdf = files.find((f) => f.type === "application/pdf");
     if (pdf) setAiPdfFile(pdf); // keep a PDF so figures can be cropped from it
     setStreamItems([]);
+    setAiPhase("");
     setExtracting(true);
     const ctrl = new AbortController();
     runAbortRef.current = ctrl;
@@ -1208,6 +1212,7 @@ const StructuredBuilder = () => {
 
   const generateFromPrompt = async (prompt, mode) => {
     setStreamItems([]);
+    setAiPhase("");
     setGenerating(true);
     const ctrl = new AbortController();
     runAbortRef.current = ctrl;
@@ -1259,13 +1264,32 @@ const StructuredBuilder = () => {
     }
     setMathEnabled((v) => v || hasLatex(mapped));
     setExplEnabled((v) => v || hasExpl(mapped));
-    toast.success(
-      data?.generated
-        ? `${mapped.length} sual hazırlandı — cavabları yoxlayın.`
-        : mode === "append"
-        ? `${mapped.length} sual əlavə edildi — düzgün cavabları yoxlayın.`
-        : `${mapped.length} sual idxal edildi — düzgün cavabları yoxlayın.`
-    );
+    // Say what is true (Examopia's wording): a short set, open issues, a set the
+    // AI actually checked, or one to look over — and which answers are the AI's.
+    if (data?.generated) {
+      const ci = data.countInfo;
+      if (ci && ci.short > 0) {
+        toast.warn(`${mapped.length}/${ci.requested} sual hazırlandı — ${ci.short} sual çatışmır, əl ilə əlavə edə bilərsiniz.`);
+      } else if (data.issues > 0) {
+        toast.warn(`${mapped.length} sual hazırdır — ${data.issues} məsələ var, diqqətlə yoxlayın.`);
+      } else if (data.verified) {
+        toast.success(`${mapped.length} sual hazırlandı və yoxlanıldı.`);
+      } else {
+        toast.success(`${mapped.length} sual hazırlandı — cavabları yoxlayın.`);
+      }
+    } else {
+      toast.success(
+        mode === "append"
+          ? `${mapped.length} sual əlavə edildi — düzgün cavabları yoxlayın.`
+          : `${mapped.length} sual idxal edildi — düzgün cavabları yoxlayın.`
+      );
+      if (data?.documentKind === "material") {
+        toast.info("Sənəddə hazır sual yox idi — suallar materiala əsasən quruldu. Yoxlayın.");
+      }
+      if (data?.answersSolved > 0) {
+        toast.info(`${data.answersSolved} sualın cavabı vərəqdə yox idi — onları AI tapdı, yoxlayın.`);
+      }
+    }
     const figs = aiQs.filter((q) => q.hasFigure).length;
     if (figs) toast.info(`${figs} sualda şəkil var — şəkilləri əl ilə əlavə edin.`);
     const noKey = mapped.filter((q) => (q.type === "Cm" || q.type === "Cs") && !q.correct.length).length;
@@ -1763,7 +1787,7 @@ const StructuredBuilder = () => {
                 <div className="flex items-center gap-2.5">
                   <Spinner size={16} className="text-primary" />
                   <p key={extractStep} className="animate-fade-in text-sm font-semibold text-primary">
-                    {runSteps[extractStep % runSteps.length]}
+                    {aiPhase || runSteps[extractStep % runSteps.length]}
                   </p>
                   {streamItems.length > 0 && (
                     <span className="ml-auto rounded-full bg-primary/12 px-2 py-0.5 text-[11px] font-bold tabular-nums text-primary">
