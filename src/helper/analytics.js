@@ -1,5 +1,5 @@
 // Pure analytics helpers — computed on the client from results already fetched.
-import { hasAnswer, isSelectionCorrect } from "./helper";
+import { hasAnswer, questionVerdict } from "./helper";
 
 const num = (v) => (v == null ? null : Number(v));
 
@@ -83,11 +83,11 @@ export function itemAnalysis(results) {
         it.type = type;
       }
       it.total += 1;
-      // Shape-aware: an unanswered map/array/index-0/string all classify
-      // correctly (a Cma map stringified to "[object Object]" used to count as
-      // a non-blank wrong answer here).
-      if (!hasAnswer({ answer: sv })) it.blank += 1;
-      else if (keyed && isSelectionCorrect(caRaw, sv, type)) it.correct += 1;
+      // The scorer's own verdict (see questionVerdict); partial credit counts as
+      // not-correct here, like the score's per-type "correct" counts.
+      const v = questionVerdict(r, i);
+      if (v === "blank" || !hasAnswer({ answer: sv })) it.blank += 1;
+      else if (keyed && v === "right") it.correct += 1;
       else it.wrong += 1;
     }
   });

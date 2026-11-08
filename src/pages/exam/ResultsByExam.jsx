@@ -9,6 +9,7 @@ import ExamAnalytics from "../../components/analytics/ExamAnalytics";
 import { toast } from "react-toastify";
 import { FiDownload, FiAlertTriangle, FiFileText, FiEye, FiSearch, FiX, FiCamera } from "react-icons/fi";
 import Spinner from "../../components/Spinner";
+import { AwayChip, PardonButton } from "../../components/AwayInfo";
 
 // Heavy (@react-pdf/renderer ~1.3MB) — loaded only when a teacher clicks export.
 const ResultsPdfExport = lazy(() => import("../../components/ResultsPdfExport"));
@@ -164,9 +165,22 @@ const ResultsByExam = () => {
               }`}
             >
               {result.terminated && (
-                <div className="mb-4 flex items-center gap-2 rounded-xl bg-danger px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-white">
-                  <FiAlertTriangle /> Pozuntuya görə dayandırıldı ({result.violations || 0} pozuntu)
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-danger px-4 py-2.5 text-white">
+                  <span className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-wide">
+                    <FiAlertTriangle /> Pozuntuya görə dayandırıldı ({result.violations || 0} pozuntu)
+                  </span>
+                  <PardonButton
+                    resultId={result._id}
+                    name={result.userId?.name}
+                    onDone={() => dispatch(getResultsByExam(examId))}
+                    className="py-1.5"
+                  />
                 </div>
+              )}
+              {result.pardonedAt && (
+                <p className="mb-3 inline-flex items-center gap-1.5 rounded-lg bg-success/12 px-3 py-1 text-sm font-semibold text-success">
+                  Müəllim pozuntunu ləğv edib — nəticə bərpa olunub
+                </p>
               )}
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -178,7 +192,8 @@ const ResultsByExam = () => {
                     {result.userId?.phone ? ` · ${result.userId.phone}` : ""}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <AwayChip away={result.away} />
                   {result.violations > 0 && (
                     <span
                       className="inline-flex items-center gap-1 rounded-full bg-danger/12 px-3 py-1 text-sm font-semibold text-danger"

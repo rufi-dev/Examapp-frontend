@@ -7,6 +7,7 @@ import MatchingGridQuestion from "./MatchingGridQuestion";
 import ZoomableImage from "./ZoomableImage";
 import Spinner from "./Spinner";
 import { uploadImage } from "../helper/cloudinary";
+import { questionVerdict } from "../helper/helper";
 import CameraCapture, { normalizeImageBlob } from "./CameraCapture";
 
 const LABELS = {
@@ -17,6 +18,26 @@ const LABELS = {
   Cd: "Həlli tələb olunan açıq sual",
 };
 const DEFAULT_OPTIONS = ["a", "b", "c", "d", "e"];
+
+// Typed-answer boxes are exam answers: no autocorrect rewriting a formula, no
+// keyboard suggestions, no keyboard / browser AI writing tools (Galaxy AI
+// "Writing assist", Gboard "Proofread", iOS Writing Tools, Grammarly). Their
+// panels also took focus away from the page, which read as the student leaving
+// the exam while they were only typing (2026-11-08). `writingsuggestions` is the
+// HTML switch for the browser's own writing suggestions.
+const NO_WRITING_ASSIST = {
+  autoComplete: "off",
+  autoCorrect: "off",
+  autoCapitalize: "off",
+  spellCheck: false,
+  writingsuggestions: "false",
+  "data-gramm": "false",
+  "data-gramm_editor": "false",
+  "data-enable-grammarly": "false",
+  // The exam page turns text selection off (copy deterrent); some mobile browsers
+  // let that reach text boxes too, so keep the answer box explicitly editable.
+  style: { userSelect: "text", WebkitUserSelect: "text" },
+};
 const GRID_LETTERS = "abcdefghijklmnopqrstuvwxyz";
 
 const norm = (v) => String(v ?? "").trim();
@@ -580,9 +601,14 @@ const QuestionType = ({
         // Open / typed answer (Co / Cd), PDF or structured.
         const correctAnswer = answers[i]?.answer || null;
         const userAnswer = selectedAnswers[i]?.answer || null;
+        // The scorer's own verdict (questionVerdict on the result) — a text compare
+        // against the FIRST accepted answer marked other accepted forms ("2.5" for
+        // "2,5", "m=5" for "5") wrong in review.
         const isCorrect =
           isReview && correctAnswer && userAnswer
-            ? norm(correctAnswer) === norm(userAnswer)
+            ? review
+              ? questionVerdict(review, i) === "right"
+              : norm(correctAnswer) === norm(userAnswer)
             : null;
         return (
           <div key={i} id={`q-${i}`} className="scroll-mt-4">
@@ -610,6 +636,12 @@ const QuestionType = ({
             <textarea
               rows={def.type === "Cd" ? 6 : 4}
               readOnly={isReview}
+              // An exam answer box: no autocorrect rewriting a formula, no keyboard
+              // suggestions, no keyboard / browser AI writing tools (Galaxy AI
+              // "Writing assist", Gboard "Proofread", iOS Writing Tools, Grammarly).
+              // Their panels also take focus away from the page, which read as the
+              // student leaving the exam while they were only typing.
+              {...NO_WRITING_ASSIST}
               value={isReview ? userAnswer || "" : answers[i]?.answer || ""}
               onChange={(e) => setAnswer(i, e.target.value, def.type)}
               placeholder="Cavabını yaz..."

@@ -95,6 +95,49 @@ export function isSelectionCorrect(correct, selected, type) {
     .some((s) => openN(s) && openN(s) === got);
 }
 
+// The verdict for question i of a result: "right" | "partial" | "wrong" | "blank".
+//
+// THE source for every right/wrong mark in the app (cards, PDFs, Excel, analytics).
+// It reads the SERVER's own per-question grade (result.grades — what the score was
+// actually built from) and only re-checks here for a result that has none.
+// 2026-11-08 the results PDF did its own plain text compare and showed a 25/25
+// student as "22 right, 3 wrong": "5" against the key "5 / m=5" (several accepted
+// answers). Never compare answers ad hoc in a view — call this.
+export function questionVerdict(result, i) {
+  const grades = Array.isArray(result?.grades) ? result.grades : null;
+  if (grades && i < grades.length) {
+    const g = grades[i];
+    if (g === null || g === undefined) return "blank";
+    const v = Number(g);
+    if (v >= 1) return "right";
+    if (v > 0) return "partial";
+    return "wrong";
+  }
+  const sel = result?.selectedAnswers?.[i];
+  if (!hasAnswer(sel)) return "blank";
+  const ca = result?.correctAnswers?.[i];
+  if (!ca) return "wrong";
+  return isSelectionCorrect(ca.answer, sel.answer, ca.type) ? "right" : "wrong";
+}
+
+// How many questions a result has (key, answers or grades — whichever is longest).
+export function questionCount(result) {
+  return Math.max(
+    Array.isArray(result?.grades) ? result.grades.length : 0,
+    Array.isArray(result?.correctAnswers) ? result.correctAnswers.length : 0,
+    Array.isArray(result?.selectedAnswers) ? result.selectedAnswers.length : 0
+  );
+}
+
+// Right / wrong / blank counts for one result, from questionVerdict. Partial
+// credit counts as neither right nor wrong (it is reported on its own).
+export function resultTally(result) {
+  const total = questionCount(result);
+  const t = { right: 0, wrong: 0, blank: 0, partial: 0, total };
+  for (let i = 0; i < total; i++) t[questionVerdict(result, i)] += 1;
+  return t;
+}
+
 // Score an answer sheet against the exam's correct answers.
 // Each correctly answered question is worth its position-based point value;
 // the total adds up to 100. Extra args (queue/singleClass/singleTag) are

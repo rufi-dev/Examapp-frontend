@@ -1,4 +1,4 @@
-import { hasAnswer, isSelectionCorrect } from "../helper/helper";
+import { hasAnswer, questionVerdict, resultTally } from "../helper/helper";
 
 const ResultCard = ({ result }) => {
   const correctAnswers = result?.correctAnswers || [];
@@ -73,18 +73,38 @@ const ResultCard = ({ result }) => {
     return String(val);
   };
   const answered = (i) => hasAnswer({ answer: selectedAnswers[i]?.answer });
-  // Shared scorer mirrors the server for EVERY type (incl. Cs set-equality and
-  // Cma all-or-nothing) so per-cell marks always agree with the score.
-  const isCorrect = (i) =>
-    answered(i) &&
-    isSelectionCorrect(correctAnswers[i]?.answer, selectedAnswers[i]?.answer, correctAnswers[i]?.type);
+  // The scorer's own verdict (questionVerdict) so per-cell marks always agree
+  // with the score and with every report.
+  const isCorrect = (i) => answered(i) && questionVerdict(result, i) === "right";
   // Colour the student-answer cell green/red by correctness once answered.
   const showMark = (i) => answered(i) && hasCorrect;
 
   const rowLabel =
     "sticky left-0 z-10 bg-surface px-4 py-3 text-left font-semibold text-text whitespace-nowrap border-r border-line";
 
+  // Doğru / Səhv / Boş at a glance — the scorer's own counts (resultTally).
+  const tally = hasCorrect ? resultTally(result) : null;
+
   return (
+    <div className="flex flex-col gap-2.5">
+      {tally && (
+        <div className="flex flex-wrap items-center gap-2 text-sm font-semibold">
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-success/12 px-2.5 py-1 text-success">
+            Doğru <span className="tabular-nums">{tally.right}</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-danger/10 px-2.5 py-1 text-danger">
+            Səhv <span className="tabular-nums">{tally.wrong}</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-surface2 px-2.5 py-1 text-muted">
+            Boş <span className="tabular-nums">{tally.blank}</span>
+          </span>
+          {tally.partial > 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-warning/12 px-2.5 py-1 text-warning">
+              Qismən <span className="tabular-nums">{tally.partial}</span>
+            </span>
+          )}
+        </div>
+      )}
     <div className="scrollbar-thin overflow-x-auto rounded-2xl border border-line bg-surface shadow-soft">
       <table className="w-full border-collapse text-sm">
         <tbody>
@@ -138,7 +158,9 @@ const ResultCard = ({ result }) => {
               <td className={rowLabel}>Nəticə</td>
               {cells.map((i) => (
                 <td key={i} className="min-w-[3rem] whitespace-nowrap border-l border-line px-3 py-3 text-center align-middle">
-                  {isCorrect(i) ? (
+                  {!answered(i) ? (
+                    <span className="font-bold text-muted" title="Boş">—</span>
+                  ) : isCorrect(i) ? (
                     <span className="font-bold text-success">✓</span>
                   ) : (
                     <span className="font-bold text-danger">✕</span>
@@ -149,6 +171,7 @@ const ResultCard = ({ result }) => {
           )}
         </tbody>
       </table>
+    </div>
     </div>
   );
 };

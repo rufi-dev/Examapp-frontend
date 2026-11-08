@@ -29,7 +29,8 @@ const getExamsByClass = async (id) => {
 // leaves — even if the tab is backgrounded or closed (a normal axios request can
 // be dropped on unload). keepalive still allows the Authorization header (unlike
 // sendBeacon), so cross-domain auth keeps working.
-export const reportViolation = async (examId, reason, attemptId) => {
+// `meta` describes the absence for the teacher: { awayMs, autoOff, stillAway }.
+export const reportViolation = async (examId, reason, attemptId, meta = {}) => {
     const token = localStorage.getItem("token")
     const res = await fetch(`${API_URL}exam/${examId}/violation`, {
         method: "POST",
@@ -39,9 +40,27 @@ export const reportViolation = async (examId, reason, attemptId) => {
         },
         credentials: "include",
         keepalive: true,
-        body: JSON.stringify({ reason, attemptId }),
+        body: JSON.stringify({ reason, attemptId, ...meta, count: true }),
     })
     return res.json()
+}
+
+// Report a FORGIVEN absence (the student came back within the grace): logged on
+// the attempt for the teacher, never counted. Its own endpoint on purpose — a
+// server without it answers 404 instead of counting it as a violation.
+export const reportAway = async (examId, attemptId, meta = {}) => {
+    const token = localStorage.getItem("token")
+    const res = await fetch(`${API_URL}exam/${examId}/away`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: "include",
+        keepalive: true,
+        body: JSON.stringify({ attemptId, ...meta }),
+    })
+    return res.ok ? res.json() : null
 }
 
 //getResultsByExam
@@ -195,7 +214,14 @@ export const autosaveAnswers = async (examId, selectedAnswers, attemptId, live =
         attemptId,
         currentQuestion: live.currentQuestion,
         answeredCount: live.answeredCount,
+        ...(live.fsUnavailable ? { fsUnavailable: true } : {}),
     })
+    return response.data
+}
+
+// Teacher cancels an anti-cheat termination: the saved answers are scored again.
+export const pardonResult = async (resultId) => {
+    const response = await axios.post(API_URL + "result/" + resultId + "/pardon")
     return response.data
 }
 

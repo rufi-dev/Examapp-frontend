@@ -2,7 +2,12 @@ import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import axios from "axios";
 import { useDispatch } from "react-redux";
 import { startAttempt, getPdfByExam } from "../../../redux/features/quiz/quizSlice";
-import { reportViolation, getAttemptStatus, autosaveAnswers } from "../../../redux/features/quiz/quizService";
+import {
+  reportViolation,
+  reportAway,
+  getAttemptStatus,
+  autosaveAnswers,
+} from "../../../redux/features/quiz/quizService";
 import { addResult } from "../../../redux/features/quiz/resultSlice";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -14,6 +19,7 @@ import {
   FiMonitor,
   FiZap,
   FiInfo,
+  FiPause,
 } from "react-icons/fi";
 import { toast } from "react-toastify";
 import PdfOpener from "../../components/PdfOpener";
@@ -24,6 +30,46 @@ import Spinner from "../../components/Spinner";
 import Button from "../../components/ui/Button";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { hasAnswer } from "../../helper/helper";
+import {
+  ANTICHEAT_LIMIT,
+  AWAY_GRACE_MS,
+  NOTICE_MS,
+  awayGrace,
+  awayStoreKey,
+  fmtAway,
+  isTouchDevice,
+  judgeAway,
+  wakeLockTrusted,
+} from "../../helper/antiCheat";
+import { KEEP_AWAKE_MP4, KEEP_AWAKE_WEBM } from "../../helper/keepAwakeMedia";
+
+// A text field (the open-answer box): the phone keyboard is up while it's focused.
+const isTextField = (el) =>
+  !!el &&
+  (el.tagName === "TEXTAREA" ||
+    (el.tagName === "INPUT" && !/^(button|checkbox|radio|submit|reset|file|image|range|color)$/i.test(el.type || "")) ||
+    el.isContentEditable);
+
+// Has a touch screen at all (phones, tablets, stylus phones, touch laptops).
+const touchCapable = () => {
+  try {
+    return (navigator.maxTouchPoints || 0) > 0 || "ontouchstart" in window;
+  } catch {
+    return false;
+  }
+};
+
+// Running as the installed home-screen app (PWA).
+const isStandalone = () => {
+  try {
+    return (
+      (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
+      window.navigator.standalone === true
+    );
+  } catch {
+    return false;
+  }
+};
 
 // Maps server denial reasons to a message + where to send the user.
 const DENY = {
@@ -34,9 +80,6 @@ const DENY = {
   not_owned: { msg: "Bu imtahanı əldə etməlisiniz", to: (id) => `/exam/details/${id}` },
   max_tries: { msg: "Maksimum cəhd sayına çatmısınız", to: (id) => `/exam/${id}/result` },
 };
-
-// Anti-cheat: auto-submit after this many leave-the-page violations.
-const ANTICHEAT_LIMIT = 3;
 
 // Max time the solution-photo picker may background the tab without counting as a
 // violation. Beyond this the student is treated as "away under cover of the picker".
@@ -294,6 +337,28 @@ const Quiz = () => {
   // Safety net: if fullscreen can't actually engage (iOS Safari, or a browser
   // that claims support but no-ops), never trap the student behind the gate.
   const [fsBypass, setFsBypass] = useState(false);
+  // Times entering fullscreen was asked for and did not stick (refused, no-op, or
+  // granted and thrown straight back out — an Android gesture bar, a rotation, a
+  // call overlay, or the browser itself when the keyboard comes up). After the
+  // first the gate offers a way through; after the second it lets the student in
+  // (Examopia 2026-09-20: a student sat on this gate for a whole exam).
+  const [fsFails, setFsFails] = useState(0);
+  // Fullscreen could not be used on this device: the exam goes on without it and
+  // the teacher is told (a weaker session is recorded, never hidden).
+  const [fsUnavailable, setFsUnavailable] = useState(false);
+  const fsUnavailableRef = useRef(false);
+  const fsEnteredAt = useRef(0);
+  // Phones/tablets: once the exam has been in fullscreen, losing it (keyboard,
+  // gesture bar, screen off) never brings the gate back — the browser did that,
+  // not the student, and there is no side-by-side window to hide on a phone.
+  // Fullscreen is quietly re-entered on the next tap instead. Leaving the exam is
+  // still detected exactly the same way.
+  const [fsSoft, setFsSoft] = useState(false);
+  const touchRef = useRef(isTouchDevice());
+  // Times the keyboard (an open answer) threw the exam out of fullscreen. After
+  // two, stop re-entering it on taps — this device can't type in fullscreen, and
+  // flipping in and out would only make the page jump.
+  const fsTypingLossRef = useRef(0);
   // A second/extended display gates the exam (questions hidden) rather than
   // instantly counting a violation — the student can disconnect to continue.
   const [secondScreen, setSecondScreen] = useState(false);
@@ -302,19 +367,133 @@ const Quiz = () => {
   // disconnect transition events so they aren't mistaken for cheating.
   const examActiveRef = useRef(false);
   const activeSinceRef = useRef(0);
+  // "Away" tracking (screen off / another app or window). Going away PAUSES the
+  // exam (questions covered) and starts a grace; a strike is counted only for
+  // staying away longer than it. See goAway / comeBack in the anti-cheat effect.
+  const [paused, setPaused] = useState(false);
+  const awayStateRef = useRef(null); // { since, reason, graceMs, autoOff, struck }
+  const awayTimerRef = useRef(null);
+  const pauseTimerRef = useRef(null);
+  const comeBackRef = useRef(null); // set by the anti-cheat effect
+  const lastInteractRef = useRef(Date.now()); // last touch / key / typing in the exam
+  // Screen wake lock, held for the whole attempt so the phone never turns its own
+  // screen off while the student works on paper (which used to read as leaving
+  // the exam). The browser drops it whenever the page hides; re-taken on return.
+  const wakeLockRef = useRef(null);
+  const wakeHeldRef = useRef(false); // a TRUSTED lock was holding the screen on
+  // The browser has no / refused / an untrustworthy wake lock: keep the screen
+  // awake with the silent-video fallback instead (started on the next tap).
+  const needKeepAwakeVideoRef = useRef(false);
+  const requestWakeLock = useCallback(async () => {
+    try {
+      if (!("wakeLock" in navigator)) {
+        needKeepAwakeVideoRef.current = true;
+        return;
+      }
+      if (document.visibilityState !== "visible") return;
+      if (wakeLockRef.current && !wakeLockRef.current.released) return;
+      const sentinel = await navigator.wakeLock.request("screen");
+      wakeLockRef.current = sentinel;
+      const trusted = wakeLockTrusted(navigator.userAgent || "", isStandalone());
+      wakeHeldRef.current = trusted;
+      needKeepAwakeVideoRef.current = !trusted;
+      sentinel.addEventListener?.("release", () => {
+        // Dropped because the page hid: expected, re-taken on return. Dropped while
+        // still on screen (battery saver switched on): the screen can time out now.
+        if (!document.hidden) {
+          wakeHeldRef.current = false;
+          needKeepAwakeVideoRef.current = true;
+        }
+      });
+    } catch {
+      wakeHeldRef.current = false; // refused (low-power / battery-saver mode)
+      needKeepAwakeVideoRef.current = true;
+    }
+  }, []);
+  // Silent-video keep-awake (the NoSleep.js technique): a tiny looping video
+  // playing in the page keeps most phones from blanking the screen even when the
+  // wake lock is refused. It must be started by a tap (browsers only play media
+  // with sound after a user gesture — and the sound is what keeps iOS awake). It
+  // never counts as "screen held" for the anti-cheat rules (unverifiable).
+  const keepAwakeVideoRef = useRef(null);
+  const startKeepAwakeVideo = useCallback(() => {
+    try {
+      let v = keepAwakeVideoRef.current;
+      if (!v) {
+        v = document.createElement("video");
+        v.setAttribute("playsinline", "");
+        v.setAttribute("webkit-playsinline", "");
+        v.setAttribute("title", "BunkerMath");
+        v.setAttribute("aria-hidden", "true");
+        v.disablePictureInPicture = true;
+        Object.assign(v.style, {
+          position: "fixed",
+          left: "0",
+          bottom: "0",
+          width: "2px",
+          height: "2px",
+          opacity: "0.01",
+          pointerEvents: "none",
+          zIndex: "0",
+        });
+        for (const [src, type] of [
+          [KEEP_AWAKE_WEBM, "video/webm"],
+          [KEEP_AWAKE_MP4, "video/mp4"],
+        ]) {
+          const s = document.createElement("source");
+          s.src = src;
+          s.type = type;
+          v.appendChild(s);
+        }
+        v.addEventListener("loadedmetadata", () => {
+          if (v.duration <= 1) {
+            v.loop = true; // the webm
+          } else {
+            // the mp4: keep it playing without ever reaching the end
+            v.addEventListener("timeupdate", () => {
+              if (v.currentTime > 0.5) v.currentTime = Math.random();
+            });
+          }
+        });
+        document.body.appendChild(v);
+        keepAwakeVideoRef.current = v;
+      }
+      if (v.paused) v.play().catch(() => {});
+    } catch {
+      /* no media support — the anti-cheat grace rules still cover a screen-off */
+    }
+  }, []);
   const fsSupported = typeof document !== "undefined" && !!document.fullscreenEnabled;
+  // Give up on fullscreen for this attempt: continue without it, and say so.
+  const giveUpOnFullscreen = useCallback(() => {
+    setFsUnavailable(true);
+    setFsBypass(true);
+  }, []);
+  useEffect(() => {
+    fsUnavailableRef.current = fsUnavailable;
+  }, [fsUnavailable]);
+  const noteFsFailure = useCallback(() => {
+    setFsFails((n) => {
+      const next = n + 1;
+      if (next >= 2) {
+        setFsUnavailable(true);
+        setFsBypass(true);
+      }
+      return next;
+    });
+  }, []);
   const enterFullscreen = () => {
     const el = document.documentElement;
-    if (el.requestFullscreen) {
-      el.requestFullscreen().catch(() => setFsBypass(true));
-      // Some browsers report support but silently no-op; if it didn't actually
-      // go fullscreen within a moment, let the student through anyway.
-      setTimeout(() => {
-        if (!document.fullscreenElement) setFsBypass(true);
-      }, 1200);
-    } else {
-      setFsBypass(true);
+    if (!el.requestFullscreen) {
+      giveUpOnFullscreen();
+      return;
     }
+    el.requestFullscreen().catch(() => giveUpOnFullscreen());
+    // Some browsers report support but silently no-op; others enter fullscreen and
+    // are thrown straight back out. Both look like a button that does nothing.
+    setTimeout(() => {
+      if (!document.fullscreenElement) noteFsFailure();
+    }, 1200);
   };
 
   const deadline = attempt?.expiresAt ? new Date(attempt.expiresAt).getTime() : null;
@@ -527,7 +706,9 @@ const Quiz = () => {
         const k = localStorage.key(i);
         if (!k) continue;
         if (
-          (k.startsWith(`examAnswers_${examId}_`) || k.startsWith(`examVio_${examId}_`)) &&
+          (k.startsWith(`examAnswers_${examId}_`) ||
+            k.startsWith(`examVio_${examId}_`) ||
+            k.startsWith(`examAway_${examId}_`)) &&
           !k.endsWith(suffix)
         ) {
           localStorage.removeItem(k);
@@ -562,8 +743,10 @@ const Quiz = () => {
     liveRef.current = {
       currentQuestion: Math.min(totalCount || 0, safeExamPage * examPageSize + 1),
       answeredCount: latest.filter(hasAns).length,
+      // Recorded rather than hidden: this attempt runs without the fullscreen lock.
+      ...(fsUnavailableRef.current ? { fsUnavailable: true } : {}),
     };
-  }, [safeExamPage, answers, examPageSize, totalCount]);
+  }, [safeExamPage, answers, examPageSize, totalCount, fsUnavailable]);
 
   // Autosave the in-progress selections to the SERVER, so the attempt can be
   // auto-submitted when the timer runs out even if the student never finishes
@@ -1031,20 +1214,26 @@ const Quiz = () => {
     };
   }, [access]);
 
-  // Anti-cheat: when the exam enables it, lock the page down and log leaving.
-  // A violation is counted when the page is hidden (minimize / tab switch) OR
-  // the window loses focus to another window/app. To dodge the false positives
-  // that browser dialogs (password manager, autofill) cause, a focus loss is
-  // only counted if focus hasn't returned after a short delay, and a startup
-  // grace ignores dialogs that pop right after login. copy/paste/right-click/
-  // selection/shortcuts are blocked; the fullscreen gate hides the content
-  // whenever not in fullscreen.
+  // Anti-cheat: when the exam enables it, watch for the student leaving the exam.
+  //
+  // Leaving = the page is hidden (screen off, another app or tab) or the window
+  // lost focus (another window / a floating app / a keyboard panel took it). The
+  // web fires the SAME events for an accidental screen-off as for a deliberate
+  // app switch, so nothing is struck at that instant: the exam PAUSES (questions
+  // covered) and a violation is counted only if the student stays away longer
+  // than the grace (AWAY_GRACE_MS; much longer when the phone turned its own
+  // screen off — see awayGrace). Shorter absences are forgiven but still reported
+  // to the server, so the teacher sees every one of them.
+  //
+  // Mobile freezes timers while hidden, so the verdict is also taken on RETURN
+  // from the real elapsed time; an absence that ends in a reload (the phone
+  // discarded the tab) is remembered in localStorage and judged on the next load.
   useEffect(() => {
     if (access !== "allowed" || !attempt?.antiCheat) return;
-    let blurTimer = null;
+    const storeKey = attempt?.attemptId ? awayStoreKey(examId, userId, attempt.attemptId) : null;
 
     // Reconcile the UI to an authoritative count and act on termination.
-    const applyCount = (count, terminated) => {
+    const applyCount = (count, terminated, awayMs) => {
       violationsRef.current = count;
       setViolations(count);
       persistVio(count);
@@ -1054,22 +1243,28 @@ const Quiz = () => {
         toast.error("Çoxlu pozuntu aşkarlandı — imtahan dayandırılır.");
         submitAnswerSheet("anticheat");
       } else {
-        toast.warn(`Diqqət! İmtahandan çıxmaq qadağandır (${count}/${ANTICHEAT_LIMIT}).`);
+        toast.warn(
+          awayMs
+            ? `İmtahandan ${fmtAway(awayMs)} uzaq qaldınız — pozuntu sayıldı (${count}/${ANTICHEAT_LIMIT}).`
+            : `Diqqət! İmtahandan çıxmaq qadağandır (${count}/${ANTICHEAT_LIMIT}).`,
+          { autoClose: 8000 }
+        );
       }
     };
 
-    const registerViolation = (reason) => {
+    // Count ONE violation. `opts.force` = the absence was already found eligible
+    // when it began (gates/settle were checked then), so don't re-check them now.
+    const registerViolation = (reason, meta = {}, opts = {}) => {
       if (submittingRef.current || terminatedRef.current) return;
-      // The solution-photo picker is open — the camera/file dialog backgrounds the
-      // tab, which is NOT leaving the exam. Suppress only while it's genuinely open;
-      // the ACTIVE cap timer (onPhotoActivity) counts a violation if the student is
-      // still away when the grace elapses, and a return clears the flag.
-      if (photoPickerOpenRef.current) return;
-      // Don't count while a gate is showing (exam not truly started yet)...
-      if (!examActiveRef.current) return;
-      // ...nor during the settle window right after (re)entering the exam, which
-      // absorbs the fullscreen / monitor-disconnect transition events.
-      if (Date.now() - activeSinceRef.current < 2000) return;
+      if (!opts.force) {
+        // The solution-photo picker is open — the camera/file dialog backgrounds
+        // the tab, which is NOT leaving the exam (it has its own capped grace).
+        if (photoPickerOpenRef.current) return;
+        // Don't count while a gate is showing (exam not truly started yet)...
+        if (!examActiveRef.current) return;
+        // ...nor during the settle window right after (re)entering the exam.
+        if (Date.now() - activeSinceRef.current < 2000) return;
+      }
       const now = Date.now();
       if (now - lastVioRef.current < 1200) return; // de-dupe rapid events
       lastVioRef.current = now;
@@ -1080,14 +1275,21 @@ const Quiz = () => {
       persistVio(optimistic);
       // The SERVER increments + enforces the limit, so editing JS/storage or
       // reloading can never lower the real tally.
-      reportViolation(examId, reason, attempt?.attemptId)
+      reportViolation(examId, reason, attempt?.attemptId, { ...meta, count: true })
         .then((res) =>
           applyCount(
             typeof res?.violations === "number" ? res.violations : optimistic,
-            !!res?.terminated
+            !!res?.terminated,
+            meta.awayMs
           )
         )
-        .catch(() => applyCount(optimistic, false)); // offline: enforce locally, reconciles later
+        .catch(() => applyCount(optimistic, false, meta.awayMs)); // offline: enforce locally, reconciles later
+    };
+
+    // A forgiven absence: reported for the teacher, never counted.
+    const logAway = (meta) => {
+      if (submittingRef.current) return;
+      reportAway(examId, attempt?.attemptId, meta).catch(() => {});
     };
 
     // Publish registerViolation so the photo-cap timer (defined outside this effect)
@@ -1105,27 +1307,185 @@ const Quiz = () => {
           photoCapTimerRef.current = null;
         }
       }, 900);
+
+    const persistAway = (st) => {
+      if (!storeKey) return;
+      try {
+        if (st) localStorage.setItem(storeKey, JSON.stringify(st));
+        else localStorage.removeItem(storeKey);
+      } catch {
+        /* storage unavailable — the in-memory path still judges this absence */
+      }
+    };
+    const stopTimers = () => {
+      if (awayTimerRef.current) clearTimeout(awayTimerRef.current);
+      if (pauseTimerRef.current) clearTimeout(pauseTimerRef.current);
+      awayTimerRef.current = null;
+      pauseTimerRef.current = null;
+    };
+
+    // The grace ran out and the student is STILL away (desktop keeps timers
+    // running while another window has focus; mobile usually freezes them, which
+    // is why comeBack checks the elapsed time too).
+    const onGraceElapsed = () => {
+      awayTimerRef.current = null;
+      const st = awayStateRef.current;
+      if (!st || st.struck) return;
+      if (!(document.hidden || !document.hasFocus())) {
+        comeBack(); // the return event was missed — judge it as a return
+        return;
+      }
+      st.struck = true;
+      persistAway(st);
+      registerViolation(
+        st.reason,
+        { awayMs: Date.now() - st.since, autoOff: st.autoOff, stillAway: true },
+        { force: true }
+      );
+    };
+
+    // The screen went off, or something else took focus. Start (or upgrade) the
+    // current absence; pause the exam; count nothing yet.
+    const goAway = (reason) => {
+      if (submittingRef.current || terminatedRef.current) return;
+      if (photoPickerOpenRef.current) return; // the photo picker has its own cap timer
+      if (!examActiveRef.current) return; // still behind a gate — exam not started
+      if (Date.now() - activeSinceRef.current < 2000) return; // settle window
+      const now = Date.now();
+      const cur = awayStateRef.current;
+      if (cur) {
+        // Blur first, then hidden (a screen-off fires both): same absence, but the
+        // page is now really hidden, so the screen-off grace may apply.
+        if (reason === "hidden" && cur.reason === "blur" && !cur.struck) {
+          const g = awayGrace({ reason, idleMs: cur.idleMs, wakeHeld: cur.wakeHeld });
+          Object.assign(cur, { reason, graceMs: g.graceMs, autoOff: g.autoOff });
+          persistAway(cur);
+          if (awayTimerRef.current) clearTimeout(awayTimerRef.current);
+          awayTimerRef.current = setTimeout(
+            onGraceElapsed,
+            Math.max(0, cur.since + cur.graceMs - now) + 250
+          );
+        }
+        if (reason === "hidden") setPaused(true);
+        return;
+      }
+      const idleMs = now - lastInteractRef.current;
+      const wakeHeld = !!wakeHeldRef.current;
+      const g = awayGrace({ reason, idleMs, wakeHeld });
+      const st = { since: now, reason, graceMs: g.graceMs, autoOff: g.autoOff, idleMs, wakeHeld, struck: false };
+      awayStateRef.current = st;
+      persistAway(st);
+      stopTimers();
+      awayTimerRef.current = setTimeout(onGraceElapsed, st.graceMs + 250);
+      // Hidden: cover at once. Focus loss with the page still on screen: cover
+      // after a beat, so a flash of a system sheet doesn't blink the questions.
+      if (reason === "hidden") setPaused(true);
+      else pauseTimerRef.current = setTimeout(() => awayStateRef.current && setPaused(true), 1000);
+    };
+
+    // Back in the exam: judge the absence by how long it really lasted.
+    const comeBack = () => {
+      const st = awayStateRef.current;
+      if (!st || document.hidden) return;
+      awayStateRef.current = null;
+      persistAway(null);
+      stopTimers();
+      setPaused(false);
+      requestWakeLock(); // the browser dropped it while hidden — re-take it
+      const awayMs = Date.now() - st.since;
+      if (st.struck) {
+        // Already counted while away; record how long the absence lasted in all.
+        logAway({ reason: "back", awayMs });
+        return;
+      }
+      const verdict = judgeAway({ awayMs, graceMs: st.graceMs });
+      if (verdict === "strike") {
+        registerViolation(st.reason, { awayMs, autoOff: st.autoOff }, { force: true });
+      } else if (verdict === "forgiven") {
+        logAway({ reason: st.reason, awayMs, autoOff: st.autoOff });
+        if (awayMs >= NOTICE_MS) {
+          toast.info(
+            `İmtahandan ${fmtAway(awayMs)} uzaq qaldınız. Bu dəfə pozuntu sayılmadı, amma müəllim hər çıxışı görür.`,
+            { autoClose: 7000 }
+          );
+        }
+      }
+    };
+    comeBackRef.current = comeBack;
+
+    // An absence that ended in a RELOAD (the phone discarded the backgrounded tab,
+    // or the exam was reopened): judge it by how long it really lasted.
+    try {
+      const raw = storeKey && localStorage.getItem(storeKey);
+      if (raw) {
+        localStorage.removeItem(storeKey);
+        const st = JSON.parse(raw);
+        const awayMs = Date.now() - Number(st?.since);
+        if (Number.isFinite(awayMs) && awayMs > 0 && awayMs < 24 * 3600 * 1000) {
+          if (st.struck) {
+            logAway({ reason: "back", awayMs });
+          } else {
+            const verdict = judgeAway({ awayMs, graceMs: Number(st.graceMs) || AWAY_GRACE_MS });
+            if (verdict === "strike") {
+              registerViolation("reload", { awayMs, autoOff: !!st.autoOff }, { force: true });
+            } else if (verdict === "forgiven") {
+              logAway({ reason: "reload", awayMs, autoOff: !!st.autoOff });
+            }
+          }
+        }
+      }
+    } catch {
+      /* unreadable record — ignore */
+    }
+
     const onVisibility = () => {
-      if (document.visibilityState === "hidden") registerViolation("hidden");
-      else clearPhotoGrace();
-    };
-    // Window lost focus (another window/app came forward). Confirm after a beat
-    // so a transient dialog that returns focus quickly isn't penalised.
-    const onBlur = () => {
-      if (blurTimer) return;
-      blurTimer = setTimeout(() => {
-        blurTimer = null;
-        if (!document.hasFocus()) registerViolation("blur");
-      }, 700);
-    };
-    const onFocus = () => {
-      if (blurTimer) {
-        clearTimeout(blurTimer);
-        blurTimer = null;
+      if (document.visibilityState === "hidden") {
+        goAway("hidden");
+        return;
       }
       clearPhotoGrace();
+      // Visible again. On a phone that IS the return. On a desktop the window must
+      // also have focus (the focus event follows); a click / key on the exam — or
+      // the pause screen's button — also counts, so nobody is left stuck.
+      if (touchRef.current || document.hasFocus()) comeBack();
     };
-    const onFs = () => setIsFs(!!document.fullscreenElement);
+    const onBlur = () => goAway("blur");
+    const onFocus = () => {
+      clearPhotoGrace();
+      comeBack();
+    };
+    const onFs = () => {
+      const on = !!document.fullscreenElement;
+      setIsFs(on);
+      if (on) {
+        fsEnteredAt.current = Date.now();
+        // A phone that has been in fullscreen once never gets the gate back.
+        if (touchRef.current) setFsSoft(true);
+        return;
+      }
+      if (document.hidden) return; // left because the page hid — the away logic covers it
+      const typing = isTextField(document.activeElement);
+      if (typing) {
+        // The browser left fullscreen because the keyboard came up for an open
+        // answer (2026-11-08: students tapped the answer box, got "Tam ekran tələb
+        // olunur", pressed it, the keyboard closed, tapped again… and could never
+        // type). On anything with a touch screen that is the browser's doing: go on
+        // WITHOUT the gate. Leaving the exam is still detected the same way.
+        fsTypingLossRef.current += 1;
+        if (touchCapable()) {
+          setFsSoft(true);
+          return;
+        }
+      }
+      // Granted, then taken away almost at once (gesture bar, rotation, call
+      // overlay), or a desktop browser that drops fullscreen when typing. Pressing
+      // the button again would do exactly the same.
+      const quick = fsEnteredAt.current && Date.now() - fsEnteredAt.current < 1500;
+      if (quick || typing) {
+        fsEnteredAt.current = 0;
+        noteFsFailure();
+      }
+    };
     setIsFs(!!document.fullscreenElement);
 
     document.addEventListener("visibilitychange", onVisibility);
@@ -1134,7 +1494,12 @@ const Quiz = () => {
     document.addEventListener("fullscreenchange", onFs);
 
     return () => {
-      if (blurTimer) clearTimeout(blurTimer);
+      stopTimers();
+      // Unmounting (not unloading): the exam is over or left in-app — nothing to
+      // judge on a later load.
+      persistAway(null);
+      awayStateRef.current = null;
+      comeBackRef.current = null;
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("blur", onBlur);
       window.removeEventListener("focus", onFocus);
@@ -1145,6 +1510,78 @@ const Quiz = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [access, attempt?.antiCheat]);
+
+  // Hold the screen awake for the whole attempt (anti-cheat or not) so the phone
+  // never blanks it while the student works on paper. Re-taken on every return.
+  useEffect(() => {
+    if (access !== "allowed") return;
+    requestWakeLock();
+    const onVis = () => {
+      if (document.visibilityState !== "visible") return;
+      requestWakeLock();
+      // The fallback video was paused while hidden — resume it (if the browser
+      // wants a tap first, the next tap restarts it).
+      const v = keepAwakeVideoRef.current;
+      if (v && v.paused) v.play().catch(() => {});
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      try {
+        wakeLockRef.current && wakeLockRef.current.release();
+      } catch {
+        /* already released */
+      }
+      wakeLockRef.current = null;
+      wakeHeldRef.current = false;
+      try {
+        const v = keepAwakeVideoRef.current;
+        if (v) {
+          v.pause();
+          v.remove();
+        }
+      } catch {
+        /* ignore */
+      }
+      keepAwakeVideoRef.current = null;
+    };
+  }, [access, requestWakeLock]);
+
+  // Presence: every touch / key / keystroke in the exam. It tells a phone's own
+  // screen time-out (nobody touching the screen) apart from leaving, proves the
+  // student is IN the exam during a spurious focus loss (a keyboard panel), and —
+  // a tap being the user gesture browsers require — re-takes a dropped wake lock
+  // and quietly re-enters fullscreen on a phone that lost it.
+  useEffect(() => {
+    if (access !== "allowed") return;
+    let lastFsTry = 0;
+    const mark = (e) => {
+      lastInteractRef.current = Date.now();
+      const st = awayStateRef.current;
+      if (st && st.reason === "blur" && !document.hidden && comeBackRef.current) comeBackRef.current();
+      if (e.type !== "click") return;
+      if (!wakeLockRef.current || wakeLockRef.current.released) requestWakeLock();
+      // No usable wake lock on this phone: the tap starts the silent-video fallback.
+      if (needKeepAwakeVideoRef.current) startKeepAwakeVideo();
+      if (
+        attempt?.antiCheat &&
+        touchRef.current &&
+        fsSupported &&
+        !document.fullscreenElement &&
+        !isTextField(e.target) &&
+        !isTextField(document.activeElement) &&
+        fsTypingLossRef.current < 2 &&
+        Date.now() - lastFsTry > 3000
+      ) {
+        lastFsTry = Date.now();
+        document.documentElement.requestFullscreen?.().catch(() => {});
+      }
+    };
+    const types = ["pointerdown", "keydown", "input", "click"];
+    types.forEach((t) => document.addEventListener(t, mark, true));
+    return () => types.forEach((t) => document.removeEventListener(t, mark, true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [access, attempt?.antiCheat, requestWakeLock, startKeepAwakeVideo]);
 
   // Second-monitor GATE (not a violation): a second/extended display is the main
   // way to run an AI tool beside the exam, so while one is connected we hide the
@@ -1166,13 +1603,13 @@ const Quiz = () => {
   // churn (entering fullscreen, disconnecting a monitor) must not be penalised.
   useEffect(() => {
     const active = attempt?.antiCheat
-      ? (isFs || fsBypass || !fsSupported) && !secondScreen
+      ? (isFs || fsBypass || fsSoft || !fsSupported) && !secondScreen
       : true;
     if (active && !examActiveRef.current) {
       activeSinceRef.current = Date.now(); // just (re)entered -> fresh settle window
     }
     examActiveRef.current = active;
-  }, [attempt?.antiCheat, isFs, fsBypass, fsSupported, secondScreen]);
+  }, [attempt?.antiCheat, isFs, fsBypass, fsSoft, fsSupported, secondScreen]);
 
   const handleAnswerChange = useCallback((e, index, type) => {
     if (lockedRef.current) return; // frozen after submit — no post-submit edits
@@ -1341,7 +1778,7 @@ const Quiz = () => {
 
       {/* Fullscreen lock: covers everything when anti-cheat is on but the exam
           isn't in fullscreen — so leaving fullscreen / minimizing hides it. */}
-      {attempt?.antiCheat && fsSupported && !fsBypass && !isFs && !secondScreen && (
+      {attempt?.antiCheat && fsSupported && !fsBypass && !fsSoft && !isFs && !secondScreen && (
         <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-bg/95 p-6 backdrop-blur">
           <div className="max-w-md text-center">
             <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-danger/12 text-danger">
@@ -1349,12 +1786,61 @@ const Quiz = () => {
             </div>
             <h2 className="font-display text-xl font-bold text-text">Tam ekran tələb olunur</h2>
             <p className="mt-2 leading-relaxed text-muted">
-              Bu imtahan yalnız tam ekranda keçirilir. Davam etmək üçün düyməni basın.
-              Tam ekrandan çıxsanız və ya pəncərəni kiçiltsəniz, suallar gizlədilir və pozuntu
-              qeydə alınır.
+              Bu imtahan tam ekranda keçirilir. Davam etmək üçün düyməni basın. Tam ekrandan
+              çıxsanız, qayıdana qədər suallar gizlədilir.
             </p>
             <Button onClick={enterFullscreen} size="lg" className="mt-6">
               <FiMaximize /> Tam ekrana keç
+            </Button>
+            {/* The button did not work on this device. Say so, and give a way
+                forward — a student must never be left pressing it all exam. */}
+            {fsFails > 0 && (
+              <div className="mt-5 rounded-2xl border border-line bg-surface/80 p-4 text-sm">
+                <p className="text-muted">
+                  Cihazınız tam ekranı saxlaya bilmədi. İmtahana tam ekransız davam edə bilərsiniz —
+                  imtahandan çıxışlar yenə qeydə alınır və müəlliminiz görür.
+                </p>
+                <button
+                  type="button"
+                  onClick={giveUpOnFullscreen}
+                  className="mt-3 w-full rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-fg transition-colors hover:bg-primary-hover"
+                >
+                  Tam ekransız davam et
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Paused: the screen went off or something else took focus. The questions
+          are covered until the student is back. Coming back quickly costs NOTHING
+          (an accidental screen-off is not cheating); only staying away past the
+          grace counts. Tapping here is a way back too. */}
+      {attempt?.antiCheat && paused && !secondScreen && (
+        <div className="fixed inset-0 z-[1320] flex items-center justify-center bg-bg/95 p-6 backdrop-blur">
+          <div className="max-w-md text-center">
+            <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-amber-500/12 text-amber-600">
+              <FiPause className="text-3xl" />
+            </div>
+            <h2 className="font-display text-xl font-bold text-text">İmtahan dayandırıldı</h2>
+            <p className="mt-2 leading-relaxed text-muted">
+              Ekran söndü və ya başqa tətbiqə / pəncərəyə keçdiniz. Tez qayıtsanız pozuntu
+              sayılmır — yalnız uzun müddət imtahandan kənarda qalmaq pozuntudur.
+            </p>
+            <Button
+              size="lg"
+              className="mt-6"
+              onClick={() => {
+                try {
+                  window.focus();
+                } catch {
+                  /* ignore */
+                }
+                comeBackRef.current && comeBackRef.current();
+              }}
+            >
+              İmtahana qayıt
             </Button>
           </div>
         </div>

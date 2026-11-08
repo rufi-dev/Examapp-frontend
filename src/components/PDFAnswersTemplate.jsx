@@ -1,6 +1,7 @@
 import React from "react";
 import { Page, Text, Document, StyleSheet, View, Font } from "@react-pdf/renderer";
 import DisplayFont from "../fonts/SchibstedGrotesk-Black.ttf";
+import { questionVerdict, resultTally } from "../helper/helper";
 
 Font.register({ family: "Display", src: DisplayFont });
 
@@ -29,18 +30,19 @@ const UserGrid = ({ result }) => {
   const selected = result?.selectedAnswers || [];
   const n = Math.max(correct.length, selected.length);
   const idxs = Array.from({ length: n }, (_, i) => i);
-  // Trim like the server scorer so the PDF marks match the score.
-  const isCorrect = (i) => {
-    const s = String(selected[i]?.answer ?? "").trim();
-    const c = String(correct[i]?.answer ?? "").trim();
-    return s !== "" && c !== "" && s === c;
-  };
+  // The scorer's own verdict (questionVerdict) so the PDF marks always match the
+  // score — a text compare of our own marked "5" wrong against "5 / m=5".
+  const isCorrect = (i) => questionVerdict(result, i) === "right";
+  const tally = resultTally(result); // Doğru / Səhv / Boş for the header line
 
   return (
     <View style={styles.userBlock} wrap={false}>
       <View style={styles.userHead}>
         <View>
           <Text style={styles.userName}>{result.userId?.name || "—"}</Text>
+          <Text style={styles.tally}>
+            Doğru {tally.right} · Səhv {tally.wrong + tally.partial} · Boş {tally.blank}
+          </Text>
           {result.terminated && (
             <Text style={styles.terminated}>
               POZUNTUYA GÖRƏ DAYANDIRILDI ({result.violations || 0} pozuntu)
@@ -89,7 +91,15 @@ const UserGrid = ({ result }) => {
           <Text style={styles.labelCell}>Nəticə</Text>
           {idxs.map((i) => (
             <View key={i} style={styles.cellBox}>
-              <View style={[styles.dot, { backgroundColor: isCorrect(i) ? C.green : C.red }]} />
+              <View
+                style={[
+                  styles.dot,
+                  {
+                    backgroundColor:
+                      questionVerdict(result, i) === "blank" ? C.faint : isCorrect(i) ? C.green : C.red,
+                  },
+                ]}
+              />
             </View>
           ))}
         </View>
@@ -174,6 +184,7 @@ const styles = StyleSheet.create({
   userName: { fontSize: 11, color: C.ink },
   userScore: { fontSize: 10, color: C.primary },
   terminated: { fontSize: 7.5, color: C.red, marginTop: 2 },
+  tally: { fontSize: 7.5, color: C.muted, marginTop: 2 },
 
   table: { borderWidth: 1, borderColor: C.line, borderRadius: 5, overflow: "hidden" },
   row: { flexDirection: "row", borderTopWidth: 0.5, borderTopColor: C.line },

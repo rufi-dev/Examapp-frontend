@@ -1,6 +1,7 @@
 import React from "react";
 import { Page, Text, Document, StyleSheet, View, Font } from "@react-pdf/renderer";
 import DisplayFont from "../fonts/SchibstedGrotesk-Black.ttf";
+import { resultTally } from "../helper/helper";
 
 // Single geometric family used throughout. SchibstedGrotesk-Black reliably
 // renders Azerbaijani glyphs (ə, ı, ş, ğ, ç, ö, ü), so hierarchy comes from
@@ -33,24 +34,14 @@ const fmt = (n) => {
   return (Math.round(v * 10) / 10).toString();
 };
 
-// Right / wrong / blank counts for one student's answer sheet.
+// Right / wrong / blank counts for one student's answer sheet — the scorer's own
+// verdicts (resultTally), never a text compare of our own: that marked a 25/25
+// student "3 wrong" on questions with several accepted answers ("5 / m=5").
+// Partial credit is shown as wrong here (not fully right).
 const tally = (result) => {
-  const correct = result?.correctAnswers || [];
-  const selected = result?.selectedAnswers || [];
-  const n = Math.max(correct.length, selected.length);
-  const hasKey = correct.length > 0;
-  let right = 0;
-  let wrong = 0;
-  let blank = 0;
-  // Mirror the server scorer: trim, and treat whitespace-only as blank.
-  for (let i = 0; i < n; i++) {
-    const sa = String(selected[i]?.answer ?? "").trim();
-    const ca = String(correct[i]?.answer ?? "").trim();
-    if (sa === "") blank++;
-    else if (hasKey && ca !== "" && sa === ca) right++;
-    else wrong++;
-  }
-  return { right, wrong, blank, total: n, hasKey };
+  const t = resultTally(result);
+  const hasKey = Array.isArray(result?.grades) || (result?.correctAnswers || []).length > 0;
+  return { right: t.right, wrong: t.wrong + t.partial, blank: t.blank, total: t.total, hasKey };
 };
 
 // Performance band drives the score pill colour.

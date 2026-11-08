@@ -181,7 +181,8 @@ const ExamInstructions = () => {
   }
   if (singleExam.antiCheat && !paper) {
     rules.push(
-      "Anti-cheat aktivdir: imtahan ayrıca pəncərədə və tam ekranda açılır; tab/pəncərə dəyişmə və ya pəncərəni kiçiltmə qeydə alınır."
+      "Anti-cheat aktivdir: imtahan tam ekranda açılır, imtahandan hər çıxış qeydə alınır və müəllim görür.",
+      "Ekran imtahan boyu özü sönməyəcək. Ekran təsadüfən sönsə və ya bildirişə baxsanız, tez qayıdın — qısa çıxış pozuntu sayılmır. Uzun müddət başqa tətbiqdə və ya pəncərədə qalmaq pozuntudur; 3 pozuntuda imtahan dayandırılır."
     );
   }
 

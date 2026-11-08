@@ -16,6 +16,7 @@ import AccountLayout from "../../components/AccountLayout";
 import CenterLoader from "../../components/ui/CenterLoader";
 import { getLiveAttempts } from "../../../redux/features/quiz/quizService";
 import useRedirectLoggedOutUser from "../../customHook/useRedirectLoggedOutUser";
+import { AwayChip, PardonButton } from "../../components/AwayInfo";
 
 const pad = (n) => String(n).padStart(2, "0");
 const fmtClock = (ms) => {
@@ -274,17 +275,20 @@ const LiveExam = () => {
             <span className="font-normal text-muted">· {pct}%</span>
           </span>
           {antiCheat && (
-            <span
-              className={`inline-flex items-center gap-1 rounded-lg px-2 py-0.5 font-semibold ${
-                s.violations >= violationLimit
-                  ? "bg-danger/12 text-danger"
-                  : s.violations > 0
-                  ? "bg-warning/12 text-warning"
-                  : "bg-surface2 text-muted"
-              }`}
-              title="İmtahandan çıxma sayı"
-            >
-              <FiAlertTriangle /> {s.violations || 0}/{violationLimit}
+            <span className="inline-flex items-center gap-1.5">
+              <AwayChip away={s.away} />
+              <span
+                className={`inline-flex items-center gap-1 rounded-lg px-2 py-0.5 font-semibold ${
+                  s.violations >= violationLimit
+                    ? "bg-danger/12 text-danger"
+                    : s.violations > 0
+                    ? "bg-warning/12 text-warning"
+                    : "bg-surface2 text-muted"
+                }`}
+                title="Pozuntu sayı (uzun müddət imtahandan kənarda qalmaq)"
+              >
+                <FiAlertTriangle /> {s.violations || 0}/{violationLimit}
+              </span>
             </span>
           )}
         </div>
@@ -408,12 +412,22 @@ const LiveExam = () => {
                   ? "bg-warning/12 text-warning"
                   : "bg-surface2/70 text-muted"
               }`}
-              title="İmtahandan çıxma sayı"
+              title="Pozuntu sayı (uzun müddət imtahandan kənarda qalmaq)"
             >
               <FiAlertTriangle /> {s.violations || 0}/{violationLimit}
             </span>
           )}
+          {antiCheat && <AwayChip away={s.away} floating={false} />}
+          {s.pardoned && (
+            <span className="inline-flex items-center gap-1 rounded-lg bg-success/12 px-2.5 py-1 text-xs font-bold text-success">
+              Bərpa edildi
+            </span>
+          )}
         </div>
+
+        {flagged && s.resultId && (
+          <PardonButton resultId={s.resultId} name={s.name} className="relative mt-3 w-full" />
+        )}
 
         {s.pendingReview && (
           <p className="relative mt-3 inline-flex items-center gap-1 self-start rounded-lg bg-amber-500/12 px-2.5 py-1 text-xs font-semibold text-amber-600">

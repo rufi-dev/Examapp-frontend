@@ -4,7 +4,7 @@
 // and excluded from the PWA precache (see vite.config globIgnores).
 import ExcelJS from "exceljs/dist/exceljs.min.js";
 import { examStats, itemAnalysis } from "../helper/analytics";
-import { hasAnswer, isSelectionCorrect } from "../helper/helper";
+import { questionVerdict, resultTally } from "../helper/helper";
 
 // ---- styling tokens ----
 const HEADER_FILL = "FF4F46E5"; // indigo
@@ -46,22 +46,11 @@ function styleHeaderRow(row) {
   row.height = 22;
 }
 
-// Per-result correct / wrong / blank counts (authoritative, mirrors the app).
+// Per-result correct / wrong / blank counts — the scorer's own verdicts
+// (resultTally), so the sheet always agrees with the score. Partial = not right.
 function tally(result) {
-  const correct = result.correctAnswers || [];
-  const selected = result.selectedAnswers || [];
-  let c = 0;
-  let w = 0;
-  let b = 0;
-  for (let i = 0; i < correct.length; i++) {
-    const ca = correct[i]?.answer;
-    const type = correct[i]?.type;
-    const sv = selected[i]?.answer;
-    if (!hasAnswer({ answer: sv })) b += 1;
-    else if (isSelectionCorrect(ca, sv, type)) c += 1;
-    else w += 1;
-  }
-  return { c, w, b };
+  const t = resultTally(result);
+  return { c: t.right, w: t.wrong + t.partial, b: t.blank };
 }
 
 export async function exportResultsExcel(results) {
@@ -195,12 +184,10 @@ export async function exportResultsExcel(results) {
     row.getCell(1).alignment = { horizontal: "left" };
     for (let i = 0; i < qCount; i++) {
       const cell = row.getCell(3 + i);
-      const ca = correct[i]?.answer;
-      const sv = selected[i]?.answer;
-      const type = correct[i]?.type;
-      if (!hasAnswer({ answer: sv })) {
+      const v = questionVerdict(res, i); // the scorer's own verdict
+      if (v === "blank") {
         cell.fill = fill(BLANK_FILL);
-      } else if (isSelectionCorrect(ca, sv, type)) {
+      } else if (v === "right") {
         cell.fill = fill(GOOD_FILL);
         cell.font = GOOD_FONT;
       } else {

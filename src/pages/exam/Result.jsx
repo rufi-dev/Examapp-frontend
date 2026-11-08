@@ -12,7 +12,7 @@ import { getAttemptStatus } from "../../../redux/features/quiz/quizService";
 import ResultCard from "../../components/ResultCard";
 import AccountLayout from "../../components/AccountLayout";
 import Button from "../../components/ui/Button";
-import { isSelectionCorrect } from "../../helper/helper";
+import { questionVerdict } from "../../helper/helper";
 import ZoomableImage from "../../components/ZoomableImage";
 import { FiRotateCcw, FiList, FiAlertTriangle, FiImage } from "react-icons/fi";
 
@@ -211,15 +211,12 @@ const Result = () => {
   // Paper exam: graded by the teacher from a photographed answer card.
   const paper = lastResult.source === "paper" || lastResult.examId?.mode === "paper";
   const correctAnswers = lastResult.correctAnswers || [];
-  const selectedAnswers = lastResult.selectedAnswers || [];
   const canScore = lastResult.earnPoints != null;
   const canAnswers = correctAnswers.length > 0;
   const total = correctAnswers.length;
-  // Correct-count mirrors the server scorer for every type (Cm/Cs/Cma/open) via
-  // the shared helper, so this tally agrees with the score ring and the analysis.
-  const correct = correctAnswers.filter((a, i) =>
-    isSelectionCorrect(a?.answer, selectedAnswers[i]?.answer, a?.type)
-  ).length;
+  // Correct-count from the scorer's own verdicts (questionVerdict), so this tally
+  // agrees with the score ring, the analysis and every report.
+  const correct = correctAnswers.filter((a, i) => questionVerdict(lastResult, i) === "right").length;
   // Score denominator: preset exams (e.g. Blok = 150) are out of their own total;
   // legacy/custom exams stay out of 100 (questionPoints), regardless of a
   // possibly mis-set totalMarks — so existing results never shift.
