@@ -35,6 +35,8 @@ import {
   FiInfo,
   FiCheckCircle,
   FiEdit3,
+  FiPaperclip,
+  FiFileText,
 } from "react-icons/fi";
 import { RxDragHandleDots2 } from "react-icons/rx";
 import { questionPoints, hasAnswer } from "../../helper/helper";
@@ -441,6 +443,47 @@ const PAGE_OPTIONS = [
   { value: "5", label: "5" },
 ];
 
+// ---- AI creation (Examopia's design, ported 2026-11-08) ----
+// One sentence is enough: subject, class, count. Tapping one fills the box.
+const PROMPT_EXAMPLES = [
+  "9-cu sinif riyaziyyat: kvadrat tənliklər və Viyet teoremi, 10 test sualı, orta çətinlik",
+  "Buraxılış 11-ci sinif: faiz, nisbət və proporsiya — 8 qapalı və 4 açıq sual",
+  "6-cı sinif: adi kəsrlərin toplanması və çıxılması, 12 sual, asandan çətinə",
+];
+// Status lines while the AI writes questions (extraction has EXTRACT_STEPS).
+const GEN_STEPS = ["Suallar hazırlanır…", "Variantlar yazılır…", "Düzgün cavablar seçilir…", "Yoxlanılır, az qalıb…"];
+// What the AI can read: a PDF, or photos of a worksheet. Mirrors the server.
+const AI_FILE_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/jpg", "image/webp"];
+const AI_FILE_MAX = 32 * 1024 * 1024; // per file — the server's upload limit
+const fmtSize = (b) =>
+  b >= 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`;
+
+// What the exam's preset means for the AI. Writing new questions: follow the
+// preset's structure (unless the teacher says otherwise). Reading a file: mark
+// the "həlli tələb olunan" section as Cd rather than plain Co.
+function presetAiHint(presetId, forGeneration) {
+  const p = PRESETS[presetId];
+  if (!p || !Array.isArray(p.slots) || !p.slots.length) return "";
+  const NAMES = {
+    Cm: "qapalı (Cm)",
+    Cs: "çoxseçimli (Cs)",
+    Co: "açıq (Co)",
+    Cd: "həlli tələb olunan açıq (Cd)",
+    Cma: "uyğunluq (Cma)",
+    Cmu: "uyğunluq (Cma)",
+  };
+  const cd = p.slots.filter((x) => x.type === "Cd").reduce((n, x) => n + (Number(x.count) || 0), 0);
+  if (forGeneration) {
+    const parts = p.slots.filter((x) => Number(x.count) > 0 && NAMES[x.type]).map((x) => `${x.count} ${NAMES[x.type]}`);
+    return parts.length
+      ? `Bu imtahan "${p.label}" strukturundadır: ${parts.join(", ")} — bu ardıcıllıqla. Müəllim başqa say və ya quruluş deməyibsə, sualları DƏQİQ bu strukturda yarat.`
+      : "";
+  }
+  return cd
+    ? `Bu imtahan "${p.label}" strukturludur. Sonuncu ${cd} açıq sual "həlli tələb olunan / ətraflı yazın" bölməsindəndir — onları tip Cd (Həlli tələb olunan açıq sual) kimi işarələ; qısa açıq suallar isə Co olsun.`
+    : "";
+}
+
 const StructuredBuilder = () => {
   useRedirectLoggedOutUser("/login");
   const dispatch = useDispatch();
@@ -450,25 +493,24 @@ const StructuredBuilder = () => {
   const [ready, setReady] = useState(false); // exam/questions loaded -> show builder
   const [extracting, setExtracting] = useState(false); // AI PDF import running
   const [streamItems, setStreamItems] = useState([]); // questions as they stream in
-  const [promptOpen, setPromptOpen] = useState(false); // extra-instructions box shown
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false); // mobile tools drawer
-  // Optional extra instructions sent to the AI before the PDF. Reusable across
-  // extractions, so it's persisted globally (not per-exam).
-  const [aiExtraPrompt, setAiExtraPrompt] = useState(() => {
-    try {
-      return localStorage.getItem("ai-extra-prompt") || "";
-    } catch {
-      return "";
-    }
-  });
-  // AI provider for PDF extraction: "gemini" (default, cheaper — needs
-  // GEMINI_API_KEY on the server) or "claude" (uses ANTHROPIC_API_KEY).
-  const [aiProvider, setAiProvider] = useState("gemini");
-  const pdfInputRef = useRef(null);
-  // PDF import: "append" adds to the end, "replace" overwrites everything. We
-  // ask (a 2-button dialog) only when the builder already has real content.
-  const [importChoice, setImportChoice] = useState(false);
-  const importModeRef = useRef("replace");
+  // AI, Examopia's way: one "Nə yaradaq?" window — describe the exam, or attach a
+  // PDF / photos — reached from the AI dock, the tools panel, or by itself on an
+  // exam with nothing written yet. No engine choice: the server runs Claude, then
+  // ChatGPT, on the platform's subscriptions.
+  const [kickoff, setKickoff] = useState(false);
+  const [kickoffFiles, setKickoffFiles] = useState([]);
+  const [kickoffText, setKickoffText] = useState(""); // what was asked (kept across a failed run)
+  const [kickoffReady, setKickoffReady] = useState(false); // ≥ 5 chars typed
+  const [kickoffMode, setKickoffMode] = useState("replace"); // replace | append
+  const [kickoffDrag, setKickoffDrag] = useState(false);
+  const [generating, setGenerating] = useState(false); // AI writing questions
+  const kickoffRef = useRef(null);
+  const kickoffFileRef = useRef(null);
+  const runAbortRef = useRef(null);
+  const dragDepth = useRef(0);
+  const autoKickoffRef = useRef(false);
+  const aiBusy = extracting || generating;
   const [examName, setExamName] = useState("");
   const [preset, setPreset] = useState(""); // exam scoring preset (for bal preview)
   const {
@@ -505,13 +547,13 @@ const StructuredBuilder = () => {
 
   // Cycle the AI loader status lines while an extraction runs.
   useEffect(() => {
-    if (!extracting) {
+    if (!aiBusy) {
       setExtractStep(0);
       return;
     }
-    const id = setInterval(() => setExtractStep((s) => (s + 1) % EXTRACT_STEPS.length), 2200);
+    const id = setInterval(() => setExtractStep((s) => s + 1), 2200);
     return () => clearInterval(id);
-  }, [extracting]);
+  }, [aiBusy]);
 
   // Autosave / dirty tracking.
   const draftKey = `structDraft_${examId}`;
@@ -641,6 +683,13 @@ const StructuredBuilder = () => {
       setExplEnabled(prefs?.explEnabled ?? hasExpl(baseQs));
       loadedRef.current = true;
       setReady(true);
+      // Nothing written yet (a new exam, or only a preset's empty slots): open on
+      // the AI window, as Examopia does. "Əl ilə yazacağam" closes it.
+      if (!autoKickoffRef.current && !qsHaveContent(baseQs)) {
+        autoKickoffRef.current = true;
+        setKickoffMode("replace");
+        setKickoff(true);
+      }
     };
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1028,107 +1077,169 @@ const StructuredBuilder = () => {
 
   // Does the builder already hold real (non-empty) questions? Used to decide
   // whether a PDF import needs to ask "add or replace".
-  const builderHasContent = () =>
-    questions.some(
+  const qsHaveContent = (qs) =>
+    (qs || []).some(
       (q) =>
         filledContent({ text: q.text, image: q.image, latex: q.latex }) ||
         (q.choices || []).some(filledContent) ||
         (q.pairs || []).some((p) => norm(p.left) || norm(p.right)) ||
         norm(q.answer)
     );
+  const builderHasContent = () => qsHaveContent(questions);
 
-  // Import button: ask add-vs-replace only when there is content to preserve;
-  // otherwise import straight away (nothing to lose).
-  const startImport = () => {
-    setMobileToolsOpen(false); // import dialog / streaming take over the screen
-    if (builderHasContent()) {
-      setImportChoice(true);
-    } else {
-      importModeRef.current = "replace";
-      pdfInputRef.current?.click();
+  const openKickoff = () => {
+    if (aiBusy) return;
+    setMobileToolsOpen(false);
+    // Over written questions the safe default is to ADD; replacing is one tap.
+    setKickoffMode(builderHasContent() ? "append" : "replace");
+    setKickoff(true);
+  };
+  const cancelRun = () => {
+    runAbortRef.current?.abort();
+    runAbortRef.current = null;
+  };
+
+  const pickKickoffFiles = (list) => {
+    const picked = Array.from(list || []);
+    if (!picked.length) return;
+    if (picked.some((f) => !AI_FILE_TYPES.includes(String(f.type || "").toLowerCase()))) {
+      return toast.error("PDF və ya şəkil (PNG, JPG, WEBP) seçin");
     }
+    if (picked.some((f) => f.size > AI_FILE_MAX)) return toast.error("Fayl çox böyükdür (ən çox 32 MB)");
+    setKickoffFiles((cur) => {
+      const merged = [...cur];
+      // The same file chosen twice (easy on a phone) counts once.
+      picked.forEach((f) => {
+        if (!merged.some((e) => e.name === f.name && e.size === f.size)) merged.push(f);
+      });
+      if (merged.length > 10) {
+        toast.error("Ən çox 10 fayl");
+        return merged.slice(0, 10);
+      }
+      return merged;
+    });
   };
-  const pickImportMode = (mode) => {
-    importModeRef.current = mode;
-    setImportChoice(false);
-    pdfInputRef.current?.click();
+  const removeKickoffFile = (i) => setKickoffFiles((cur) => cur.filter((_, k) => k !== i));
+
+  const aiFetch = (path, body, signal) => {
+    const token = localStorage.getItem("token");
+    const json = !(body instanceof FormData);
+    return fetch(`${import.meta.env.VITE_BACKEND_URL}/api/quiz/${path}/${examId}`, {
+      method: "POST",
+      body: json ? JSON.stringify(body) : body,
+      credentials: "include",
+      signal,
+      headers: {
+        ...(json ? { "Content-Type": "application/json" } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
   };
 
-  const onExtractFile = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    if (file.type !== "application/pdf") return toast.error("PDF fayl seçin");
-    const mode = importModeRef.current === "append" ? "append" : "replace";
-    setAiPdfFile(file); // keep the PDF so figures can be cropped from it
+  // Both AI routes answer over SSE: `question` events are the live preview,
+  // `done` carries the AUTHORITATIVE result that gets committed.
+  const readAiStream = async (resp, fallbackMsg) => {
+    if (!resp.ok || !resp.body) {
+      let msg = fallbackMsg;
+      try {
+        msg = (await resp.json())?.message || msg;
+      } catch {
+        /* ignore */
+      }
+      throw new Error(msg);
+    }
+    let finalData = null;
+    let streamErr = null;
+    await consumeSSE(resp, {
+      question: (q) =>
+        setStreamItems((prev) => [
+          ...prev,
+          {
+            type: q?.type || "Cm",
+            text: String(q?.text || "").replace(/\s+/g, " ").trim().slice(0, 90),
+            hasFigure: !!q?.hasFigure,
+          },
+        ]),
+      status: (st) => st?.message && toast.info(st.message),
+      done: (d) => (finalData = d),
+      error: (er) => (streamErr = er?.message || fallbackMsg),
+    });
+    if (streamErr) throw new Error(streamErr);
+    if (!finalData) throw new Error("AI cavabı alınmadı. Yenidən cəhd edin.");
+    return finalData;
+  };
+
+  // Commit, close the window, and land on the student preview to review the
+  // result (Examopia's flow) — "Bağla" there returns to editing.
+  const finishAiRun = (qs, mode, data) => {
+    commitExtracted(qs, mode, data);
+    setKickoff(false);
+    setKickoffFiles([]);
+    setKickoffText("");
+    setKickoffReady(false);
+    openPreview();
+  };
+
+  const extractFromFiles = async (files, mode, instructions) => {
+    const pdf = files.find((f) => f.type === "application/pdf");
+    if (pdf) setAiPdfFile(pdf); // keep a PDF so figures can be cropped from it
     setStreamItems([]);
     setExtracting(true);
+    const ctrl = new AbortController();
+    runAbortRef.current = ctrl;
     try {
       const fd = new FormData();
-      fd.append("pdf", file);
-      fd.append("provider", aiProvider);
-      // If this exam uses a preset with solution-required (Cd) questions, tell the
-      // AI so it types the "ətraflı yazın / həlli tələb olunan" section as Cd
-      // instead of plain Co (the teacher can still adjust afterwards).
-      const presetCfg = PRESETS[preset];
-      const cdCount = (presetCfg?.slots || [])
-        .filter((s) => s.type === "Cd")
-        .reduce((n, s) => n + (Number(s.count) || 0), 0);
-      const presetHint = cdCount
-        ? `Bu imtahan "${presetCfg.label}" strukturludur. Sonuncu ${cdCount} açıq sual "həlli tələb olunan / ətraflı yazın" bölməsindəndir — onları tip Cd (Həlli tələb olunan açıq sual) kimi işarələ; qısa açıq suallar isə Co olsun.`
-        : "";
-      const extra = [presetHint, aiExtraPrompt.trim()].filter(Boolean).join("\n\n");
+      files.forEach((f) => fd.append("pdf", f));
+      const extra = [presetAiHint(preset, false), String(instructions || "").trim()].filter(Boolean).join("\n\n");
       if (extra) fd.append("instructions", extra);
-
-      const token = localStorage.getItem("token");
-      const resp = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/quiz/extractQuestionsStream/${examId}`,
-        {
-          method: "POST",
-          body: fd,
-          credentials: "include",
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        }
-      );
-      if (!resp.ok || !resp.body) {
-        let msg = "AI emalı alınmadı";
-        try {
-          msg = (await resp.json())?.message || msg;
-        } catch {
-          /* ignore */
-        }
-        throw new Error(msg);
-      }
-
-      // Read the SSE stream: `question` events stream in for the live preview,
-      // `done` carries the AUTHORITATIVE full result we actually commit.
-      let finalData = null;
-      let streamErr = null;
-      await consumeSSE(resp, {
-        question: (q) =>
-          setStreamItems((prev) => [
-            ...prev,
-            { type: q?.type || "Cm", text: String(q?.text || "").replace(/\s+/g, " ").trim().slice(0, 80), hasFigure: !!q?.hasFigure },
-          ]),
-        status: (s) => s?.message && toast.info(s.message),
-        done: (d) => (finalData = d),
-        error: (er) => (streamErr = er?.message || "AI emalı alınmadı"),
-      });
-      if (streamErr) throw new Error(streamErr);
-      if (!finalData) throw new Error("AI cavabı alınmadı. Yenidən cəhd edin.");
-
-      const aiQs = finalData.questions || [];
-      if (!aiQs.length) {
-        toast.error("PDF-də sual tapılmadı");
-        return;
-      }
-      commitExtracted(aiQs, mode, finalData);
+      const data = await readAiStream(await aiFetch("extractQuestionsStream", fd, ctrl.signal), "AI emalı alınmadı");
+      const qs = data.questions || [];
+      if (!qs.length) return toast.error("Faylda sual tapılmadı");
+      finishAiRun(qs, mode, data);
     } catch (err) {
-      toast.error(err?.message || "AI emalı alınmadı");
+      // Dayandır is a choice, not a failure.
+      if (err?.name !== "AbortError") toast.error(err?.message || "AI emalı alınmadı");
     } finally {
       setExtracting(false);
       setStreamItems([]);
+      runAbortRef.current = null;
     }
+  };
+
+  const generateFromPrompt = async (prompt, mode) => {
+    setStreamItems([]);
+    setGenerating(true);
+    const ctrl = new AbortController();
+    runAbortRef.current = ctrl;
+    try {
+      // The preset's structure only describes a whole new paper, not an addition.
+      const hint = mode === "replace" ? presetAiHint(preset, true) : "";
+      const data = await readAiStream(
+        await aiFetch("generateQuestionsStream", { prompt, instructions: hint || undefined }, ctrl.signal),
+        "Suallar yaradıla bilmədi"
+      );
+      const qs = data.questions || [];
+      if (!qs.length) return toast.error("Sual yaradıla bilmədi. Təsviri bir az dəqiqləşdirin.");
+      finishAiRun(qs, mode, data);
+    } catch (err) {
+      if (err?.name !== "AbortError") toast.error(err?.message || "Suallar yaradıla bilmədi");
+    } finally {
+      setGenerating(false);
+      setStreamItems([]);
+      runAbortRef.current = null;
+    }
+  };
+
+  // A file → read it (the words, if any, say what to take from it); no file →
+  // write new questions from the words.
+  const runKickoff = () => {
+    if (aiBusy) return;
+    const text = (kickoffRef.current?.value || "").trim();
+    const mode = builderHasContent() ? kickoffMode : "replace";
+    setKickoffText(text);
+    if (kickoffFiles.length) return extractFromFiles(kickoffFiles, mode, text);
+    if (text.length < 5) return toast.error("Bir neçə söz yazın — nə haqqında imtahan olsun?");
+    return generateFromPrompt(text, mode);
   };
 
   // Map AI questions into the builder, set toggles, toast warnings, log cost.
@@ -1149,11 +1260,12 @@ const StructuredBuilder = () => {
     setMathEnabled((v) => v || hasLatex(mapped));
     setExplEnabled((v) => v || hasExpl(mapped));
     toast.success(
-      mode === "append"
+      data?.generated
+        ? `${mapped.length} sual hazırlandı — cavabları yoxlayın.`
+        : mode === "append"
         ? `${mapped.length} sual əlavə edildi — düzgün cavabları yoxlayın.`
         : `${mapped.length} sual idxal edildi — düzgün cavabları yoxlayın.`
     );
-    if (data?.fellBack) toast.info("Gemini məşğul idi — bu çıxarış Claude ilə emal olundu.");
     const figs = aiQs.filter((q) => q.hasFigure).length;
     if (figs) toast.info(`${figs} sualda şəkil var — şəkilləri əl ilə əlavə edin.`);
     const noKey = mapped.filter((q) => (q.type === "Cm" || q.type === "Cs") && !q.correct.length).length;
@@ -1406,88 +1518,20 @@ const StructuredBuilder = () => {
       </button>
     );
     const importBtn = (
-      <div className={`flex flex-col gap-1.5 ${vertical ? "w-full" : "shrink-0"}`}>
-        {/* Press to open the import panel — pick model, type optional
-            instructions, then extract. (Opening first lets the teacher add
-            instructions BEFORE the file dialog so the AI actually gets them.) */}
-        <button
-          type="button"
-          onClick={() => setPromptOpen((v) => !v)}
-          disabled={extracting}
-          title="Süni intellekt PDF-dən sualları avtomatik çıxarır"
-          className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-primary/40 bg-gradient-to-r from-primary/10 to-accent2/10 px-3 py-2.5 text-sm font-bold text-primary transition-colors hover:from-primary/20 hover:to-accent2/20 disabled:opacity-60"
-        >
-          {extracting ? <Spinner size={16} /> : <FiZap />} PDF-dən idxal
-          <span className="rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-primary-fg">
-            AI
-          </span>
-          <FiChevronDown className={`text-xs transition-transform ${promptOpen ? "rotate-180" : ""}`} />
-        </button>
-        {promptOpen && (
-          <div className="space-y-2 rounded-xl border border-line bg-surface2/40 p-2.5">
-            {/* AI model: Gemini (cheaper) or Claude (more precise). */}
-            <div className="flex items-center gap-0.5 rounded-lg border border-line bg-surface p-0.5 text-[11px] font-semibold">
-              <button
-                type="button"
-                onClick={() => setAiProvider("gemini")}
-                disabled={extracting}
-                className={`flex-1 rounded-md px-2 py-1 transition-colors ${
-                  aiProvider === "gemini" ? "bg-primary text-primary-fg" : "text-muted hover:text-text"
-                }`}
-              >
-                Gemini · ucuz
-              </button>
-              <button
-                type="button"
-                onClick={() => setAiProvider("claude")}
-                disabled={extracting}
-                className={`flex-1 rounded-md px-2 py-1 transition-colors ${
-                  aiProvider === "claude" ? "bg-primary text-primary-fg" : "text-muted hover:text-text"
-                }`}
-              >
-                Claude · dəqiq
-              </button>
-            </div>
-            {/* Optional extra instructions handed to the AI before the PDF. Empty =
-                default behaviour; filled = default + these instructions. */}
-            <div className="space-y-1">
-              <span className="flex items-center gap-1.5 text-[11px] font-semibold text-muted">
-                <FiEdit3 className="text-xs" /> Əlavə təlimat (istəyə bağlı)
-                {aiExtraPrompt.trim() && <span className="text-primary">✓</span>}
-              </span>
-              <textarea
-                value={aiExtraPrompt}
-                onChange={(e) => {
-                  setAiExtraPrompt(e.target.value);
-                  try {
-                    localStorage.setItem("ai-extra-prompt", e.target.value);
-                  } catch {
-                    /* ignore */
-                  }
-                }}
-                disabled={extracting}
-                rows={4}
-                placeholder={
-                  "Məs: yalnız 1–20 arası sualları çıxar · cavab açarını PDF-dən götür · qrafikləri şəkil kimi işarələ · izahları da əlavə et…"
-                }
-                className="w-full resize-y rounded-md border border-line bg-surface px-2.5 py-2 text-xs text-text outline-none focus:border-primary"
-              />
-              <p className="text-[10px] leading-relaxed text-muted">
-                Boş buraxsanız standart davranış işləyəcək. Yazsanız: standart + sizin təlimatınız.
-              </p>
-            </div>
-            {/* Extract: pick the PDF and run the AI with the instructions above. */}
-            <button
-              type="button"
-              onClick={startImport}
-              disabled={extracting}
-              className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-bold text-primary-fg transition-colors hover:bg-primary/90 disabled:opacity-60"
-            >
-              {extracting ? <Spinner size={16} /> : <FiZap />} PDF seç və çıxar
-            </button>
-          </div>
-        )}
-      </div>
+      <button
+        type="button"
+        onClick={openKickoff}
+        disabled={aiBusy}
+        title="AI ilə sual yarat və ya PDF / şəkildən çıxar"
+        className={`inline-flex items-center justify-center gap-1.5 rounded-xl border border-primary/40 bg-gradient-to-r from-primary/10 to-accent2/10 px-3 py-2.5 text-sm font-bold text-primary transition-colors hover:from-primary/20 hover:to-accent2/20 disabled:opacity-60 ${
+          vertical ? "w-full" : "shrink-0"
+        }`}
+      >
+        {aiBusy ? <Spinner size={16} /> : <FiZap />} AI ilə yarat
+        <span className="rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-primary-fg">
+          AI
+        </span>
+      </button>
     );
     const undoRedo = (
       <div className="flex items-center gap-1">
@@ -1656,8 +1700,333 @@ const StructuredBuilder = () => {
     );
   }
 
+  // ---- The AI window ("Nə yaradaq?") — Examopia's kickoff, BunkerMath brand ----
+  const hasContentNow = builderHasContent();
+  const canSendKickoff = kickoffFiles.length > 0 || kickoffReady;
+  const runSteps = extracting ? EXTRACT_STEPS : GEN_STEPS;
+  const kickoffPanel = kickoff && (
+    // A full-screen page on a phone; a centred dialog from sm up.
+    <div className="fixed inset-0 z-[1600] flex bg-black/50 backdrop-blur-sm sm:items-center sm:justify-center sm:p-6">
+      <div className="relative flex h-full w-full animate-scale-in flex-col overflow-hidden bg-surface sm:h-auto sm:max-h-[94vh] sm:max-w-2xl sm:rounded-3xl sm:border sm:border-line sm:shadow-lift">
+        <div className="flex shrink-0 items-center justify-between gap-4 border-b border-line px-5 py-4 sm:px-8">
+          <div className="min-w-0">
+            <p className="text-xs font-bold tracking-wide text-primary">BUNKERMATH AI</p>
+            <h2 className="mt-0.5 font-display text-[20px] font-extrabold leading-tight text-text sm:text-[23px]">
+              {!aiBusy ? "Nə yaradaq?" : extracting ? "Fayl oxunur…" : "Suallar hazırlanır…"}
+            </h2>
+            <p className="mt-1 text-[13px] leading-snug text-muted">
+              {!aiBusy
+                ? "Mövzunu yaz və ya fayl əlavə et — suallar özü hazırlanacaq."
+                : "Hazır olduqca burada görünəcək."}
+            </p>
+          </div>
+          {/* Hidden while a run is in flight — the run has its own Dayandır. */}
+          {!aiBusy && (
+            <button
+              type="button"
+              onClick={() => setKickoff(false)}
+              aria-label="Bağla"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-muted transition-colors hover:bg-surface2 hover:text-text"
+            >
+              <FiX className="text-lg" />
+            </button>
+          )}
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 pb-6 pt-5 sm:px-8 sm:pb-7">
+          {aiBusy ? (
+            <div>
+              {/* What was asked stays on screen while the run takes its time. */}
+              <div className="flex items-start gap-3 rounded-2xl border border-line bg-surface2/50 p-3.5">
+                <span
+                  className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${
+                    kickoffFiles.length ? "bg-danger/12 text-danger" : "bg-primary/12 text-primary"
+                  }`}
+                >
+                  {kickoffFiles.length ? <FiFileText /> : <FiZap />}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13.5px] font-semibold text-text">
+                    {kickoffFiles.length
+                      ? kickoffFiles.length === 1
+                        ? kickoffFiles[0].name
+                        : `${kickoffFiles.length} fayl`
+                      : kickoffText}
+                  </p>
+                  <p className="mt-0.5 line-clamp-2 text-[12px] leading-snug text-muted">
+                    {kickoffFiles.length ? kickoffText || "Bütün suallar çıxarılır" : "AI yazır"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-line bg-surface p-4">
+                <div className="flex items-center gap-2.5">
+                  <Spinner size={16} className="text-primary" />
+                  <p key={extractStep} className="animate-fade-in text-sm font-semibold text-primary">
+                    {runSteps[extractStep % runSteps.length]}
+                  </p>
+                  {streamItems.length > 0 && (
+                    <span className="ml-auto rounded-full bg-primary/12 px-2 py-0.5 text-[11px] font-bold tabular-nums text-primary">
+                      {streamItems.length} sual
+                    </span>
+                  )}
+                </div>
+                <div className="relative mt-3 h-1.5 w-full overflow-hidden rounded-full bg-surface2">
+                  <div className="absolute inset-y-0 w-1/3 animate-indeterminate rounded-full bg-gradient-to-r from-primary/30 via-primary to-primary/30" />
+                </div>
+                {streamItems.length > 0 ? (
+                  <div className="scrollbar-thin mt-3 max-h-64 space-y-1 overflow-y-auto">
+                    {streamItems.map((it, k) => (
+                      <div
+                        key={k}
+                        className="flex animate-fade-in items-center gap-2 rounded-lg bg-surface2/60 px-2.5 py-1.5 text-[12px]"
+                      >
+                        <span className="w-6 shrink-0 text-right font-bold tabular-nums text-muted">{k + 1}.</span>
+                        <span className="shrink-0 rounded bg-primary/12 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                          {TYPE_LABEL[it.type] || it.type}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-text">{it.text || "(şəkilli sual)"}</span>
+                        {it.hasFigure && <FiImage className="shrink-0 text-accent2" />}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-xs leading-relaxed text-muted">
+                    {extracting
+                      ? "Faylın həcmindən asılı olaraq bir neçə saniyədən bir dəqiqəyə qədər çəkir."
+                      : "Adətən 20–60 saniyə çəkir — suallar yazıldıqca burada görünəcək."}
+                  </p>
+                )}
+              </div>
+
+              <div className="mt-5 border-t border-line pt-4">
+                <button
+                  type="button"
+                  onClick={cancelRun}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold text-muted transition-colors hover:bg-danger/10 hover:text-danger"
+                >
+                  <FiX className="text-base" /> Dayandır
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* What goes in the box, and that it has to be written ("Vacib");
+                  with a file attached the words are optional. */}
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <label htmlFor="kickoff-prompt" className="font-display text-[15px] font-bold text-text">
+                  Nə haqqında imtahan olsun?
+                </label>
+                {!kickoffFiles.length &&
+                  (kickoffReady ? (
+                    <span className="rounded-full bg-success/12 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-success">
+                      Hazırdır
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-primary-fg">
+                      Vacib
+                    </span>
+                  ))}
+              </div>
+
+              {/* The composer: a chat box, because that is what it is. */}
+              <div
+                onDragEnter={(e) => {
+                  e.preventDefault();
+                  dragDepth.current += 1;
+                  setKickoffDrag(true);
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+                }}
+                onDragLeave={() => {
+                  dragDepth.current = Math.max(0, dragDepth.current - 1);
+                  if (dragDepth.current === 0) setKickoffDrag(false);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  dragDepth.current = 0;
+                  setKickoffDrag(false);
+                  pickKickoffFiles(e.dataTransfer?.files);
+                }}
+                className={`relative rounded-2xl border-2 bg-surface2 transition-colors ${
+                  kickoffDrag
+                    ? "border-dashed border-primary bg-primary/10"
+                    : kickoffFiles.length
+                    ? "border-primary ring-4 ring-primary/15"
+                    : "border-line focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/20"
+                }`}
+              >
+                {kickoffDrag && (
+                  <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center rounded-2xl bg-surface2/90">
+                    <span className="flex items-center gap-2 text-sm font-bold text-primary">
+                      <FiUploadCloud className="text-lg" /> Faylı buraya buraxın
+                    </span>
+                  </div>
+                )}
+                {kickoffFiles.length > 0 && (
+                  <div className="scrollbar-thin flex gap-2 overflow-x-auto border-b border-line px-3 pb-2.5 pt-3">
+                    {kickoffFiles.map((f, i) => (
+                      <div
+                        key={`${f.name}-${f.size}-${i}`}
+                        className="flex shrink-0 items-center gap-2 rounded-xl border border-line bg-surface py-1.5 pl-2 pr-1.5"
+                      >
+                        <span
+                          className={`grid h-7 w-7 place-items-center rounded-lg ${
+                            f.type === "application/pdf" ? "bg-danger/12 text-danger" : "bg-primary/12 text-primary"
+                          }`}
+                        >
+                          {f.type === "application/pdf" ? <FiFileText /> : <FiImage />}
+                        </span>
+                        <span className="max-w-[10rem] truncate text-[12px] font-semibold text-text">{f.name}</span>
+                        <span className="text-[11px] tabular-nums text-muted">{fmtSize(f.size)}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeKickoffFile(i)}
+                          aria-label="Faylı sil"
+                          className="grid h-6 w-6 place-items-center rounded-md text-muted transition-colors hover:bg-danger/10 hover:text-danger"
+                        >
+                          <FiX />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <textarea
+                  ref={kickoffRef}
+                  id="kickoff-prompt"
+                  defaultValue={kickoffText}
+                  onChange={(e) => {
+                    // One render when the send button's state flips, none per keystroke.
+                    const ok = e.target.value.trim().length >= 5;
+                    if (ok !== kickoffReady) setKickoffReady(ok);
+                  }}
+                  onKeyDown={(e) => {
+                    // Enter sends; Shift+Enter keeps writing.
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      if (canSendKickoff) runKickoff();
+                    }
+                  }}
+                  rows={3}
+                  placeholder={
+                    kickoffFiles.length
+                      ? "İstədiyin sualları təsvir et və ya boş burax — bütün suallar çıxarılacaq."
+                      : "Mövzunu, sinfi, sual sayını və çətinliyi yaz..."
+                  }
+                  className="w-full resize-none border-0 bg-transparent px-4 pt-4 text-[15px] leading-relaxed text-text outline-none placeholder:text-muted/60"
+                />
+                {/* Phone: attach on top, send full-width below. One row from sm up. */}
+                <div className="flex flex-col gap-2 px-3 pb-3 pt-1 sm:flex-row sm:items-center">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => kickoffFileRef.current?.click()}
+                      title="PDF və ya şəkil əlavə et"
+                      className="inline-flex shrink-0 items-center gap-2 rounded-xl border-2 border-dashed border-primary/45 bg-primary/10 px-3 py-2.5 text-[13px] font-bold text-primary transition-all hover:border-solid hover:bg-primary/20 sm:py-2"
+                    >
+                      <FiPaperclip className="text-[15px]" /> Fayl əlavə et
+                    </button>
+                    <input
+                      ref={kickoffFileRef}
+                      type="file"
+                      accept="application/pdf,image/png,image/jpeg,image/webp"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => {
+                        pickKickoffFiles(e.target.files);
+                        e.target.value = "";
+                      }}
+                    />
+                    {kickoffFiles.length > 0 && (
+                      <p className="hidden min-w-0 flex-1 truncate text-[12px] text-muted lg:block">
+                        Boş buraxsanız bütün suallar çıxarılacaq
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={runKickoff}
+                    disabled={!canSendKickoff}
+                    className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-fg shadow-soft transition-all hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none sm:ml-auto sm:w-auto sm:py-2.5"
+                  >
+                    <FiZap className="text-base" /> {kickoffFiles.length ? "Sualları çıxar" : "Sualları hazırla"}
+                  </button>
+                </div>
+              </div>
+
+              {!kickoffFiles.length && !hasContentNow && (
+                <div className="mt-4">
+                  <p className="text-[12px] font-semibold text-muted">
+                    Bir cümlə kifayətdir: mövzu, sinif, sual sayı. Nümunəyə toxun, sonra dəyiş:
+                  </p>
+                  <div className="mt-2 flex flex-col gap-1.5">
+                    {PROMPT_EXAMPLES.map((ex) => (
+                      <button
+                        key={ex}
+                        type="button"
+                        onClick={() => {
+                          const box = kickoffRef.current;
+                          if (!box) return;
+                          box.value = ex;
+                          setKickoffReady(true);
+                          box.focus();
+                          box.setSelectionRange(ex.length, ex.length);
+                        }}
+                        className="rounded-xl border border-line bg-surface px-3 py-2 text-left text-[13px] leading-snug text-text transition-colors hover:border-primary/40 hover:bg-primary/5"
+                      >
+                        {ex}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Work already on the page: say what happens to it. */}
+              {hasContentNow && (
+                <div className="mt-4">
+                  <p className="mb-1.5 text-[12px] font-semibold text-muted">Bu imtahanda artıq suallar var. Yeni suallar:</p>
+                  <div className="flex items-center gap-2 rounded-xl border border-line bg-surface2/50 p-1.5">
+                    {[
+                      { k: "append", label: "Sonuna əlavə et" },
+                      { k: "replace", label: "Hamısını əvəz et" },
+                    ].map(({ k, label }) => (
+                      <button
+                        key={k}
+                        type="button"
+                        onClick={() => setKickoffMode(k)}
+                        className={`flex-1 rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors ${
+                          kickoffMode === k ? "bg-primary text-primary-fg shadow-sm" : "text-muted hover:text-text"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-5 border-t border-line pt-4">
+                <button
+                  type="button"
+                  onClick={() => setKickoff(false)}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold text-muted transition-colors hover:bg-surface2 hover:text-text"
+                >
+                  <FiEdit3 className="text-base" /> Əl ilə yazacağam
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-bg">
+      {kickoffPanel}
       <header className="flex shrink-0 items-center justify-between gap-4 border-b border-line bg-surface px-4 py-3 sm:px-6">
         <div className="flex min-w-0 items-center gap-3">
           <button
@@ -1679,6 +2048,29 @@ const StructuredBuilder = () => {
         </div>
       </header>
 
+      {/* The AI dock (Examopia's): AI is one tap away on any exam, new or written. */}
+      <div className="shrink-0 border-b border-primary/15 bg-gradient-to-r from-primary/5 via-accent2/5 to-transparent px-4 py-2 sm:px-6">
+        <button
+          type="button"
+          onClick={openKickoff}
+          disabled={aiBusy}
+          className="group flex w-full items-center gap-3 rounded-xl border border-primary/20 bg-surface px-3 py-2 text-left shadow-sm transition-all hover:border-primary/40 hover:shadow-soft disabled:opacity-60"
+        >
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-primary to-accent2 text-white shadow-sm">
+            {aiBusy ? <Spinner size={14} /> : <FiZap className="text-[15px]" />}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-xs font-bold text-text">BunkerMath AI</span>
+            <span className="block truncate text-[11px] text-muted">
+              Sual yarat və ya PDF / şəkildən çıxar — mövzunu yaz, qalanını AI etsin
+            </span>
+          </span>
+          <span className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors group-hover:bg-primary/10">
+            Aç
+          </span>
+        </button>
+      </div>
+
       {/* Tools on mobile: a compact bar that opens a FULL-SCREEN tools page (so the
           questions are hidden while you work in the tools). Desktop uses the right
           sidebar. Saving stays on the sticky bottom bar. */}
@@ -1689,7 +2081,7 @@ const StructuredBuilder = () => {
           className="flex w-full items-center justify-between gap-2 px-4 py-2.5"
         >
           <span className="flex items-center gap-2 text-sm font-bold text-text">
-            <FiZap className="text-primary" /> Alətlər və PDF idxalı
+            <FiZap className="text-primary" /> Alətlər
           </span>
           <span className="flex items-center gap-2 text-[11px] font-medium text-muted">
             {total} sual · {totalBal} bal
@@ -1703,7 +2095,7 @@ const StructuredBuilder = () => {
         <div className="fixed inset-0 z-[1200] flex flex-col bg-bg lg:hidden">
           <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-surface px-4 py-3">
             <span className="flex items-center gap-2 font-display text-base font-bold text-text">
-              <FiZap className="text-primary" /> Alətlər və PDF idxalı
+              <FiZap className="text-primary" /> Alətlər
             </span>
             <button
               type="button"
@@ -1717,58 +2109,6 @@ const StructuredBuilder = () => {
         </div>
       )}
 
-      {/* Hidden file picker for the AI PDF import. */}
-      <input
-        ref={pdfInputRef}
-        type="file"
-        accept="application/pdf"
-        onChange={onExtractFile}
-        className="hidden"
-      />
-
-      {/* PDF import: add to the end, or replace everything? Shown only when the
-          builder already has questions worth keeping. */}
-      {importChoice && (
-        <div className="fixed inset-0 z-[1500] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => setImportChoice(false)}
-          />
-          <div className="relative w-full max-w-md animate-scale-in rounded-3xl border border-line bg-surface p-6 shadow-lift sm:p-7">
-            <div className="mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-primary/12 text-primary">
-              <FiUploadCloud className="text-2xl" />
-            </div>
-            <h2 className="font-display text-xl font-bold text-text">PDF-dən idxal</h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted">
-              Bu imtahanda artıq suallar var. Yeni sualları necə idxal edək?
-            </p>
-            <div className="mt-6 flex flex-col gap-2.5">
-              <button
-                type="button"
-                onClick={() => pickImportMode("append")}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-fg shadow-soft transition-colors hover:bg-primary-hover"
-              >
-                <FiPlus /> Sona əlavə et
-              </button>
-              <button
-                type="button"
-                onClick={() => pickImportMode("replace")}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 py-3 text-sm font-semibold text-text transition-colors hover:border-danger hover:text-danger"
-              >
-                <FiRotateCcw /> Hamısını əvəz et
-              </button>
-              <button
-                type="button"
-                onClick={() => setImportChoice(false)}
-                className="mt-1 text-sm font-semibold text-muted transition-colors hover:text-text"
-              >
-                Ləğv et
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="relative flex min-h-0 flex-1">
         {loading && !extracting && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-bg/70 backdrop-blur-sm">
@@ -1776,82 +2116,6 @@ const StructuredBuilder = () => {
           </div>
         )}
 
-        {/* Animated AI extraction panel — scanning document + rotating status. */}
-        {extracting && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center bg-bg/85 p-6 backdrop-blur-md">
-            <div className="w-full max-w-sm animate-scale-in rounded-3xl border border-line bg-surface p-8 text-center shadow-lift">
-              <div className="relative mx-auto mb-7 h-28 w-24">
-                <div className="absolute inset-0 overflow-hidden rounded-2xl border-2 border-primary/25 bg-surface2/60 shadow-glow">
-                  <div className="space-y-2.5 p-4">
-                    {[92, 70, 84, 58, 78, 66].map((w, k) => (
-                      <div key={k} className="h-1.5 rounded-full bg-primary/25" style={{ width: `${w}%` }} />
-                    ))}
-                  </div>
-                  <div className="absolute inset-x-0 top-0 h-10 animate-scan bg-gradient-to-b from-primary/0 via-primary/40 to-primary/0" />
-                </div>
-                <FiZap className="absolute -right-2.5 -top-2.5 animate-float text-lg text-primary" />
-                <FiZap
-                  className="absolute -left-3 top-9 animate-float text-accent2"
-                  style={{ animationDelay: "0.6s" }}
-                />
-                <span
-                  className="absolute -bottom-1 right-1 animate-float text-lg"
-                  style={{ animationDelay: "1.1s" }}
-                >
-                  ✨
-                </span>
-              </div>
-
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/12 px-3 py-1 text-xs font-bold uppercase tracking-wide text-primary">
-                <FiZap className="text-[13px]" /> Süni intellekt
-              </span>
-              <h3 className="mt-3 font-display text-lg font-bold text-text">Suallar çıxarılır</h3>
-              <p key={extractStep} className="mt-1.5 animate-fade-in text-sm font-semibold text-primary">
-                {EXTRACT_STEPS[extractStep]}
-              </p>
-
-              <div className="relative mt-5 h-1.5 w-full overflow-hidden rounded-full bg-surface2">
-                <div className="absolute inset-y-0 w-1/3 animate-indeterminate rounded-full bg-gradient-to-r from-primary/30 via-primary to-primary/30" />
-              </div>
-              <div className="mt-4 flex items-center justify-center gap-1.5">
-                {[0, 1, 2].map((d) => (
-                  <span
-                    key={d}
-                    className="h-2 w-2 animate-bounce rounded-full bg-primary/60"
-                    style={{ animationDelay: `${d * 0.15}s` }}
-                  />
-                ))}
-              </div>
-              {streamItems.length > 0 ? (
-                <div className="mt-4 text-left">
-                  <p className="mb-1.5 text-center text-xs font-bold text-text">
-                    {streamItems.length} sual tapıldı…
-                  </p>
-                  <div className="scrollbar-thin max-h-40 space-y-1 overflow-y-auto rounded-xl border border-line bg-surface2/40 p-2">
-                    {streamItems.slice(-12).map((it, k) => (
-                      <div
-                        key={k}
-                        className="flex animate-fade-in items-center gap-1.5 rounded-lg bg-surface px-2 py-1 text-[11px]"
-                      >
-                        <span className="shrink-0 rounded bg-primary/12 px-1.5 py-0.5 font-bold text-primary">
-                          {TYPE_LABEL[it.type] || it.type}
-                        </span>
-                        <span className="min-w-0 flex-1 truncate text-muted">
-                          {it.text || "(şəkilli sual)"}
-                        </span>
-                        {it.hasFigure && <FiImage className="shrink-0 text-accent2" />}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <p className="mt-4 text-xs leading-relaxed text-muted">
-                  Bir neçə saniyə çəkə bilər — PDF-in həcmindən asılıdır.
-                </p>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* Left: question navigator (fills the left margin on desktop). */}
         <aside className="hidden w-72 shrink-0 border-r border-line bg-surface lg:block xl:w-80">
