@@ -56,7 +56,7 @@ export default defineConfig(({ mode }) => {
         // demand over the network instead; students never download them.
         globIgnores: [
           '**/StructuredBuilder-*.js',
-          '**/ResultsPdfExport-*.js',
+          '**/ResultsFiles-*.js',
           '**/ResultsExcelExport-*.js',
           '**/exceljs*.js',
         ],

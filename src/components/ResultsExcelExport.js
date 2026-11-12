@@ -53,8 +53,11 @@ function tally(result) {
   return { c: t.right, w: t.wrong + t.partial, b: t.blank };
 }
 
-export async function exportResultsExcel(results) {
+// `opts.filters` — human lines describing the export filters (printed on the
+// summary sheet so the file says what it covers); `opts.fileName` — the name.
+export async function exportResultsExcel(results, opts = {}) {
   const list = (Array.isArray(results) ? results : []).filter(Boolean);
+  const filterLines = Array.isArray(opts.filters) ? opts.filters : [];
   const exam = list[0]?.examId || {};
   const passingMarks = Number(exam.passingMarks) || 0;
   const stats = examStats(list, passingMarks);
@@ -77,6 +80,7 @@ export async function exportResultsExcel(results) {
   s1.addRow([]);
   const rows1 = [
     ["İxrac tarixi", new Date().toLocaleString()],
+    ["Filtr", filterLines.length ? filterLines.join(" · ") : "Yoxdur — bütün nəticələr"],
     ["Sual sayı", qCount],
     ["İştirakçı sayı", stats.participants],
     ["Orta bal", round1(stats.average)],
@@ -232,7 +236,8 @@ export async function exportResultsExcel(results) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${(exam.name || "imtahan").replace(/[^\p{L}\p{N}_-]+/gu, "_")}-neticeler.xlsx`;
+  a.download =
+    opts.fileName || `${(exam.name || "imtahan").replace(/[^\p{L}\p{N}_-]+/gu, "_")}-neticeler.xlsx`;
   document.body.appendChild(a);
   a.click();
   a.remove();

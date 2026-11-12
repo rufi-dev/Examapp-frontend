@@ -1,4 +1,4 @@
-import { useEffect, useState, lazy, Suspense } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getResultsByExam } from "../../../redux/features/quiz/resultSlice";
 import { useParams, Link } from "react-router-dom";
@@ -6,16 +6,25 @@ import ResultCard from "../../components/ResultCard";
 import Loader from "../../components/Loader";
 import AccountLayout from "../../components/AccountLayout";
 import ExamAnalytics from "../../components/analytics/ExamAnalytics";
-import { toast } from "react-toastify";
-import { FiDownload, FiAlertTriangle, FiFileText, FiEye, FiSearch, FiX, FiCamera } from "react-icons/fi";
-import Spinner from "../../components/Spinner";
+import { FiAlertTriangle, FiFileText, FiEye, FiSearch, FiX, FiCamera } from "react-icons/fi";
 import { AwayChip, PardonButton } from "../../components/AwayInfo";
+import ResultsExportDialog, { ExportButton } from "../../components/results/ResultsExportDialog";
+import { DEFAULT_FILTERS, activeFilterCount } from "../../helper/resultFilters";
 
-// Heavy (@react-pdf/renderer ~1.3MB) — loaded only when a teacher clicks export.
-const ResultsPdfExport = lazy(() => import("../../components/ResultsPdfExport"));
-
-const pdfBtn =
-  "inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-line bg-surface px-4 text-sm font-semibold text-text transition-colors hover:bg-surface2";
+// The export filters are remembered per exam for this browser session, so
+// closing and reopening the export panel (or reloading) keeps the selection.
+const filterKey = (examId) => `resultsExportFilters_${examId}`;
+const loadFilters = (examId) => {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(filterKey(examId)) || "null");
+    if (saved && typeof saved === "object") {
+      return { ...DEFAULT_FILTERS, ...saved, date: { ...DEFAULT_FILTERS.date, ...(saved.date || {}) } };
+    }
+  } catch {
+    /* ignore */
+  }
+  return { ...DEFAULT_FILTERS, date: { ...DEFAULT_FILTERS.date }, grades: [] };
+};
 
 const ResultsByExam = () => {
   const dispatch = useDispatch();
@@ -23,12 +32,25 @@ const ResultsByExam = () => {
   const { resultsByExam, isLoading } = useSelector((state) => state.result);
   const [tab, setTab] = useState("analytics"); // "analytics" | "students"
   const [query, setQuery] = useState(""); // student search (name / email / phone)
-  const [showPdf, setShowPdf] = useState(false); // defer the PDF export library
-  const [excelBusy, setExcelBusy] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportFilters, setExportFilters] = useState(() => loadFilters(examId));
 
   useEffect(() => {
     dispatch(getResultsByExam(examId));
   }, [dispatch, examId]);
+
+  useEffect(() => {
+    setExportFilters(loadFilters(examId));
+  }, [examId]);
+
+  const changeExportFilters = (next) => {
+    setExportFilters(next);
+    try {
+      sessionStorage.setItem(filterKey(examId), JSON.stringify(next));
+    } catch {
+      /* ignore */
+    }
+  };
 
   if (isLoading) {
     return <Loader />;
@@ -55,22 +77,6 @@ const ResultsByExam = () => {
       })
     : results;
 
-  // Defer the (heavy) exceljs library until the teacher actually exports.
-  const onExcel = async () => {
-    if (!results.length) return toast.info("İxrac üçün nəticə yoxdur");
-    setExcelBusy(true);
-    try {
-      const { exportResultsExcel } = await import("../../components/ResultsExcelExport");
-      await exportResultsExcel(results);
-    } catch (e) {
-      toast.error("Excel hazırlanmadı");
-      // eslint-disable-next-line no-console
-      console.error("excel export:", e);
-    } finally {
-      setExcelBusy(false);
-    }
-  };
-
   const tabBtn = (active) =>
     `rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
       active ? "bg-primary text-primary-fg shadow-soft" : "text-muted hover:text-text"
@@ -81,24 +87,21 @@ const ResultsByExam = () => {
       title="İmtahan nəticələri"
       subtitle="Sinfin ümumi mənzərəsi və hər şagirdin cavabları."
       actions={
-        <div className="flex flex-wrap items-center gap-2">
-          {showPdf ? (
-            <Suspense
-              fallback={<span className={pdfBtn}>PDF hazırlanır...</span>}
-            >
-              <ResultsPdfExport results={results} />
-            </Suspense>
-          ) : (
-            <button type="button" onClick={() => setShowPdf(true)} className={pdfBtn}>
-              <FiDownload /> PDF ixrac et
-            </button>
-          )}
-          <button type="button" onClick={onExcel} disabled={excelBusy} className={pdfBtn}>
-            {excelBusy ? <Spinner size={16} /> : <FiFileText className="text-success" />} Excel ixrac et
-          </button>
-        </div>
+        <ExportButton
+          onClick={() => setExportOpen(true)}
+          activeCount={activeFilterCount(exportFilters)}
+          disabled={!results.length}
+        />
       }
     >
+      <ResultsExportDialog
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        results={results}
+        examName={results[0]?.examId?.name || "İmtahan"}
+        filters={exportFilters}
+        onChange={changeExportFilters}
+      />
       <div className="mb-6 inline-flex rounded-xl border border-line bg-surface2/50 p-1">
         <button type="button" onClick={() => setTab("analytics")} className={tabBtn(tab === "analytics")}>
           Analitika

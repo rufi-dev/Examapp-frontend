@@ -108,7 +108,9 @@ const UserGrid = ({ result }) => {
   );
 };
 
-const PDFAnswersTemplate = ({ results }) => {
+// `filters`: human lines describing what this export covers (date range, best
+// attempt, …) — printed under the header so a printed report says it.
+const PDFAnswersTemplate = ({ results, filters = [] }) => {
   const list = Array.isArray(results) ? results.filter(Boolean) : [];
   const examName = list[0]?.examId?.name || "İmtahan";
   const now = new Date();
@@ -130,6 +132,13 @@ const PDFAnswersTemplate = ({ results }) => {
           </View>
         </View>
 
+        {filters.length > 0 && (
+          <View style={styles.filterBox}>
+            <Text style={styles.filterLabel}>FİLTR</Text>
+            <Text style={styles.filterText}>{filters.join("  ·  ")}</Text>
+          </View>
+        )}
+
         {list.map((r, idx) => (
           <UserGrid key={r._id || idx} result={r} />
         ))}
@@ -137,7 +146,7 @@ const PDFAnswersTemplate = ({ results }) => {
         {list.length === 0 && <Text style={styles.empty}>Hələ nəticə yoxdur.</Text>}
 
         <View style={styles.footer} fixed>
-          <Text style={styles.footerBrand}>Sınaq Riyaziyyat</Text>
+          <Text style={styles.footerBrand}>BunkerMath</Text>
           <Text
             style={styles.footerPage}
             render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`}
@@ -173,6 +182,21 @@ const styles = StyleSheet.create({
   headerRight: { alignItems: "flex-end" },
   headerDateLabel: { color: "#C7D2FE", fontSize: 7, marginBottom: 2 },
   headerDate: { color: C.white, fontSize: 11 },
+
+  filterBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: C.tint,
+    borderWidth: 1,
+    borderColor: C.line,
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    marginTop: -6,
+    marginBottom: 14,
+  },
+  filterLabel: { color: C.primary, fontSize: 7, letterSpacing: 1.2, marginRight: 8 },
+  filterText: { color: C.muted, fontSize: 8.5, flex: 1 },
 
   userBlock: { marginBottom: 16 },
   userHead: {

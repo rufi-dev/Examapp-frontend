@@ -61,7 +61,9 @@ const StatCard = ({ label, value, accent }) => (
   </View>
 );
 
-const PDFTemplate = ({ results }) => {
+// `filters`: human lines describing what this export covers (date range, best
+// attempt, …) — printed under the header so a printed report says it.
+const PDFTemplate = ({ results, filters = [] }) => {
   const list = Array.isArray(results) ? results.filter(Boolean) : [];
   const exam = list[0]?.examId || {};
   const examName = exam.name || "İmtahan";
@@ -96,6 +98,13 @@ const PDFTemplate = ({ results }) => {
             <Text style={styles.headerDate}>{dateStr}</Text>
           </View>
         </View>
+
+        {filters.length > 0 && (
+          <View style={styles.filterBox}>
+            <Text style={styles.filterLabel}>FİLTR</Text>
+            <Text style={styles.filterText}>{filters.join("  ·  ")}</Text>
+          </View>
+        )}
 
         {/* Summary cards */}
         <View style={styles.statsRow}>
@@ -168,7 +177,7 @@ const PDFTemplate = ({ results }) => {
 
         {/* Footer */}
         <View style={styles.footer} fixed>
-          <Text style={styles.footerBrand}>Sınaq Riyaziyyat</Text>
+          <Text style={styles.footerBrand}>BunkerMath</Text>
           <Text
             style={styles.footerPage}
             render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`}
@@ -206,6 +215,22 @@ const styles = StyleSheet.create({
   headerRight: { alignItems: "flex-end" },
   headerDateLabel: { color: "#C7D2FE", fontSize: 8, marginBottom: 3 },
   headerDate: { color: C.white, fontSize: 12 },
+
+  // What this export covers (filters)
+  filterBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: C.tint,
+    borderWidth: 1,
+    borderColor: C.line,
+    borderRadius: 10,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    marginTop: -4,
+    marginBottom: 14,
+  },
+  filterLabel: { color: C.primary, fontSize: 7.5, letterSpacing: 1.2, marginRight: 10 },
+  filterText: { color: C.muted, fontSize: 9, flex: 1 },
 
   // Summary cards
   statsRow: { flexDirection: "row", marginHorizontal: -5, marginBottom: 18 },
