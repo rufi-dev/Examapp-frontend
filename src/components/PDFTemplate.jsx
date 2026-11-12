@@ -75,6 +75,8 @@ const PDFTemplate = ({ results, filters = [] }) => {
 
   const scores = ranked.map((r) => Number(r.earnPoints) || 0);
   const count = ranked.length;
+  // Participants are STUDENTS: with every attempt exported a student can have several rows.
+  const students = new Set(ranked.map((r) => String(r.userId?._id || r.userId || r._id))).size;
   const avg = count ? scores.reduce((a, b) => a + b, 0) / count : 0;
   const top = count ? Math.max(...scores) : 0;
   const passed = passing ? scores.filter((s) => s >= passing).length : null;
@@ -108,7 +110,11 @@ const PDFTemplate = ({ results, filters = [] }) => {
 
         {/* Summary cards */}
         <View style={styles.statsRow}>
-          <StatCard label="İştirakçı" value={String(count)} accent={C.primary} />
+          <StatCard
+            label={students !== count ? `İştirakçı · ${count} nəticə` : "İştirakçı"}
+            value={String(students)}
+            accent={C.primary}
+          />
           <StatCard label="Orta bal" value={fmt(avg)} accent={C.ink} />
           <StatCard label="Ən yüksək" value={fmt(top)} accent={C.green} />
           <StatCard

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getResultsByExam } from "../../../redux/features/quiz/resultSlice";
 import { useParams, Link } from "react-router-dom";
@@ -9,21 +9,20 @@ import ExamAnalytics from "../../components/analytics/ExamAnalytics";
 import { FiAlertTriangle, FiFileText, FiEye, FiSearch, FiX, FiCamera } from "react-icons/fi";
 import { AwayChip, PardonButton } from "../../components/AwayInfo";
 import ResultsExportDialog, { ExportButton } from "../../components/results/ResultsExportDialog";
-import { DEFAULT_FILTERS, activeFilterCount } from "../../helper/resultFilters";
+import { defaultFilters, describeFilters, resultFacets } from "../../helper/resultFilters";
 
 // The export filters are remembered per exam for this browser session, so
 // closing and reopening the export panel (or reloading) keeps the selection.
+// (An older saved shape is fine: the filter module fills in what is missing.)
 const filterKey = (examId) => `resultsExportFilters_${examId}`;
 const loadFilters = (examId) => {
   try {
     const saved = JSON.parse(sessionStorage.getItem(filterKey(examId)) || "null");
-    if (saved && typeof saved === "object") {
-      return { ...DEFAULT_FILTERS, ...saved, date: { ...DEFAULT_FILTERS.date, ...(saved.date || {}) } };
-    }
+    if (saved && typeof saved === "object") return { ...defaultFilters(), ...saved };
   } catch {
     /* ignore */
   }
-  return { ...DEFAULT_FILTERS, date: { ...DEFAULT_FILTERS.date }, grades: [] };
+  return defaultFilters();
 };
 
 const ResultsByExam = () => {
@@ -51,6 +50,17 @@ const ResultsByExam = () => {
       /* ignore */
     }
   };
+
+  // Active-filter badge: counted the way the dialog applies them (a filter these
+  // results can't use is off, so it never shows in the count).
+  const exportFacets = useMemo(
+    () => resultFacets(Array.isArray(resultsByExam) ? resultsByExam : []),
+    [resultsByExam]
+  );
+  const activeExportFilters = useMemo(
+    () => describeFilters(exportFilters, exportFacets).length,
+    [exportFilters, exportFacets]
+  );
 
   if (isLoading) {
     return <Loader />;
@@ -89,7 +99,7 @@ const ResultsByExam = () => {
       actions={
         <ExportButton
           onClick={() => setExportOpen(true)}
-          activeCount={activeFilterCount(exportFilters)}
+          activeCount={activeExportFilters}
           disabled={!results.length}
         />
       }
