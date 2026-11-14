@@ -24,6 +24,7 @@ import {
   FiActivity,
   FiRadio,
   FiFileText,
+  FiMonitor,
 } from "react-icons/fi";
 import { LuGraduationCap } from "react-icons/lu";
 import BunkerMathLogo from "./blueprint/BunkerMathLogo";
@@ -82,6 +83,8 @@ const PATH_LABELS = {
   "/trash": "Zibil qutusu",
   "/aiUsage": "AI xərcləri",
   "/health": "Sistem sağlamlığı",
+  "/analytics": "Analitika",
+  "/sessiyalar": "Sessiyalar",
 };
 
 // Parent crumbs (with links) for nested routes; the current page itself is
@@ -114,7 +117,10 @@ const ROLE = {
   student: { label: "Şagird", cls: "bg-success/10 text-success" },
 };
 
-export default function AccountLayout({ title, subtitle, actions, children }) {
+// `hidePageHeader` keeps the title for the breadcrumb but draws no page header
+// (a full-bleed page such as the session replay draws its own);
+// `contentClassName` widens/adjusts the content column for such a page.
+export default function AccountLayout({ title, subtitle, actions, children, hidePageHeader = false, contentClassName = "" }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const user = useSelector(selectUser);
@@ -205,6 +211,8 @@ export default function AccountLayout({ title, subtitle, actions, children }) {
         </AdminTeacherLink>
         <AdminLink>
           <div className="mt-1 flex flex-col gap-1">
+            <SideItem to="/analytics" label="Analitika" icon={FiBarChart2} />
+            <SideItem to="/sessiyalar" label="Sessiyalar" icon={FiMonitor} />
             <SideItem to="/aiUsage" label="AI xərcləri" icon={FiDollarSign} />
             <SideItem to="/health" label="Sistem sağlamlığı" icon={FiActivity} />
           </div>
@@ -337,8 +345,8 @@ export default function AccountLayout({ title, subtitle, actions, children }) {
           </div>
         </header>
 
-        <main className="mx-auto max-w-screen-2xl px-4 py-8 sm:px-6 lg:px-10">
-          {(title || actions) && (
+        <main className={`mx-auto min-w-0 max-w-screen-2xl px-4 py-8 sm:px-6 lg:px-10 ${contentClassName}`}>
+          {!hidePageHeader && (title || actions) && (
             <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
               <div>
                 {title && (

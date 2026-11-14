@@ -18,6 +18,7 @@ import Button from "../../components/ui/Button";
 import Spinner from "../../components/Spinner";
 import Select from "../../components/ui/Select";
 import { GRADES, gradeLabel } from "../../helper/grades";
+import { getAcquisition } from "../../lib/visitorTracking";
 
 const initialState = { name: "", email: "", password: "", phone: "+994 ", grade: "" };
 
@@ -52,7 +53,8 @@ const Register = () => {
     if (phone.replace(/\D/g, "").length < 9)
       return toast.error("Düzgün telefon nömrəsi yazın");
 
-    await dispatch(register({ name, email, password, phone: phone.trim(), grade }));
+    // Where this visit came from (utm / ?ref / referring site), kept on the account.
+    await dispatch(register({ name, email, password, phone: phone.trim(), grade, acquisition: getAcquisition() }));
     if (EMAIL_ENABLED) await dispatch(sendVerificationEmail());
   };
 
@@ -62,7 +64,7 @@ const Register = () => {
   }, [isLoggedIn, isSuccess, dispatch, navigate]);
 
   const handleGoogleSuccess = async (codeResponse) => {
-    await dispatch(loginWithGoogle({ code: codeResponse.code }));
+    await dispatch(loginWithGoogle({ code: codeResponse.code, acquisition: getAcquisition() }));
   };
   const googleLogin = useGoogleLogin({
     flow: "auth-code",

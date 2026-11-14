@@ -16,6 +16,9 @@ const hasToken = (() => {
 
 const initialState = {
     isLoggedIn: hasToken,
+    // True once the first login-status check has answered (either way), so code
+    // that must know "signed in or not" for sure (the session recorder) waits.
+    authReady: false,
     achivements: null,
     user: null,
     userById: null,
@@ -423,9 +426,11 @@ const authSlice = createSlice({
                 state.isLoading = false;
                 state.isLoggedIn = action.payload;
                 state.isSuccess = true;
+                state.authReady = true;
             })
             .addCase(getLoginStatus.rejected, (state, action) => {
                 state.isLoading = false;
+                state.authReady = true;
                 state.isError = true;
                 state.message = action.payload;
             })
@@ -713,4 +718,5 @@ const authSlice = createSlice({
 export const { RESET, CALC_SUSPENDED_USER, CALC_VERIFIED_USER } = authSlice.actions
 export const selectIsLoggedIn = (state) => state.auth.isLoggedIn
 export const selectUser = (state) => state.auth.user
+export const selectAuthReady = (state) => state.auth.authReady
 export default authSlice.reducer

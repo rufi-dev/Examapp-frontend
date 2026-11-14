@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import VisitorTracking from "./components/VisitorTracking";
+import SessionRecorder from "./components/SessionRecorder";
 import Layout from "./components/Layout";
 // Home (the landing) is loaded EAGERLY, not lazily, so the first paint is the
 // actual page — no Suspense spinner / blank screen when someone opens the site.
@@ -65,6 +67,11 @@ const StructuredBuilder = lazy(() => import("./pages/admin/StructuredBuilder"));
 const UserDetails = lazy(() => import("./pages/admin/UserDetails"));
 const AiUsage = lazy(() => import("./pages/admin/AiUsage"));
 const HealthDashboard = lazy(() => import("./pages/admin/HealthDashboard"));
+// Admin analytics (ported from Examopia): visits, traffic, growth, and session
+// recordings (every page, click and error of teachers and students).
+const Analytics = lazy(() => import("./pages/admin/Analytics"));
+const SessionList = lazy(() => import("./pages/admin/SessionList"));
+const SessionReplay = lazy(() => import("./pages/admin/SessionReplay"));
 const ExamResults = lazy(() => import("./pages/admin/ExamResults"));
 const ExamInstructions = lazy(() => import("./pages/exam/ExamInstructions"));
 const JoinByLink = lazy(() => import("./pages/JoinByLink"));
@@ -160,6 +167,11 @@ function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
+      {/* Site analytics: one row per visit (where from, pages, time on site,
+          which account) — and, for signed-in teachers/students, the session
+          recording. Both render nothing and never block the app. */}
+      <VisitorTracking />
+      <SessionRecorder />
       <PendingJoinHandler />
       <ProfileCompletionGate />
       <Wrapper>
@@ -243,6 +255,9 @@ function App() {
               <Route path="/users" element={<UserList />} />
               <Route path="/aiUsage" element={<AiUsage />} />
               <Route path="/health" element={<HealthDashboard />} />
+              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/sessiyalar" element={<SessionList />} />
+              <Route path="/sessiyalar/:rid" element={<SessionReplay />} />
               <Route path="/examResults" element={<ExamResults />} />
               {/* Achievements manager inside the dashboard shell (the public
                   /ourSuccess page above stays for visitors). */}

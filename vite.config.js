@@ -59,6 +59,13 @@ export default defineConfig(({ mode }) => {
           '**/ResultsFiles-*.js',
           '**/ResultsExcelExport-*.js',
           '**/exceljs*.js',
+          // Admin analytics: the session replay bundles the rrweb player; none of
+          // it is ever opened by a student.
+          '**/Analytics-*.js',
+          '**/SessionList-*.js',
+          '**/SessionReplay-*.{js,css}',
+          // The early analytics beacon is always fetched fresh (index.html <head>).
+          '**/early.js',
         ],
         // Disable the default cache-first NavigationRoute (app-shell). It served
         // the precached shell first, which during a deploy's SW-swap window pointed

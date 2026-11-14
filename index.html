@@ -80,6 +80,10 @@
       })();
     </script>
 
+    <!-- Fires the "open" analytics beacon BEFORE the app bundle loads, so we can
+         measure how many visitors leave before the page ever renders. -->
+    <script src="/early.js"></script>
+
     <title>BunkerMath — Riyaziyyat imtahanına ağıllı hazırlıq</title>
 
     <!-- Structured data: helps Google understand the brand (knowledge panel,

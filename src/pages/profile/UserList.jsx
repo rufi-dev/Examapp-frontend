@@ -23,6 +23,62 @@ import { Link } from "react-router-dom";
 import Badge from "../../components/ui/Badge";
 import ConfirmDialog from "../../components/ui/ConfirmDialog";
 import { gradeLabel } from "../../helper/grades";
+import { FaFacebookF, FaGoogle, FaInstagram, FaTiktok, FaYoutube } from "react-icons/fa";
+
+// Known acquisition sources → a recognisable badge (ported from Examopia).
+// Matched against the stored source, referrer and campaign, so an Instagram ad
+// (utm_source=instagram, an l.instagram.com referrer, or an igsh/ig link) is
+// marked no matter which of those carried the signal. Admin-only data.
+const SOURCE_BADGES = [
+  { test: /instagram|igsh|ig_/i, label: "Instagram", Icon: FaInstagram, icon: "text-[#E1306C]" },
+  { test: /facebook|fbclid|(^|[^a-z])fb([^a-z]|$)/i, label: "Facebook", Icon: FaFacebookF, icon: "text-[#1877F2]" },
+  { test: /tiktok/i, label: "TikTok", Icon: FaTiktok, icon: "text-text" },
+  { test: /youtube|youtu\.be/i, label: "YouTube", Icon: FaYoutube, icon: "text-[#FF0000]" },
+  { test: /google|gclid/i, label: "Google", Icon: FaGoogle, icon: "text-[#4285F4]" },
+];
+const chip = "inline-flex items-center gap-1 rounded-md border border-line bg-surface px-1.5 py-0.5 text-[10px] font-semibold text-text";
+
+function classifyAcquisition(acq) {
+  if (!acq) return null;
+  const source = String(acq.source || "");
+  const blob = `${source} ${acq.referrer || ""} ${acq.campaign || ""}`;
+  for (const s of SOURCE_BADGES) if (s.test.test(blob)) return s;
+  // A non-direct source we don't have an icon for — still mark it, with its name.
+  if (source && source !== "(direct)") return { label: source, Icon: null, icon: "" };
+  return null; // organic / direct → no badge
+}
+
+// A small "came from …" badge on ad/campaign signups (nothing for organic).
+const SourceBadge = ({ acquisition }) => {
+  const s = classifyAcquisition(acquisition);
+  if (!s) return null;
+  const title = [
+    acquisition?.source && acquisition.source !== "(direct)" && `Mənbə: ${acquisition.source}`,
+    acquisition?.campaign && `Kampaniya: ${acquisition.campaign}`,
+    acquisition?.referrer && acquisition.referrer !== "(direct)" && acquisition.referrer,
+  ].filter(Boolean).join(" · ");
+  return (
+    <span title={title || s.label} className={chip}>
+      {s.Icon && <s.Icon className={`text-[10px] ${s.icon}`} />}
+      {s.label}
+    </span>
+  );
+};
+
+// The dot on the avatar: seen this week, this month, longer ago, never.
+const activityDot = (d) => {
+  if (!d) return "bg-line";
+  const days = (Date.now() - new Date(d).getTime()) / 86400000;
+  return days <= 7 ? "bg-success" : days <= 30 ? "bg-muted" : "bg-warning";
+};
+const sinceLabel = (d) => {
+  if (!d) return "hələ yoxdur";
+  const m = Math.round((Date.now() - new Date(d).getTime()) / 60000);
+  if (m < 60) return `${Math.max(1, m)} dəq əvvəl`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h} saat əvvəl`;
+  return `${Math.round(h / 24)} gün əvvəl`;
+};
 
 const roleLabels = {
   admin: "Admin",
@@ -159,17 +215,25 @@ const UserList = () => {
                     </td>
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-3">
-                        {user.photo ? (
-                          <img
-                            src={user.photo}
-                            alt=""
-                            className="h-9 w-9 shrink-0 rounded-full border border-line object-cover"
-                          />
-                        ) : (
-                          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                            {(user.name || "?").trim().charAt(0).toUpperCase()}
-                          </span>
-                        )}
+                        <span className="relative shrink-0">
+                          {user.photo ? (
+                            <img
+                              src={user.photo}
+                              alt=""
+                              className="h-9 w-9 shrink-0 rounded-full border border-line object-cover"
+                            />
+                          ) : (
+                            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                              {(user.name || "?").trim().charAt(0).toUpperCase()}
+                            </span>
+                          )}
+                          {isAdmin && (
+                            <span
+                              className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-surface ${activityDot(user.lastActiveAt)}`}
+                              title={`Son aktivlik: ${sinceLabel(user.lastActiveAt)}`}
+                            />
+                          )}
+                        </span>
                         <span className="min-w-0">
                           <Link
                             to={`/user/${user._id}/details`}
@@ -183,7 +247,12 @@ const UserList = () => {
                               />
                             )}
                           </Link>
-                          <span className="block truncate text-xs text-muted">{user.email}</span>
+                          <span className="flex min-w-0 items-center gap-1.5">
+                            <span className="truncate text-xs text-muted">{user.email}</span>
+                            {isAdmin && (user.acquisition || user.acquisitionMatched) && (
+                              <SourceBadge acquisition={user.acquisition || user.acquisitionMatched} />
+                            )}
+                          </span>
                         </span>
                       </div>
                     </td>

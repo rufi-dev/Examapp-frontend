@@ -10,6 +10,7 @@ import { FiMail, FiLock, FiEye, FiEyeOff } from "react-icons/fi";
 import AuthLayout from "../../components/AuthLayout";
 import Button from "../../components/ui/Button";
 import Spinner from "../../components/Spinner";
+import { getAcquisition } from "../../lib/visitorTracking";
 
 const initialState = { email: "", password: "" };
 
@@ -55,7 +56,8 @@ const Login = () => {
   }, [isLoggedIn, isSuccess, isError, email, dispatch, navigate]);
 
   const handleGoogleSuccess = async (codeResponse) => {
-    await dispatch(loginWithGoogle({ code: codeResponse.code }));
+    // A first Google sign-in creates the account: keep where the visit came from.
+    await dispatch(loginWithGoogle({ code: codeResponse.code, acquisition: getAcquisition() }));
   };
   const googleLogin = useGoogleLogin({
     flow: "auth-code",
