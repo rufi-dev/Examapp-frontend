@@ -102,10 +102,34 @@ const RequireAuth = () => {
   return isLoggedIn ? <Outlet /> : <Navigate to="/login" replace />;
 };
 
-// Public/auth routes: logged-in users are sent straight to the dashboard.
+// A return path some page stored before sending the visitor to sign in (a video
+// picked on the home page, an exam submit that hit a 401 …). Same-app paths only.
+const readReturnPath = () => {
+  try {
+    const p = localStorage.getItem("postLoginRedirect");
+    return p && p.startsWith("/") && !p.startsWith("//") ? p : null;
+  } catch {
+    return null;
+  }
+};
+
+// Public/auth routes: logged-in users are sent on — to the stored return path if
+// there is one, else the dashboard. This guard re-renders the instant login /
+// sign-up succeeds and unmounts the form before ITS effect runs, so the return
+// path must be honoured HERE (it used to always land on /dashboard).
 const RedirectIfAuth = () => {
   const isLoggedIn = useSelector(selectIsLoggedIn);
-  return isLoggedIn ? <Navigate to="/dashboard" replace /> : <Outlet />;
+  const back = isLoggedIn ? readReturnPath() : null;
+  // Consumed after the commit (not during render, which StrictMode repeats).
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    try {
+      localStorage.removeItem("postLoginRedirect");
+    } catch {
+      /* ignore */
+    }
+  }, [isLoggedIn]);
+  return isLoggedIn ? <Navigate to={back || "/dashboard"} replace /> : <Outlet />;
 };
 
 function App() {

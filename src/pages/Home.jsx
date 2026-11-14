@@ -4,17 +4,8 @@ import { Link } from "react-router-dom";
 import { FiArrowRight, FiCheckCircle } from "react-icons/fi";
 import Hero from "../components/Hero";
 import ExamCard from "../components/ExamCard";
-
-// Centred editorial section header: a plain eyebrow, a large display title, and
-// a fading hairline rule under it — the landing's premium section-lead treatment.
-const SectionHeader = ({ title }) => (
-  <div className="mx-auto max-w-2xl text-center">
-    <h2 className="font-display text-3xl font-extrabold tracking-tight text-text sm:text-[2.6rem] sm:leading-[1.08]">
-      {title}
-    </h2>
-    <div className="mx-auto mt-5 h-px w-24 bg-gradient-to-r from-transparent via-primary/45 to-transparent" />
-  </div>
-);
+import SectionHeader from "../components/home/SectionHeader";
+import HomeVideos from "../components/home/HomeVideos";
 
 const Home = () => {
   // Newest exams from OPEN (public) classes — real content, no auth needed.
@@ -55,6 +46,10 @@ const Home = () => {
     <>
       {/* 1 — HERO */}
       <Hero />
+
+      {/* 1.5 — VIDEO LESSONS: newest teacher videos (max 6). Cards are public;
+          watching asks a guest to sign in. Hidden when there are none. */}
+      <HomeVideos />
 
       {/* 2 — LATEST OPEN EXAMS. Stays mounted while loading (skeletons) so the
           layout doesn't collapse and the dark section below doesn't jump up on

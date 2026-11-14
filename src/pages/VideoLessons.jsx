@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useSelector } from "react-redux";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { FiPlus, FiPlay, FiTrash2, FiX, FiVideo } from "react-icons/fi";
 import { selectUser } from "../../redux/features/auth/authSlice";
@@ -37,6 +38,25 @@ const VideoLessons = () => {
   useEffect(() => {
     load();
   }, []);
+
+  // Deep link from the home page («Video dərslər»): /videos?v=<youtubeId> opens
+  // that video in the player once the list is in. The param is consumed so
+  // closing the player (or a refresh) doesn't reopen it.
+  const [params, setParams] = useSearchParams();
+  const wanted = params.get("v");
+  useEffect(() => {
+    if (loading || !wanted) return;
+    const hit = videos.find((v) => v.videoId === wanted);
+    if (hit) setPlaying(hit);
+    setParams(
+      (p) => {
+        const next = new URLSearchParams(p);
+        next.delete("v");
+        return next;
+      },
+      { replace: true }
+    );
+  }, [loading, wanted, videos, setParams]);
 
   const submit = async (e) => {
     e.preventDefault();
